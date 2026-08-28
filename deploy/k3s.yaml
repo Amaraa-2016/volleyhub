@@ -30,10 +30,11 @@
 #      `volleyhub-secrets` below:
 #        VOLLEYHUB_DB_PASSWORD='f3f787862b990e91d3663ff306ffc4a84164' \
 #          sh deploy/bootstrap-db.sh
-#   2. Replace CHANGE-ME-DOCKER-USER with the Docker Hub account that holds the
-#      images (the last remaining placeholder).
-#   3. k3s kubectl apply -f deploy/k3s.yaml
-#   4. k3s kubectl -n volleyhub get pods -w
+#   2. k3s kubectl apply -f deploy/k3s.yaml
+#      (Images live under the `maraa` Docker Hub account. Applying before the
+#      first CI build leaves the pods in ImagePullBackOff; they recover on their
+#      own once the images are pushed.)
+#   3. k3s kubectl -n volleyhub get pods -w
 #
 # The API creates its own schemas at startup, so there is no migration step.
 # Registering with 90119067 gets the platform-admin role, which is what reviews
@@ -120,7 +121,7 @@ spec:
             - until pg_isready -h "$DB_HOST" -p 5432; do echo waiting for db; sleep 2; done
       containers:
         - name: api
-          image: CHANGE-ME-DOCKER-USER/volleyhub-api:latest
+          image: maraa/volleyhub-api:latest
           ports:
             - containerPort: 8080
           env:
@@ -196,7 +197,7 @@ spec:
     spec:
       containers:
         - name: backoffice
-          image: CHANGE-ME-DOCKER-USER/volleyhub-backoffice:latest
+          image: maraa/volleyhub-backoffice:latest
           ports:
             - containerPort: 3000
           env:
@@ -254,7 +255,7 @@ spec:
     spec:
       containers:
         - name: mobile
-          image: CHANGE-ME-DOCKER-USER/volleyhub-mobile:latest
+          image: maraa/volleyhub-mobile:latest
           ports:
             - containerPort: 80
           readinessProbe:

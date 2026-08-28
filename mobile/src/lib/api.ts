@@ -10,7 +10,11 @@ function defaultBaseUrl(): string {
     return Platform.OS === "android" ? "http://10.0.2.2:5090" : "http://localhost:5090";
 }
 
-export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? defaultBaseUrl();
+// An unset GitHub secret arrives as an empty string, not as undefined, so `??` alone would bake an
+// empty base URL into the web build and every request would silently go nowhere.
+const configuredBaseUrl = (process.env.EXPO_PUBLIC_API_URL ?? "").trim();
+
+export const BASE_URL = configuredBaseUrl.length > 0 ? configuredBaseUrl : defaultBaseUrl();
 
 export interface ApiResult<T> {
     data?: T;
