@@ -20,16 +20,24 @@
 #   behind the existing ingress-nginx + cert-manager with proper hostnames (the
 #   only changes needed are an Ingress object and the two URLs in the ConfigMap).
 #
+# ⚠ REAL SECRETS LIVE IN THIS FILE and it is tracked by git. Anyone who can read
+#   the repository can read the database password and the JWT signing key. Keep
+#   the repository private, and rotate these values if that ever stops being true.
+#
 # -----------------------------------------------------------------------------
 # ORDER OF OPERATIONS
-#   1. Pick a DB password and put it in `volleyhub-secrets` below (DB_PASSWORD).
-#   2. Create the role + database:
-#        VOLLEYHUB_DB_PASSWORD='<same password>' sh deploy/bootstrap-db.sh
-#   3. Replace every CHANGE-ME below (image owner, node IP, secrets).
-#   4. k3s kubectl apply -f deploy/k3s.yaml
-#   5. k3s kubectl -n volleyhub get pods -w
+#   1. Create the Postgres role + database, using the DB_PASSWORD already set in
+#      `volleyhub-secrets` below:
+#        VOLLEYHUB_DB_PASSWORD='f3f787862b990e91d3663ff306ffc4a84164' \
+#          sh deploy/bootstrap-db.sh
+#   2. Replace CHANGE-ME-DOCKER-USER with the Docker Hub account that holds the
+#      images (the last remaining placeholder).
+#   3. k3s kubectl apply -f deploy/k3s.yaml
+#   4. k3s kubectl -n volleyhub get pods -w
 #
 # The API creates its own schemas at startup, so there is no migration step.
+# Registering with 90119067 gets the platform-admin role, which is what reviews
+# club registration applications at /admin.
 # =============================================================================
 apiVersion: v1
 kind: Namespace
@@ -47,13 +55,13 @@ metadata:
 type: Opaque
 stringData:
   # Password of the dedicated `volleyhub` Postgres role (NOT the kindergarten admin one).
-  DB_PASSWORD: "CHANGE-ME-volleyhub-db-password"
+  DB_PASSWORD: "f3f787862b990e91d3663ff306ffc4a84164"
   # JWT signing key: any long random string. Changing it invalidates every issued token.
   #   openssl rand -hex 48
-  AppSettings__Token: "CHANGE-ME-long-random-signing-key-at-least-64-characters-long"
+  AppSettings__Token: "2fd33607d904c0089b0d8079b734e062e4f5e248a4ee1bc592242b712758cbcabe656128dca793e6b3e8f1361bbff284"
   # NextAuth session cookie secret.
   #   openssl rand -hex 32
-  NEXTAUTH_SECRET: "CHANGE-ME-nextauth-secret"
+  NEXTAUTH_SECRET: "bdcaf5399f0c3bff0a72c6fd90baef1706a568162d68964ef0b37f917768534e"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -69,16 +77,16 @@ data:
   ASPNETCORE_ENVIRONMENT: "Production"
   # Public URL of the API (node IP + its NodePort). Used for absolute links the
   # backend generates; must be reachable by clients.
-  APP_PUBLIC_BASE_URL: "http://CHANGE-ME-NODE-IP:30090"
+  APP_PUBLIC_BASE_URL: "http://187.127.116.47:30090"
   # Public URL of the admin web. NextAuth builds its callbacks from this, so a
   # wrong value here breaks login even though the pages still render.
-  NEXTAUTH_URL: "http://CHANGE-ME-NODE-IP:30030"
+  NEXTAUTH_URL: "http://187.127.116.47:30030"
   # Phone numbers granted the platform-admin role - they review club registration
   # applications at /admin. Set this BEFORE anyone registers: on a fresh database
   # the operator signs up with this number and gets the role on the spot.
   # Comma-separated; the role is also granted at login, so adding one here
   # promotes that person on their next sign-in.
-  PLATFORM_ADMIN_PHONES: "CHANGE-ME-99001122"
+  PLATFORM_ADMIN_PHONES: "90119067"
 ---
 # ============================================================================
 # Backend (.NET API) — container port 8080, exposed on node port 30090
