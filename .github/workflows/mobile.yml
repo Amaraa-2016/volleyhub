@@ -1,0 +1,49 @@
+name: mobile (web build) CI CD
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ["main"]
+    paths:
+      - "mobile/**"
+
+# Ships the Expo *web* export only. The native iOS/Android builds go through EAS
+# (`eas build`), which is a separate, credential-bound pipeline.
+jobs:
+  push_to_registry:
+    name: Build & deploy mobile web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mobile
+          file: ./mobile/Dockerfile
+          push: true
+          # Baked into the web bundle at export time, so it must be the API URL as the
+          # browser sees it - e.g. http://<node-ip>:30090. Set PUBLIC_API_URL in the
+          # repository secrets; changing it requires a rebuild, not just a restart.
+          build-args: |
+            EXPO_PUBLIC_API_URL=${{ secrets.PUBLIC_API_URL }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/volleyhub-mobile:${{ github.run_number }}
+            ${{ secrets.DOCKER_USERNAME }}/volleyhub-mobile:latest
+
+      - name: Deploy over SSH (k3s rollout)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            k3s kubectl -n volleyhub set image deployment/volleyhub-mobile mobile=${{ secrets.DOCKER_USERNAME }}/volleyhub-mobile:${{ github.run_number }}
+            k3s kubectl -n volleyhub rollout status deployment/volleyhub-mobile --timeout=180s

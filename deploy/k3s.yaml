@@ -1,0 +1,272 @@
+# =============================================================================
+# Volleyhub — k3s deployment onto the server that already runs kindergarten
+# =============================================================================
+# Deploys ONLY the three Volleyhub services (API, backoffice, mobile web) into
+# their own `volleyhub` namespace. Postgres is NOT deployed here: the existing
+# kindergarten Postgres is reused, with a separate database and a separate user.
+#
+#   ┌─ namespace: volleyhub ────────────┐   ┌─ namespace: kindergarten ─┐
+#   │ volleyhub-api        :30090       │──▶│ kindergarten-postgres     │
+#   │ volleyhub-backoffice :30030       │   │   db: volleyhub-db        │
+#   │ volleyhub-mobile     :30080       │   │   user: volleyhub         │
+#   └───────────────────────────────────┘   └───────────────────────────┘
+#
+# WHY A SEPARATE DATABASE: Volleyhub and kindergarten both create
+# `public.tenant` / `public.account` and both name their per-tenant schemas
+# `tenant_<id>`. Sharing one database would have them overwrite each other.
+#
+# ⚠ NO TLS. These are plain-HTTP NodePorts, so passwords and JWTs travel in the
+#   clear. Fine on a private network or for a pilot; before real users, put this
+#   behind the existing ingress-nginx + cert-manager with proper hostnames (the
+#   only changes needed are an Ingress object and the two URLs in the ConfigMap).
+#
+# -----------------------------------------------------------------------------
+# ORDER OF OPERATIONS
+#   1. Pick a DB password and put it in `volleyhub-secrets` below (DB_PASSWORD).
+#   2. Create the role + database:
+#        VOLLEYHUB_DB_PASSWORD='<same password>' sh deploy/bootstrap-db.sh
+#   3. Replace every CHANGE-ME below (image owner, node IP, secrets).
+#   4. k3s kubectl apply -f deploy/k3s.yaml
+#   5. k3s kubectl -n volleyhub get pods -w
+#
+# The API creates its own schemas at startup, so there is no migration step.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: volleyhub
+---
+# ----------------------------------------------------------------------------
+# Secrets. CHANGE EVERY VALUE. DB_PASSWORD must match what bootstrap-db.sh used.
+# ----------------------------------------------------------------------------
+apiVersion: v1
+kind: Secret
+metadata:
+  name: volleyhub-secrets
+  namespace: volleyhub
+type: Opaque
+stringData:
+  # Password of the dedicated `volleyhub` Postgres role (NOT the kindergarten admin one).
+  DB_PASSWORD: "CHANGE-ME-volleyhub-db-password"
+  # JWT signing key: any long random string. Changing it invalidates every issued token.
+  #   openssl rand -hex 48
+  AppSettings__Token: "CHANGE-ME-long-random-signing-key-at-least-64-characters-long"
+  # NextAuth session cookie secret.
+  #   openssl rand -hex 32
+  NEXTAUTH_SECRET: "CHANGE-ME-nextauth-secret"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: volleyhub-config
+  namespace: volleyhub
+data:
+  # Cross-namespace DNS to the Postgres that already serves kindergarten.
+  DB_HOST: "kindergarten-postgres.kindergarten.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "volleyhub-db"
+  DB_USER: "volleyhub"
+  ASPNETCORE_ENVIRONMENT: "Production"
+  # Public URL of the API (node IP + its NodePort). Used for absolute links the
+  # backend generates; must be reachable by clients.
+  APP_PUBLIC_BASE_URL: "http://CHANGE-ME-NODE-IP:30090"
+  # Public URL of the admin web. NextAuth builds its callbacks from this, so a
+  # wrong value here breaks login even though the pages still render.
+  NEXTAUTH_URL: "http://CHANGE-ME-NODE-IP:30030"
+  # Phone numbers granted the platform-admin role - they review club registration
+  # applications at /admin. Set this BEFORE anyone registers: on a fresh database
+  # the operator signs up with this number and gets the role on the spot.
+  # Comma-separated; the role is also granted at login, so adding one here
+  # promotes that person on their next sign-in.
+  PLATFORM_ADMIN_PHONES: "CHANGE-ME-99001122"
+---
+# ============================================================================
+# Backend (.NET API) — container port 8080, exposed on node port 30090
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: volleyhub-api
+  namespace: volleyhub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: volleyhub-api
+  template:
+    metadata:
+      labels:
+        app: volleyhub-api
+    spec:
+      # The API provisions every club schema at startup, so it must not start
+      # before Postgres is accepting connections.
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          env:
+            - name: DB_HOST
+              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: DB_HOST } }
+          command:
+            - sh
+            - -c
+            - until pg_isready -h "$DB_HOST" -p 5432; do echo waiting for db; sleep 2; done
+      containers:
+        - name: api
+          image: CHANGE-ME-DOCKER-USER/volleyhub-api:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_URLS
+              value: "http://+:8080"
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: ASPNETCORE_ENVIRONMENT } }
+            - name: DB_HOST
+              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: DB_HOST } }
+            - name: DB_PORT
+              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: DB_PORT } }
+            - name: DB_NAME
+              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: DB_NAME } }
+            - name: DB_USER
+              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: DB_USER } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: volleyhub-secrets, key: DB_PASSWORD } }
+            # EF connection string, assembled from the env vars above.
+            - name: ConnectionStrings__dbCon
+              value: "Host=$(DB_HOST);Port=$(DB_PORT);Database=$(DB_NAME);Username=$(DB_USER);Password=$(DB_PASSWORD)"
+            - name: App__PublicBaseUrl
+              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: APP_PUBLIC_BASE_URL } }
+            - name: PLATFORM_ADMIN_PHONES
+              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: PLATFORM_ADMIN_PHONES } }
+            - name: AppSettings__Token
+              valueFrom: { secretKeyRef: { name: volleyhub-secrets, key: AppSettings__Token } }
+          readinessProbe:
+            httpGet: { path: /api/vh/health, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { cpu: "1", memory: "768Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: volleyhub-api
+  namespace: volleyhub
+spec:
+  # NodePort: the mobile app talks to the API directly, so it has to be reachable
+  # from outside the cluster. In-cluster callers (the backoffice) keep using the
+  # ClusterIP name http://volleyhub-api:8080.
+  type: NodePort
+  selector:
+    app: volleyhub-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30090
+---
+# ============================================================================
+# Backoffice (Next.js admin) — container port 3000, node port 30030
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: volleyhub-backoffice
+  namespace: volleyhub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: volleyhub-backoffice
+  template:
+    metadata:
+      labels:
+        app: volleyhub-backoffice
+    spec:
+      containers:
+        - name: backoffice
+          image: CHANGE-ME-DOCKER-USER/volleyhub-backoffice:latest
+          ports:
+            - containerPort: 3000
+          env:
+            # Server-side only: the browser calls /api/ui/* on this same origin and
+            # the proxy forwards from here, so the in-cluster address is correct and
+            # nothing is baked into the image.
+            - name: API_BASE_URL
+              value: "http://volleyhub-api:8080"
+            - name: NEXTAUTH_URL
+              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: NEXTAUTH_URL } }
+            - name: NEXTAUTH_SECRET
+              valueFrom: { secretKeyRef: { name: volleyhub-secrets, key: NEXTAUTH_SECRET } }
+          readinessProbe:
+            httpGet: { path: /login, port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { cpu: "1", memory: "512Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: volleyhub-backoffice
+  namespace: volleyhub
+spec:
+  type: NodePort
+  selector:
+    app: volleyhub-backoffice
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30030
+---
+# ============================================================================
+# Mobile (Expo web export, served by nginx) — container port 80, node port 30080
+# ============================================================================
+# The native apps ship through EAS; this is the browser build of the same code.
+# Its API URL is baked in at export time (EXPO_PUBLIC_API_URL), so rebuild the
+# image if the node IP or API port ever changes.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: volleyhub-mobile
+  namespace: volleyhub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: volleyhub-mobile
+  template:
+    metadata:
+      labels:
+        app: volleyhub-mobile
+    spec:
+      containers:
+        - name: mobile
+          image: CHANGE-ME-DOCKER-USER/volleyhub-mobile:latest
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "500m", memory: "256Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: volleyhub-mobile
+  namespace: volleyhub
+spec:
+  type: NodePort
+  selector:
+    app: volleyhub-mobile
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080

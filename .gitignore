@@ -1,0 +1,10 @@
+# Credentials. Deliberately narrow: build artefacts are handled by each sub-project's own
+# .gitignore, and this file exists only so a key dropped anywhere in the tree cannot be
+# committed by accident.
+*firebase-adminsdk*.json
+*service-account*.json
+*.jks
+*.keystore
+key.properties
+.env
+.env.local
