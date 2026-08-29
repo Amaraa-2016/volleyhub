@@ -15,6 +15,31 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
+      # docker/login-action only says "Username and password required" when a secret is
+      # empty, which looks identical whether the secret is missing, misnamed, stored as a
+      # Variable, or scoped to an Environment. Naming the empty ones costs one step.
+      - name: Check required secrets
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          HOST: ${{ secrets.HOST }}
+          USERNAME: ${{ secrets.USERNAME }}
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          missing=""
+          for name in DOCKER_USERNAME DOCKER_PASSWORD HOST USERNAME SSH_PASSWORD; do
+            eval "value=\${$name}"
+            [ -n "$value" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Empty or missing repository secrets:$missing"
+            echo "Settings > Secrets and variables > Actions > Secrets tab > Repository secrets."
+            echo "They must be Secrets (not Variables) and repository-scoped (not Environment),"
+            echo "on this repository, spelled exactly as above."
+            exit 1
+          fi
+          echo "All required secrets are present."
+
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
