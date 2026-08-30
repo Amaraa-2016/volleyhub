@@ -30,6 +30,14 @@ public abstract class ApiControllerBase : ControllerBase
         {
             return StatusCode(403, new { error = ex.Message });
         }
+        // ObjectDisposedException derives from InvalidOperationException, so without this a disposed
+        // stream or context - always a bug on our side - would be answered as a 400, telling the
+        // caller they got the request wrong.
+        catch (ObjectDisposedException ex)
+        {
+            Logger.LogError(ex, "Disposed object used while handling {Path}", Request.Path);
+            return StatusCode(500, new { error = "server_error" });
+        }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });

@@ -71,6 +71,11 @@ public class S3FileStorage : IFileStorage
         await content.CopyToAsync(buffer, ct);
         buffer.Position = 0;
 
+        // Read the size now: the SDK disposes the stream it was handed once the upload finishes, so
+        // asking the buffer for its Length afterwards throws ObjectDisposedException - which reads
+        // as a failed upload even though the object is already in the bucket.
+        var size = buffer.Length;
+
         try
         {
             await _client.PutObjectAsync(new PutObjectRequest
@@ -101,7 +106,7 @@ public class S3FileStorage : IFileStorage
             throw new InvalidOperationException("storage_unreachable");
         }
 
-        return new StoredFile($"{_publicUrl}/{_bucket}/{key}", key, buffer.Length);
+        return new StoredFile($"{_publicUrl}/{_bucket}/{key}", key, size);
     }
 
     public async Task Delete(string keyOrUrl, CancellationToken ct = default)
