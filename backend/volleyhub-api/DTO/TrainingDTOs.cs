@@ -15,6 +15,12 @@ public class GroupBT
     public decimal fee_amount { get; set; }
     public string? notes { get; set; }
     public bool isactive { get; set; } = true;
+    // Public listing.
+    public string? cover { get; set; }
+    public DateTime? start_date { get; set; }
+    public string? address { get; set; }
+    public string? map_url { get; set; }
+    public string? phone { get; set; }
 }
 
 public class GroupRT
@@ -32,6 +38,11 @@ public class GroupRT
     public decimal fee_amount { get; set; }
     public string? notes { get; set; }
     public bool isactive { get; set; }
+    public string? cover { get; set; }
+    public DateTime? start_date { get; set; }
+    public string? address { get; set; }
+    public string? map_url { get; set; }
+    public string? phone { get; set; }
     public int studentcount { get; set; }
     public List<ScheduleEntryRT> schedule { get; set; } = new();
 }

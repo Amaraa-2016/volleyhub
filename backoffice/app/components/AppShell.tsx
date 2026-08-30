@@ -4,8 +4,7 @@ import { Layout, Menu, Dropdown, Avatar, Button } from "antd";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
-    LayoutDashboard, Users, User, CalendarDays, CalendarClock, Wallet, MapPin,
-    Megaphone, UserCog, ShieldCheck, LogOut, Repeat, Volleyball, Globe, Store,
+    LayoutDashboard, User, GraduationCap, ShieldCheck, LogOut, Repeat, Volleyball, Store,
 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -18,29 +17,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { data: session } = useSession();
 
-    const role = session?.selectedRole ?? "";
-    const isManager = role === "owner" || role === "admin";
-
+    // Kept deliberately short. The other consoles (schedule, attendance, fees, venues,
+    // announcements, members, public profile) still exist and their routes still work - they are
+    // just not in the sidebar while the product focuses on courses and students.
     const items = useMemo(() => {
         const base = [
             { key: "/manage/dashboard", icon: <LayoutDashboard size={16} />, label: "Хяналтын самбар" },
-            { key: "/manage/groups", icon: <Users size={16} />, label: "Группүүд" },
+            { key: "/manage/groups", icon: <GraduationCap size={16} />, label: "Сургалт" },
             { key: "/manage/students", icon: <User size={16} />, label: "Суралцагчид" },
-            { key: "/manage/schedule", icon: <CalendarDays size={16} />, label: "Долоо хоногийн хуваарь" },
-            { key: "/manage/sessions", icon: <CalendarClock size={16} />, label: "Хичээл, ирц" },
-            { key: "/manage/fees", icon: <Wallet size={16} />, label: "Төлбөр" },
-            { key: "/manage/venues", icon: <MapPin size={16} />, label: "Заал" },
-            { key: "/manage/announcements", icon: <Megaphone size={16} />, label: "Зарлага" },
         ];
-        if (isManager) {
-            base.push({ key: "/manage/profile", icon: <Globe size={16} />, label: "Нээлттэй хуудас" });
-            base.push({ key: "/manage/members", icon: <UserCog size={16} />, label: "Гишүүд" });
-        }
         if (session?.isPlatformAdmin) {
             base.push({ key: "/admin", icon: <ShieldCheck size={16} />, label: "Платформ" });
         }
         return base;
-    }, [isManager, session?.isPlatformAdmin]);
+    }, [session?.isPlatformAdmin]);
 
     // /manage/groups/12 has to light up /manage/groups, so match on the first two segments.
     const segments = pathname?.split("/").filter(Boolean) ?? [];

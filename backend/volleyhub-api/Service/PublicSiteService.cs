@@ -6,20 +6,25 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace volleyhub_api.Service;
 
-// The training directory on the public site. Anonymous callers send no tenantid header, so this
+// The course directory on the public site. Anonymous callers send no tenantid header, so this
 // service cannot use the request-scoped VolleyDbContext - it opens a context per centre with a
 // FixedTenantProvider instead, the same way schema provisioning does.
 //
-// Everything here is read-only and shows only what a centre has chosen to publish.
+// What the site lists is COURSES, gathered from every active centre. A course carries its own
+// address, phone and price, because that is what someone is choosing between; the centre's name
+// rides along as a subtitle. Everything here is read-only, and a course appears only while its
+// `isactive` flag is on - that flag is the centre's own publish switch.
 public class PublicSiteService
 {
     private readonly AccountDbContext _db;
     private readonly string _connectionString;
+    private readonly ILogger<PublicSiteService> _logger;
 
-    public PublicSiteService(AccountDbContext db, IConfiguration config)
+    public PublicSiteService(AccountDbContext db, IConfiguration config, ILogger<PublicSiteService> logger)
     {
         _db = db;
         _connectionString = config["ConnectionStrings:dbCon"]!;
+        _logger = logger;
     }
 
     private VolleyDbContext OpenTenant(int tenantId)
@@ -31,161 +36,152 @@ public class PublicSiteService
         return new VolleyDbContext(options, new FixedTenantProvider("tenant_" + tenantId));
     }
 
-    private static List<string> SplitImages(string? images) =>
-        (images ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-
     // ---- directory --------------------------------------------------------
 
-    public async Task<List<TrainingCardRT>> Trainings(string? search, string? city, int? age)
+    public async Task<List<CourseCardRT>> Courses(string? search)
     {
-        // is_published is the centre's own switch: approval creates the tenant, the owner decides
-        // when the profile is ready to be seen.
-        var query = _db.tenant.AsNoTracking().Where(t => t.isactive && t.is_published);
+        var tenants = await _db.tenant.AsNoTracking()
+            .Where(t => t.isactive)
+            .OrderBy(t => t.tenantname)
+            .ToListAsync();
 
         var term = (search ?? "").Trim().ToLowerInvariant();
-        if (term.Length > 0)
-            query = query.Where(t => t.tenantname.ToLower().Contains(term)
-                || (t.tagline != null && t.tagline.ToLower().Contains(term)));
+        var cards = new List<CourseCardRT>();
 
-        if (!string.IsNullOrWhiteSpace(city)) query = query.Where(t => t.city == city);
-        if (age is int a)
-            query = query.Where(t => (t.age_from == null || t.age_from <= a) && (t.age_to == null || t.age_to >= a));
-
-        var tenants = await query.OrderBy(t => t.tenantname).Take(200).ToListAsync();
-
-        var cards = new List<TrainingCardRT>(tenants.Count);
-        foreach (var t in tenants)
+        foreach (var tenant in tenants)
         {
-            // One count per centre. Directory pages are small and cached by the browser; a single
-            // cross-schema aggregate is not possible without dynamic SQL over every schema.
-            var groupCount = 0;
+            // One query per centre: a single cross-schema aggregate is not expressible without
+            // dynamic SQL over every schema, and the number of centres is small.
             try
             {
-                await using var tenantDb = OpenTenant(t.tenantid);
-                groupCount = await tenantDb.training_group.AsNoTracking()
-                    .CountAsync(g => !g.is_deleted && g.isactive);
-            }
-            catch (Exception)
-            {
-                // A published centre whose schema is missing or mid-provision must not take the
-                // whole directory down; it simply shows no groups.
-            }
+                await using var db = OpenTenant(tenant.tenantid);
 
-            cards.Add(ToCard(t, groupCount));
+                var groups = await db.training_group.AsNoTracking()
+                    .Where(g => !g.is_deleted && g.isactive)
+                    .OrderBy(g => g.name)
+                    .ToListAsync();
+                if (groups.Count == 0) continue;
+
+                var ids = groups.Select(g => g.groupid).ToList();
+
+                var enrolled = await db.enrollment.AsNoTracking()
+                    .Where(e => ids.Contains(e.groupid) && e.isactive)
+                    .GroupBy(e => e.groupid)
+                    .Select(g => new { groupid = g.Key, n = g.Count() })
+                    .ToDictionaryAsync(x => x.groupid, x => x.n);
+
+                var schedule = (await db.schedule_entry.AsNoTracking()
+                        .Where(s => ids.Contains(s.groupid) && s.isactive)
+                        .OrderBy(s => s.weekday).ThenBy(s => s.start_minute)
+                        .ToListAsync())
+                    .GroupBy(s => s.groupid)
+                    .ToDictionary(g => g.Key, g => g.Select(s => new PublicScheduleRT
+                    {
+                        weekday = s.weekday,
+                        start_minute = s.start_minute,
+                        end_minute = s.end_minute,
+                    }).ToList());
+
+                foreach (var g in groups)
+                {
+                    if (term.Length > 0
+                        && !g.name.ToLowerInvariant().Contains(term)
+                        && !(g.address ?? "").ToLowerInvariant().Contains(term)
+                        && !(g.agegroup ?? "").ToLowerInvariant().Contains(term)
+                        && !tenant.tenantname.ToLowerInvariant().Contains(term))
+                    {
+                        continue;
+                    }
+
+                    cards.Add(new CourseCardRT
+                    {
+                        tenantid = tenant.tenantid,
+                        groupid = g.groupid,
+                        tenantname = tenant.tenantname,
+                        name = g.name,
+                        cover = g.cover,
+                        level = g.level,
+                        agegroup = g.agegroup,
+                        gender = g.gender,
+                        fee_amount = g.fee_amount,
+                        capacity = g.capacity,
+                        enrolled = enrolled.TryGetValue(g.groupid, out var n) ? n : 0,
+                        start_date = g.start_date,
+                        address = g.address,
+                        phone = g.phone,
+                        schedule = schedule.TryGetValue(g.groupid, out var sch) ? sch : [],
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // A centre whose schema is missing or mid-provision must not take the whole
+                // directory down - it simply contributes nothing.
+                _logger.LogWarning(ex, "Skipped tenant {Tenant} while listing courses", tenant.tenantid);
+            }
         }
 
         return cards;
     }
 
-    public async Task<TrainingDetailRT> Training(int tenantId)
+    public async Task<CourseDetailRT> Course(int tenantId, long groupId)
     {
-        var t = await _db.tenant.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.tenantid == tenantId && x.isactive && x.is_published)
+        var tenant = await _db.tenant.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.tenantid == tenantId && t.isactive)
             ?? throw new InvalidOperationException("training_not_found");
 
-        var detail = new TrainingDetailRT
-        {
-            tenantid = t.tenantid,
-            tenantname = t.tenantname,
-            tagline = t.tagline,
-            logo = t.logo,
-            cover = t.cover,
-            city = t.city,
-            district = t.district,
-            address = t.address,
-            price_from = t.price_from,
-            age_from = t.age_from,
-            age_to = t.age_to,
-            description = t.description,
-            photos = SplitImages(t.photos),
-            contactphone = t.contactphone,
-            email = t.email,
-            website = t.website,
-            facebook = t.facebook,
-            instagram = t.instagram,
-            latitude = t.latitude,
-            longitude = t.longitude,
-        };
+        await using var db = OpenTenant(tenantId);
 
-        try
-        {
-            await using var tenantDb = OpenTenant(tenantId);
+        var g = await db.training_group.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.groupid == groupId && !x.is_deleted && x.isactive)
+            ?? throw new InvalidOperationException("training_not_found");
 
-            var groups = await tenantDb.training_group.AsNoTracking()
-                .Where(g => !g.is_deleted && g.isactive)
-                .OrderBy(g => g.name)
-                .ToListAsync();
+        var enrolled = await db.enrollment.AsNoTracking()
+            .CountAsync(e => e.groupid == groupId && e.isactive);
 
-            var groupIds = groups.Select(g => g.groupid).ToList();
-            var venues = await tenantDb.venue.AsNoTracking().ToDictionaryAsync(v => v.venueid, v => v.name);
-
-            var enrolled = await tenantDb.enrollment.AsNoTracking()
-                .Where(e => groupIds.Contains(e.groupid) && e.isactive)
-                .GroupBy(e => e.groupid)
-                .Select(g => new { groupid = g.Key, n = g.Count() })
-                .ToDictionaryAsync(x => x.groupid, x => x.n);
-
-            var schedule = (await tenantDb.schedule_entry.AsNoTracking()
-                    .Where(s => groupIds.Contains(s.groupid) && s.isactive)
-                    .OrderBy(s => s.weekday).ThenBy(s => s.start_minute)
-                    .ToListAsync())
-                .GroupBy(s => s.groupid)
-                .ToDictionary(g => g.Key, g => g.Select(s => new PublicScheduleRT
-                {
-                    weekday = s.weekday,
-                    start_minute = s.start_minute,
-                    end_minute = s.end_minute,
-                }).ToList());
-
-            detail.groups = groups.Select(g => new PublicGroupRT
+        var schedule = (await db.schedule_entry.AsNoTracking()
+                .Where(s => s.groupid == groupId && s.isactive)
+                .OrderBy(s => s.weekday).ThenBy(s => s.start_minute)
+                .ToListAsync())
+            .Select(s => new PublicScheduleRT
             {
-                groupid = g.groupid,
-                name = g.name,
-                level = g.level,
-                agegroup = g.agegroup,
-                gender = g.gender,
-                fee_amount = g.fee_amount,
-                capacity = g.capacity,
-                enrolled = enrolled.TryGetValue(g.groupid, out var n) ? n : 0,
-                venuename = g.venueid is long v && venues.TryGetValue(v, out var vn) ? vn : null,
-                schedule = schedule.TryGetValue(g.groupid, out var sch) ? sch : [],
+                weekday = s.weekday,
+                start_minute = s.start_minute,
+                end_minute = s.end_minute,
             }).ToList();
 
-            detail.groupcount = detail.groups.Count;
-        }
-        catch (Exception)
+        var venue = g.venueid is long vid
+            ? await db.venue.AsNoTracking().Where(v => v.venueid == vid).Select(v => v.name).FirstOrDefaultAsync()
+            : null;
+        var coach = g.coach_staffid is int cid
+            ? await db.staff.AsNoTracking().Where(s => s.staffid == cid).Select(s => s.staffname).FirstOrDefaultAsync()
+            : null;
+
+        return new CourseDetailRT
         {
-            // As in the listing: a profile stays readable even when its schema is not.
-        }
-
-        return detail;
+            tenantid = tenant.tenantid,
+            groupid = g.groupid,
+            tenantname = tenant.tenantname,
+            tenantphone = tenant.contactphone,
+            tenantlogo = tenant.logo,
+            name = g.name,
+            cover = g.cover,
+            level = g.level,
+            agegroup = g.agegroup,
+            gender = g.gender,
+            fee_amount = g.fee_amount,
+            capacity = g.capacity,
+            enrolled = enrolled,
+            start_date = g.start_date,
+            address = g.address,
+            phone = g.phone,
+            map_url = g.map_url,
+            notes = g.notes,
+            venuename = venue,
+            coachname = coach,
+            schedule = schedule,
+        };
     }
-
-    public async Task<List<string>> Cities()
-    {
-        return await _db.tenant.AsNoTracking()
-            .Where(t => t.isactive && t.is_published && t.city != null)
-            .Select(t => t.city!)
-            .Distinct()
-            .OrderBy(c => c)
-            .ToListAsync();
-    }
-
-    private static TrainingCardRT ToCard(Model.Tenant t, int groupCount) => new()
-    {
-        tenantid = t.tenantid,
-        tenantname = t.tenantname,
-        tagline = t.tagline,
-        logo = t.logo,
-        cover = t.cover,
-        city = t.city,
-        district = t.district,
-        address = t.address,
-        price_from = t.price_from,
-        age_from = t.age_from,
-        age_to = t.age_to,
-        groupcount = groupCount,
-    };
 
     // ---- the centre's own profile ----------------------------------------
 

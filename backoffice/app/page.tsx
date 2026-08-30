@@ -6,15 +6,15 @@ import { Button, Skeleton } from "antd";
 import { ArrowRight, CalendarCheck, MapPin, Users, Wallet } from "lucide-react";
 import SiteShell from "@/app/components/SiteShell";
 import { PublicAPI } from "@/app/utils/API";
-import { money, type News, type Product, type TrainingCard } from "@/app/types/api";
+import { money, type CourseCard, type News, type Product } from "@/app/types/api";
 
 export default function HomePage() {
-    const [trainings, setTrainings] = useState<TrainingCard[]>();
+    const [trainings, setTrainings] = useState<CourseCard[]>();
     const [news, setNews] = useState<News[]>();
     const [products, setProducts] = useState<Product[]>();
 
     useEffect(() => {
-        PublicAPI<TrainingCard[]>("/api/vh/public/trainings").then((rows) => setTrainings(rows ?? []));
+        PublicAPI<CourseCard[]>("/api/vh/public/trainings").then((rows) => setTrainings(rows ?? []));
         PublicAPI<News[]>("/api/vh/public/news?take=3").then((rows) => setNews(rows ?? []));
         PublicAPI<Product[]>("/api/vh/public/products").then((rows) => setProducts(rows ?? []));
     }, []);
@@ -74,19 +74,22 @@ export default function HomePage() {
                         <div className="site-empty">Одоогоор нийтлэгдсэн сургалт алга байна.</div>
                     ) : (
                         <div className="site-grid">
-                            {trainings.slice(0, 6).map((t) => (
-                                <Link key={t.tenantid} href={`/trainings/${t.tenantid}`} className="site-card">
+                            {trainings.slice(0, 6).map((c) => (
+                                <Link
+                                    key={`${c.tenantid}-${c.groupid}`}
+                                    href={`/trainings/${c.tenantid}/${c.groupid}`}
+                                    className="site-card"
+                                >
                                     <div className="site-card__media">
-                                        {t.cover ? <img src={t.cover} alt={t.tenantname} /> : <Users size={28} />}
+                                        {c.cover ? <img src={c.cover} alt={c.name} /> : <Users size={28} />}
                                     </div>
                                     <div className="site-card__body">
-                                        <div className="site-card__title">{t.tenantname}</div>
-                                        {!!t.tagline && <div className="site-card__meta">{t.tagline}</div>}
-                                        <div className="site-card__meta">
-                                            {[t.city, t.district].filter(Boolean).join(", ") || t.address}
-                                        </div>
+                                        <div className="site-card__title">{c.name}</div>
+                                        <div className="site-card__meta">{c.tenantname}</div>
+                                        {!!c.agegroup && <div className="site-card__meta">Нас: {c.agegroup}</div>}
+                                        {!!c.address && <div className="site-card__meta">{c.address}</div>}
                                         <div className="site-card__price">
-                                            {t.price_from ? `${money(t.price_from)}-с` : "Үнэ тодорхойгүй"}
+                                            {c.fee_amount > 0 ? `${money(c.fee_amount)} / сар` : "Үнэ тодорхойгүй"}
                                         </div>
                                     </div>
                                 </Link>

@@ -86,10 +86,9 @@ data:
   # Public URL of the admin web. NextAuth builds its callbacks from this, so a
   # wrong value here breaks login even though the pages still render.
   NEXTAUTH_URL: "http://187.127.116.47:30030"
-  # Public address of MinIO. This ends up inside every stored image URL, so changing it later
-  # requires a one-off UPDATE over the image columns - not just a restart.
-  STORAGE_PUBLIC_URL: "http://187.127.116.47:30900"
-  # In-cluster address the API uploads through, so an upload never leaves the node.
+  # MinIO is only ever reached from inside the cluster: the API uploads here, and serves the
+  # bytes back out over its own port. Nothing outside talks to MinIO directly, so it needs no
+  # public address and no port of its own.
   STORAGE_INTERNAL_URL: "http://volleyhub-minio:9000"
   STORAGE_BUCKET: "volleyhub"
   # Phone numbers granted the platform-admin role - they review club registration
@@ -158,10 +157,8 @@ spec:
               valueFrom: { configMapKeyRef: { name: volleyhub-config, key: PLATFORM_ADMIN_PHONES } }
             - name: AppSettings__Token
               valueFrom: { secretKeyRef: { name: volleyhub-secrets, key: AppSettings__Token } }
-            # Image storage. ServiceUrl is what gets written into every stored image URL, so it
-            # must be the address a browser can reach; InternalUrl is where the upload actually goes.
-            - name: Storage__ServiceUrl
-              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: STORAGE_PUBLIC_URL } }
+            # Image storage. The URL written into an image field is built from App__PublicBaseUrl
+            # above, because images are served back through this API - see S3FileStorage.
             - name: Storage__InternalUrl
               valueFrom: { configMapKeyRef: { name: volleyhub-config, key: STORAGE_INTERNAL_URL } }
             - name: Storage__Bucket
@@ -200,15 +197,16 @@ spec:
       nodePort: 30090
 ---
 # ============================================================================
-# MinIO — S3-compatible image storage, API on 9000 (node port 30900)
+# MinIO — S3-compatible image storage, in-cluster only
 # ============================================================================
 # Volleyhub's own instance: the bucket, credentials and disk belong to this
 # platform and are shared with nothing else on the cluster.
 #
-# The bucket is PUBLIC-READ (see the init job below). These are site images -
-# news covers, product photos, training galleries - that anonymous visitors have
-# to load; pre-signed URLs would expire on content that is not secret anyway.
-# Uploading still requires a token: only the API writes here.
+# Deliberately NOT exposed outside the cluster. Kindergarten can point a browser
+# straight at MinIO because it has a domain and its ingress serves s3.<domain> on
+# 443, a port that is open anyway. With no domain, exposing MinIO would mean a
+# second NodePort and another firewall hole - so instead the API streams images
+# back out over its own port (/api/vh/public/media/...). The bucket stays private.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -250,9 +248,6 @@ spec:
               valueFrom: { secretKeyRef: { name: volleyhub-secrets, key: MINIO_ROOT_USER } }
             - name: MINIO_ROOT_PASSWORD
               valueFrom: { secretKeyRef: { name: volleyhub-secrets, key: MINIO_ROOT_PASSWORD } }
-            # Tells MinIO its own public address, so redirects and the console are correct.
-            - name: MINIO_SERVER_URL
-              valueFrom: { configMapKeyRef: { name: volleyhub-config, key: STORAGE_PUBLIC_URL } }
           volumeMounts:
             - name: data
               mountPath: /data
@@ -274,19 +269,17 @@ metadata:
   name: volleyhub-minio
   namespace: volleyhub
 spec:
-  # NodePort: browsers load images straight from MinIO, so it has to be reachable
-  # from outside the cluster. The API uploads over the ClusterIP name instead.
-  type: NodePort
+  # ClusterIP: only the API talks to MinIO, in both directions.
+  type: ClusterIP
   selector:
     app: volleyhub-minio
   ports:
     - name: s3
       port: 9000
       targetPort: 9000
-      nodePort: 30900
 ---
-# Creates the bucket and opens it for anonymous download. Idempotent, so it is safe
-# to re-apply; delete the Job first if you need to run it again
+# Creates the bucket. Idempotent, so it is safe to re-apply; delete the Job first
+# if you need to run it again
 # (kubectl -n volleyhub delete job volleyhub-minio-init).
 apiVersion: batch/v1
 kind: Job
@@ -316,7 +309,8 @@ spec:
                 echo waiting for minio; sleep 3;
               done
               mc mb --ignore-existing "vh/$BUCKET"
-              mc anonymous set download "vh/$BUCKET"
+              # No anonymous policy: nothing outside the cluster reaches MinIO, and the API is
+              # what serves images to visitors.
               echo "bucket $BUCKET ready"
 ---
 # ============================================================================

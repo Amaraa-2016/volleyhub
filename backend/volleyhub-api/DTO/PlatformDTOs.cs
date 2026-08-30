@@ -110,53 +110,41 @@ public class OrderStatusBT
     public string? admin_note { get; set; }
 }
 
-// ---- public training directory --------------------------------------------
+// ---- public course directory ----------------------------------------------
 
-// A training centre as the public site lists it.
-public class TrainingCardRT
+// One course as the public site lists it. The listing is of COURSES, not of organisations: a
+// visitor is choosing something to attend at a place, price and time, and one centre may run
+// several very different courses. `tenantid` + `groupid` together identify it, since group ids are
+// only unique inside a centre's own schema.
+public class CourseCardRT
 {
     public int tenantid { get; set; }
-    public string tenantname { get; set; } = string.Empty;
-    public string? tagline { get; set; }
-    public string? logo { get; set; }
-    public string? cover { get; set; }
-    public string? city { get; set; }
-    public string? district { get; set; }
-    public string? address { get; set; }
-    public decimal? price_from { get; set; }
-    public int? age_from { get; set; }
-    public int? age_to { get; set; }
-    public int groupcount { get; set; }
-}
-
-// The detail page: the card plus contact details, photos and the groups on offer.
-public class TrainingDetailRT : TrainingCardRT
-{
-    public string? description { get; set; }
-    public List<string> photos { get; set; } = new();
-    public string? contactphone { get; set; }
-    public string? email { get; set; }
-    public string? website { get; set; }
-    public string? facebook { get; set; }
-    public string? instagram { get; set; }
-    public double? latitude { get; set; }
-    public double? longitude { get; set; }
-    public List<PublicGroupRT> groups { get; set; } = new();
-}
-
-// A group as advertised publicly: no student names, no internal notes.
-public class PublicGroupRT
-{
     public long groupid { get; set; }
+    // Who runs it, shown as a subtitle.
+    public string tenantname { get; set; } = string.Empty;
     public string name { get; set; } = string.Empty;
+    public string? cover { get; set; }
     public string? level { get; set; }
     public string? agegroup { get; set; }
     public short gender { get; set; }
     public decimal fee_amount { get; set; }
     public int capacity { get; set; }
     public int enrolled { get; set; }
-    public string? venuename { get; set; }
+    public DateTime? start_date { get; set; }
+    public string? address { get; set; }
+    public string? phone { get; set; }
     public List<PublicScheduleRT> schedule { get; set; } = new();
+}
+
+// The detail page adds what does not belong on a card.
+public class CourseDetailRT : CourseCardRT
+{
+    public string? notes { get; set; }
+    public string? map_url { get; set; }
+    public string? venuename { get; set; }
+    public string? coachname { get; set; }
+    public string? tenantphone { get; set; }
+    public string? tenantlogo { get; set; }
 }
 
 public class PublicScheduleRT

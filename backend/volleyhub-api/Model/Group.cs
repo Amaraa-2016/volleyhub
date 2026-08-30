@@ -2,9 +2,13 @@ using System.ComponentModel.DataAnnotations;
 
 namespace volleyhub_api.Model;
 
-// A training group: the unit a student actually enrolls in. Per-tenant (tenant_<id> schema), so
-// there is no tenantid column. `fee_amount` is the standard monthly price; a student's own fee rows
-// keep their agreed amount, so raising the group price never rewrites past invoices.
+// A course the centre offers - the unit a student enrolls in, and the unit the public site lists.
+// Per-tenant (tenant_<id> schema), so there is no tenantid column.
+//
+// Address, phone and map link live here rather than only on the centre: one organisation often
+// runs courses in different halls, and a visitor is choosing a course at a place and time, not an
+// organisation. `fee_amount` is the standard monthly price; a student's own fee rows keep the
+// amount agreed at enrollment, so repricing a course never rewrites past invoices.
 public class Group
 {
     [Key]
@@ -24,6 +28,21 @@ public class Group
     public decimal fee_amount { get; set; }
     public string? notes { get; set; }
     public bool isactive { get; set; } = true;
+
+    // ---- public listing ---------------------------------------------------
+
+    public string? cover { get; set; }
+    // When the course starts taking students. Null for one that runs continuously.
+    public DateTime? start_date { get; set; }
+    [MaxLength(500)]
+    public string? address { get; set; }
+    // A share link pasted from Google Maps. Kept as the raw URL rather than parsed coordinates:
+    // that is what someone actually has to hand, and the site only ever links out to it.
+    [MaxLength(1000)]
+    public string? map_url { get; set; }
+    [MaxLength(100)]
+    public string? phone { get; set; }
+
     public bool is_deleted { get; set; }
     public DateTime created { get; set; }
     public DateTime updated { get; set; }

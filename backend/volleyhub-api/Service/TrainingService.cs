@@ -79,6 +79,11 @@ public class TrainingService
             fee_amount = g.fee_amount,
             notes = g.notes,
             isactive = g.isactive,
+            cover = g.cover,
+            start_date = g.start_date,
+            address = g.address,
+            map_url = g.map_url,
+            phone = g.phone,
             studentcount = counts.TryGetValue(g.groupid, out var n) ? n : 0,
             schedule = schedule.TryGetValue(g.groupid, out var sch) ? sch : [],
         }).ToList();
@@ -119,6 +124,11 @@ public class TrainingService
         group.fee_amount = data.fee_amount;
         group.notes = data.notes;
         group.isactive = data.isactive;
+        group.cover = NullIfEmpty(data.cover);
+        group.start_date = data.start_date;
+        group.address = NullIfEmpty(data.address);
+        group.map_url = NullIfEmpty(data.map_url);
+        group.phone = NullIfEmpty(data.phone);
         group.updated = now;
 
         await _db.SaveChangesAsync();

@@ -28,6 +28,12 @@ export interface Group {
     fee_amount: number;
     notes?: string | null;
     isactive: boolean;
+    // Public listing.
+    cover?: string | null;
+    start_date?: string | null;
+    address?: string | null;
+    map_url?: string | null;
+    phone?: string | null;
     studentcount: number;
     schedule: ScheduleEntry[];
 }
@@ -209,51 +215,38 @@ export interface TrainingProfile {
 
 // ---- platform / public site ----------------------------------------------
 
-export interface TrainingCard {
-    tenantid: number;
-    tenantname: string;
-    tagline?: string | null;
-    logo?: string | null;
-    cover?: string | null;
-    city?: string | null;
-    district?: string | null;
-    address?: string | null;
-    price_from?: number | null;
-    age_from?: number | null;
-    age_to?: number | null;
-    groupcount: number;
-}
-
 export interface PublicSchedule {
     weekday: number;
     start_minute: number;
     end_minute: number;
 }
 
-export interface PublicGroup {
+// The public site lists courses, not organisations: tenantid + groupid together identify one.
+export interface CourseCard {
+    tenantid: number;
     groupid: number;
+    tenantname: string;
     name: string;
+    cover?: string | null;
     level?: string | null;
     agegroup?: string | null;
     gender: number;
     fee_amount: number;
     capacity: number;
     enrolled: number;
-    venuename?: string | null;
+    start_date?: string | null;
+    address?: string | null;
+    phone?: string | null;
     schedule: PublicSchedule[];
 }
 
-export interface TrainingDetail extends TrainingCard {
-    description?: string | null;
-    photos: string[];
-    contactphone?: string | null;
-    email?: string | null;
-    website?: string | null;
-    facebook?: string | null;
-    instagram?: string | null;
-    latitude?: number | null;
-    longitude?: number | null;
-    groups: PublicGroup[];
+export interface CourseDetail extends CourseCard {
+    notes?: string | null;
+    map_url?: string | null;
+    venuename?: string | null;
+    coachname?: string | null;
+    tenantphone?: string | null;
+    tenantlogo?: string | null;
 }
 
 export interface News {

@@ -6,19 +6,25 @@ namespace volleyhub_api.Service.Storage;
 // S3-compatible storage (MinIO in our cluster). Volleyhub runs its own MinIO rather than sharing
 // another product's, so the bucket, credentials and lifecycle all belong to this platform.
 //
-// The bucket is public-read: these are site images - news covers, product photos, training centre
-// galleries - that anonymous visitors must be able to load. Pre-signed URLs would expire and would
-// have to be regenerated on every page render for content that is not secret in the first place.
+// MinIO is NOT reachable from outside the cluster. Kindergarten can point a browser straight at
+// MinIO because it has a domain, and its ingress serves s3.<domain> on 443 - a port that is open
+// anyway. With no domain the equivalent is a second NodePort, which means another hole to get
+// opened in a firewall (and 30900 was in fact closed, which is why uploads worked while images
+// never displayed). So the stored URL points back at this API, which streams the object from the
+// in-cluster address: one open port, nothing else exposed, and the same URLs keep working the day
+// a domain is added.
 //
-// The stored value is the full public URL. If the public endpoint ever changes, existing rows keep
-// the old host and need a one-off UPDATE across the handful of image columns - the trade for not
-// having to rebuild a URL on every read path.
+// The trade is that image bytes pass through the API. At this size that is nothing, and the
+// responses carry a long immutable cache header because every key is unique and never rewritten.
 public class S3FileStorage : IFileStorage
 {
     private readonly IAmazonS3? _client;
     private readonly string _bucket;
-    private readonly string _publicUrl;
+    private readonly string _mediaBaseUrl;
     private readonly ILogger<S3FileStorage> _logger;
+
+    // Must match the route of PublicController.Media.
+    public const string MediaPath = "/api/vh/public/media/";
 
     public bool IsConfigured => _client != null;
 
@@ -27,16 +33,19 @@ public class S3FileStorage : IFileStorage
         _logger = logger;
         _bucket = config["Storage:Bucket"] ?? "";
 
-        // Uploads go to the in-cluster endpoint when there is one; the URL handed to clients always
-        // uses the public endpoint.
+        // Where a browser reaches this API. It ends up inside every stored image URL, so a wrong
+        // value here produces images that upload fine and then fail to display.
+        _mediaBaseUrl = (config["App:PublicBaseUrl"] ?? "").TrimEnd('/') + MediaPath;
+
+        // Uploads go to the in-cluster endpoint when there is one.
         var internalUrl = config["Storage:InternalUrl"];
         var serviceUrl = config["Storage:ServiceUrl"] ?? "";
-        _publicUrl = serviceUrl.TrimEnd('/');
+        var endpoint = string.IsNullOrWhiteSpace(internalUrl) ? serviceUrl : internalUrl;
 
         var accessKey = config["Storage:AccessKey"] ?? "";
         var secretKey = config["Storage:SecretKey"] ?? "";
 
-        if (string.IsNullOrWhiteSpace(serviceUrl) || string.IsNullOrWhiteSpace(_bucket)
+        if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(_bucket)
             || string.IsNullOrWhiteSpace(accessKey) || string.IsNullOrWhiteSpace(secretKey))
         {
             // Storage is optional: without it the app still runs, uploads just refuse. That keeps a
@@ -47,7 +56,7 @@ public class S3FileStorage : IFileStorage
 
         var s3Config = new AmazonS3Config
         {
-            ServiceURL = string.IsNullOrWhiteSpace(internalUrl) ? serviceUrl : internalUrl,
+            ServiceURL = endpoint,
             // MinIO serves buckets as a path, not a subdomain.
             ForcePathStyle = true,
             AuthenticationRegion = config["Storage:Region"] ?? "us-east-1",
@@ -106,7 +115,28 @@ public class S3FileStorage : IFileStorage
             throw new InvalidOperationException("storage_unreachable");
         }
 
-        return new StoredFile($"{_publicUrl}/{_bucket}/{key}", key, size);
+        return new StoredFile($"{_mediaBaseUrl}{key}", key, size);
+    }
+
+    public async Task<StoredContent?> Open(string key, CancellationToken ct = default)
+    {
+        if (_client == null || string.IsNullOrWhiteSpace(key)) return null;
+
+        try
+        {
+            var response = await _client.GetObjectAsync(_bucket, key, ct);
+            return new StoredContent(response.ResponseStream,
+                response.Headers.ContentType ?? "application/octet-stream");
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        catch (AmazonS3Exception ex)
+        {
+            _logger.LogError(ex, "Read of {Bucket}/{Key} failed: {Code}", _bucket, key, ex.ErrorCode);
+            return null;
+        }
     }
 
     public async Task Delete(string keyOrUrl, CancellationToken ct = default)
@@ -114,9 +144,9 @@ public class S3FileStorage : IFileStorage
         if (_client == null || string.IsNullOrWhiteSpace(keyOrUrl)) return;
 
         var key = keyOrUrl;
-        var prefix = $"{_publicUrl}/{_bucket}/";
-        if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) key = key[prefix.Length..];
-        // A URL from a different host is not ours to delete.
+        var index = key.IndexOf(MediaPath, StringComparison.OrdinalIgnoreCase);
+        if (index >= 0) key = key[(index + MediaPath.Length)..];
+        // A URL pointing somewhere else is not ours to delete.
         if (key.Contains("://")) return;
 
         try

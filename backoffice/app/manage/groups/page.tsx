@@ -1,27 +1,30 @@
 "use client";
 
-import { App, Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Switch, Table, Tag, TimePicker } from "antd";
+import {
+    App, Button, DatePicker, Divider, Form, Input, InputNumber, Modal, Popconfirm,
+    Select, Switch, Table, Tag, TimePicker,
+} from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import { Plus, Trash2 } from "lucide-react";
 import AppShell from "@/app/components/AppShell";
+import { ImageUpload } from "@/app/components/ImageUpload";
 import { API, APIWithError, errorText } from "@/app/utils/API";
 import {
     GENDERS, WEEKDAYS, minuteToTime, money, timeToMinute,
     type Group, type Staff, type Venue,
 } from "@/app/types/api";
 
-// A row of the weekly timetable inside the group form. `scheduleid` is absent for a row the user
+// A row of the weekly timetable inside the course form. `scheduleid` is absent for a row the user
 // just added, which is what tells the save which rows to create and which to update.
 interface SlotRow {
     scheduleid?: number;
     weekday: number;
     time: [dayjs.Dayjs, dayjs.Dayjs];
-    venueid?: number | null;
 }
 
-export default function GroupsPage() {
+export default function CoursesPage() {
     const router = useRouter();
     const { message } = App.useApp();
     const [rows, setRows] = useState<Group[]>([]);
@@ -55,6 +58,7 @@ export default function GroupsPage() {
             group
                 ? {
                     ...group,
+                    start_date: group.start_date ? dayjs(group.start_date) : null,
                     slots: group.schedule.map((s) => ({
                         scheduleid: s.scheduleid,
                         weekday: s.weekday,
@@ -62,7 +66,6 @@ export default function GroupsPage() {
                             dayjs().startOf("day").add(s.start_minute, "minute"),
                             dayjs().startOf("day").add(s.end_minute, "minute"),
                         ],
-                        venueid: s.venueid,
                     })),
                 }
                 : {
@@ -79,14 +82,19 @@ export default function GroupsPage() {
         setOpen(true);
     };
 
-    // The group and its timetable are saved together because that is how they are entered. The
-    // group has to land first: a slot cannot reference a group that does not exist yet.
+    // The course and its timetable are saved together because that is how they are entered. The
+    // course has to land first: a slot cannot reference a course that does not exist yet.
     const save = async () => {
-        const { slots: rawSlots, ...values } = await form.validateFields();
+        const { slots: rawSlots, start_date, ...values } = await form.validateFields();
         setSaving(true);
 
         const res = await APIWithError<{ groupid: number }>("/api/vh/backoffice/groups", {
-            data: { ...values, groupid: editing?.groupid ?? 0 },
+            data: {
+                ...values,
+                groupid: editing?.groupid ?? 0,
+                // Midnight UTC, so a start date never shifts a day across timezones.
+                start_date: start_date ? start_date.startOf("day").toISOString() : null,
+            },
         });
         if (res.error || !res.data) {
             setSaving(false);
@@ -98,7 +106,7 @@ export default function GroupsPage() {
         const listed = (rawSlots ?? []) as SlotRow[];
 
         // Slots the user removed from the form are deleted; the rest are created or updated.
-        const kept = new Set(listed.map((s) => s.scheduleid).filter(Boolean));
+        const kept = new Set(listed.map((s) => s?.scheduleid).filter(Boolean));
         for (const existing of editing?.schedule ?? []) {
             if (!kept.has(existing.scheduleid)) {
                 await APIWithError(`/api/vh/backoffice/schedule/${existing.scheduleid}`, { method: "DELETE" });
@@ -111,7 +119,7 @@ export default function GroupsPage() {
                 data: {
                     scheduleid: slot.scheduleid ?? 0,
                     groupid: groupId,
-                    venueid: slot.venueid ?? values.venueid ?? null,
+                    venueid: values.venueid ?? null,
                     weekday: slot.weekday,
                     start_minute: timeToMinute(slot.time[0].format("HH:mm")),
                     end_minute: timeToMinute(slot.time[1].format("HH:mm")),
@@ -119,8 +127,8 @@ export default function GroupsPage() {
                 },
             });
             if (slotRes.error) {
-                // The group itself is already saved, so report which slot failed rather than
-                // pretending the whole save was lost.
+                // The course itself is already saved, so name the slot that failed rather than
+                // implying the whole save was lost.
                 setSaving(false);
                 message.error(`${WEEKDAYS[slot.weekday]}: ${errorText(slotRes.error)}`);
                 load();
@@ -147,9 +155,9 @@ export default function GroupsPage() {
     return (
         <AppShell>
             <div className="page-header">
-                <h1 className="page-title">Группүүд</h1>
+                <h1 className="page-title">Сургалт</h1>
                 <Button type="primary" icon={<Plus size={16} />} onClick={() => openForm(null)}>
-                    Групп нэмэх
+                    Сургалт нэмэх
                 </Button>
             </div>
 
@@ -157,19 +165,24 @@ export default function GroupsPage() {
                 rowKey="groupid"
                 loading={loading}
                 dataSource={rows}
-                scroll={{ x: 900 }}
+                scroll={{ x: 1000 }}
                 onRow={(group) => ({ onClick: () => router.push(`/manage/groups/${group.groupid}`) })}
                 rowClassName={() => "clickable"}
                 columns={[
                     {
-                        title: "Нэр",
+                        title: "Сургалт",
                         render: (_: unknown, g: Group) => (
-                            <>
-                                <div style={{ fontWeight: 600 }}>{g.name}</div>
-                                <div style={{ color: "#79808A", fontSize: 12 }}>
-                                    {[g.level, g.agegroup, GENDERS[g.gender]].filter(Boolean).join(" · ")}
+                            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                                {g.cover
+                                    ? <img src={g.cover} alt="" style={{ width: 52, height: 40, objectFit: "cover", borderRadius: 6 }} />
+                                    : <div style={{ width: 52, height: 40, borderRadius: 6, background: "#eceef1" }} />}
+                                <div>
+                                    <div style={{ fontWeight: 600 }}>{g.name}</div>
+                                    <div style={{ color: "#79808A", fontSize: 12 }}>
+                                        {[g.agegroup, g.level, GENDERS[g.gender]].filter(Boolean).join(" · ")}
+                                    </div>
                                 </div>
-                            </>
+                            </div>
                         ),
                     },
                     {
@@ -190,18 +203,29 @@ export default function GroupsPage() {
                                 </>
                             ),
                     },
-                    { title: "Дасгалжуулагч", dataIndex: "coachname", width: 150 },
-                    { title: "Заал", dataIndex: "venuename", width: 130 },
                     {
-                        title: "Суралцагч",
+                        title: "Эхлэх",
+                        width: 120,
+                        render: (_: unknown, g: Group) =>
+                            g.start_date ? dayjs(g.start_date).format("YYYY/MM/DD") : "-",
+                    },
+                    { title: "Хаяг", dataIndex: "address", width: 180, render: (v?: string) => v ?? "-" },
+                    {
+                        title: "Хүний тоо",
                         width: 110,
                         render: (_: unknown, g: Group) =>
                             g.capacity > 0 ? `${g.studentcount}/${g.capacity}` : g.studentcount,
                     },
                     {
-                        title: "Сарын төлбөр",
-                        width: 130,
+                        title: "Үнэ",
+                        width: 120,
                         render: (_: unknown, g: Group) => money(g.fee_amount),
+                    },
+                    {
+                        title: "Төлөв",
+                        width: 110,
+                        render: (_: unknown, g: Group) =>
+                            g.isactive ? <Tag color="green">Идэвхтэй</Tag> : <Tag>Идэвхгүй</Tag>,
                     },
                     {
                         title: "",
@@ -220,43 +244,60 @@ export default function GroupsPage() {
 
             <Modal
                 open={open}
-                title={editing ? "Групп засах" : "Шинэ групп"}
+                title={editing ? "Сургалт засах" : "Шинэ сургалт"}
                 onCancel={() => setOpen(false)}
                 onOk={save}
                 confirmLoading={saving}
                 okText="Хадгалах"
                 cancelText="Болих"
-                width={620}
+                width={680}
                 destroyOnHidden
             >
                 <Form form={form} layout="vertical" requiredMark={false}>
-                    <Form.Item name="name" label="Группийн нэр" rules={[{ required: true, message: "Нэр оруулна уу" }]}>
+                    <Form.Item name="name" label="Сургалтын нэр" rules={[{ required: true, message: "Нэр оруулна уу" }]}>
                         <Input placeholder="Насанд хүрэгчдийн анги" />
                     </Form.Item>
-                    <Form.Item name="level" label="Түвшин">
-                        <Input placeholder="Анхан / Дунд / Ахисан" />
-                    </Form.Item>
-                    <Form.Item name="agegroup" label="Насны ангилал">
-                        <Input placeholder="U14, 18+" />
-                    </Form.Item>
-                    <Form.Item name="gender" label="Хүйс">
-                        <Select options={Object.entries(GENDERS).map(([v, l]) => ({ value: Number(v), label: l }))} />
-                    </Form.Item>
-                    <Form.Item name="capacity" label="Хамгийн олондоо авах хүний тоо" tooltip="0 бол хязгааргүй">
-                        <InputNumber min={0} max={200} style={{ width: "100%" }} />
-                    </Form.Item>
-                    <Form.Item name="fee_amount" label="Сарын төлбөр (₮)">
-                        <InputNumber min={0} step={10000} style={{ width: "100%" }} />
-                    </Form.Item>
-                    <Form.Item name="venueid" label="Байршил (заал)">
-                        <Select allowClear options={venues.map((v) => ({ value: v.venueid, label: v.name }))} />
-                    </Form.Item>
-                    <Form.Item name="coach_staffid" label="Дасгалжуулагч">
-                        <Select allowClear options={staff.map((s) => ({ value: s.staffid, label: s.staffname ?? s.phone }))} />
+
+                    <Form.Item name="cover" label="Зураг" tooltip="Сайт дээрх сургалтын жагсаалтад харагдана">
+                        <ImageUpload height={150} />
                     </Form.Item>
 
+                    <Form.Item name="agegroup" label="Насны ангилал">
+                        <Input placeholder="18+, 8-12 нас, U16" />
+                    </Form.Item>
+
+                    <Form.Item name="start_date" label="Эхлэх огноо">
+                        <DatePicker style={{ width: "100%" }} format="YYYY-MM-DD" placeholder="Огноо сонгох" />
+                    </Form.Item>
+
+                    <Form.Item name="fee_amount" label="Үнэ — сарын төлбөр (₮)">
+                        <InputNumber min={0} step={10000} style={{ width: "100%" }} />
+                    </Form.Item>
+
+                    <Form.Item name="capacity" label="Нийт хэдэн хүн авах" tooltip="0 бол хязгааргүй">
+                        <InputNumber min={0} max={500} style={{ width: "100%" }} />
+                    </Form.Item>
+
+                    <Form.Item name="address" label="Хаягийн мэдээлэл">
+                        <Input.TextArea rows={2} placeholder="Дүүрэг, хороо, барилга, заалны нэр" />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="map_url"
+                        label="Google map холбоос"
+                        tooltip="Google Maps дээрээс Share → Copy link хийж энд буулгана"
+                    >
+                        <Input placeholder="https://maps.app.goo.gl/..." />
+                    </Form.Item>
+
+                    <Form.Item name="phone" label="Утасны дугаар">
+                        <Input placeholder="99001122" />
+                    </Form.Item>
+
+                    <Divider style={{ margin: "8px 0 16px" }} />
+
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                        <label style={{ fontWeight: 500 }}>Долоо хоногийн хуваарь</label>
+                        <label style={{ fontWeight: 500 }}>Хичээллэх цаг</label>
                         <span style={{ color: "#79808A", fontSize: 13 }}>
                             7 хоногт {slots.filter(Boolean).length} удаа
                         </span>
@@ -268,21 +309,13 @@ export default function GroupsPage() {
                                 {fields.map((field) => (
                                     <div key={field.key} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                                         <Form.Item name={[field.name, "scheduleid"]} hidden><Input /></Form.Item>
-                                        <Form.Item
-                                            name={[field.name, "weekday"]}
-                                            noStyle
-                                            rules={[{ required: true, message: "" }]}
-                                        >
+                                        <Form.Item name={[field.name, "weekday"]} noStyle rules={[{ required: true, message: "" }]}>
                                             <Select
                                                 style={{ width: 120 }}
                                                 options={WEEKDAYS.map((label, value) => ({ value, label }))}
                                             />
                                         </Form.Item>
-                                        <Form.Item
-                                            name={[field.name, "time"]}
-                                            noStyle
-                                            rules={[{ required: true, message: "" }]}
-                                        >
+                                        <Form.Item name={[field.name, "time"]} noStyle rules={[{ required: true, message: "" }]}>
                                             <TimePicker.RangePicker format="HH:mm" minuteStep={5} style={{ flex: 1 }} />
                                         </Form.Item>
                                         <Button danger icon={<Trash2 size={14} />} onClick={() => removeSlot(field.name)} />
@@ -306,10 +339,26 @@ export default function GroupsPage() {
                         )}
                     </Form.List>
 
-                    <Form.Item name="notes" label="Тэмдэглэл" style={{ marginTop: 16 }}>
-                        <Input.TextArea rows={2} />
+                    <Divider style={{ margin: "16px 0" }} />
+
+                    <Form.Item name="gender" label="Хүйс">
+                        <Select options={Object.entries(GENDERS).map(([v, l]) => ({ value: Number(v), label: l }))} />
                     </Form.Item>
-                    <Form.Item name="isactive" label="Идэвхтэй" valuePropName="checked">
+                    <Form.Item name="venueid" label="Заал">
+                        <Select allowClear options={venues.map((v) => ({ value: v.venueid, label: v.name }))} />
+                    </Form.Item>
+                    <Form.Item name="coach_staffid" label="Дасгалжуулагч">
+                        <Select allowClear options={staff.map((s) => ({ value: s.staffid, label: s.staffname ?? s.phone }))} />
+                    </Form.Item>
+                    <Form.Item name="notes" label="Тайлбар" tooltip="Сайт дээрх дэлгэрэнгүй хуудсанд харагдана">
+                        <Input.TextArea rows={3} />
+                    </Form.Item>
+                    <Form.Item
+                        name="isactive"
+                        label="Идэвхтэй"
+                        valuePropName="checked"
+                        tooltip="Унтраасан үед сайт дээрх сургалтын жагсаалтад харагдахгүй"
+                    >
                         <Switch />
                     </Form.Item>
                 </Form>
