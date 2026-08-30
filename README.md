@@ -94,8 +94,15 @@ k3s kubectl apply -f deploy/k3s.yaml
 | Хаяг | Юу |
 | --- | --- |
 | `http://<node-ip>:30090` | API (`/swagger`, `/api/vh/health`) |
-| `http://<node-ip>:30030` | Backoffice |
+| `http://<node-ip>:30030` | Backoffice, нээлттэй сайт |
 | `http://<node-ip>:30080` | Mobile web |
+| `http://<node-ip>:30900` | MinIO — зургийн сан (bucket нь нийтэд уншигдана) |
+
+Зургийг MinIO-д хадгална: `volleyhub` bucket нь `mc anonymous set download`-оор нээлттэй
+уншигдахаар тохируулагдсан (нүүр хуудсын зурагнууд нэвтрэлтгүй ачаалагдах ёстой), харин
+байршуулах эрх нь зөвхөн API-д байна. `deploy/k3s.yaml` доторх `volleyhub-minio-init` Job нь
+bucket-ыг үүсгээд эрхийг нь тавина — дахин ажиллуулах шаардлагатай бол эхлээд Job-ыг
+устгана (`k3s kubectl -n volleyhub delete job volleyhub-minio-init`).
 
 ⚠ NodePort нь энгийн HTTP тул нууц үг, token нь шифрлэгдэхгүй дамжина. Туршилтын шатанд
 хангалттай ч, жинхэнэ хэрэглэгч оруулахаас өмнө байгаа ingress-nginx + cert-manager дээр

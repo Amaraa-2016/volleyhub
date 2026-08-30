@@ -18,6 +18,8 @@ builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<BillingService>();
 builder.Services.AddScoped<PlatformContentService>();
 builder.Services.AddScoped<PublicSiteService>();
+builder.Services.AddSingleton<volleyhub_api.Service.Storage.IFileStorage,
+    volleyhub_api.Service.Storage.S3FileStorage>();
 
 builder.Services.AddControllers().AddNewtonsoftJson(options =>
 {

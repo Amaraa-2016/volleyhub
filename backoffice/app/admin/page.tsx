@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import { LogOut, Plus, Volleyball } from "lucide-react";
 import { AccountAPI, AccountAPIWithError, errorText } from "@/app/utils/API";
+import { ImageUpload, MultiImageUpload } from "@/app/components/ImageUpload";
 import {
     NEWS_CATEGORIES, ORDER_STATUS, money,
     type ClubSearchResult, type News, type Order, type Product, type TenantRequest,
@@ -302,8 +303,8 @@ function NewsTab() {
                     <Form.Item name="body" label="Агуулга">
                         <Input.TextArea rows={10} />
                     </Form.Item>
-                    <Form.Item name="cover" label="Ковер зураг (URL)">
-                        <Input placeholder="https://" />
+                    <Form.Item name="cover" label="Ковер зураг">
+                        <ImageUpload scope="platform" folder="news" height={160} />
                     </Form.Item>
                     <Form.Item name="source" label="Эх сурвалж">
                         <Input placeholder="FIVB, Монголын волейболын холбоо..." />
@@ -440,8 +441,8 @@ function ProductsTab() {
                     <Form.Item name="old_price" label="Хуучин үнэ (₮)" tooltip="Хямдралтай үед харуулна">
                         <InputNumber min={0} step={1000} style={{ width: "100%" }} />
                     </Form.Item>
-                    <Form.Item name="images" label="Зураг" tooltip="Олон зургийг таслалаар тусгаарлана">
-                        <Input.TextArea rows={2} placeholder="https://..., https://..." />
+                    <Form.Item name="images" label="Зураг" tooltip="Эхний зураг нь жагсаалтад харагдана">
+                        <MultiImageUpload scope="platform" folder="products" max={8} />
                     </Form.Item>
                     <Form.Item name="stock" label="Нөөц">
                         <InputNumber min={0} style={{ width: "100%" }} />

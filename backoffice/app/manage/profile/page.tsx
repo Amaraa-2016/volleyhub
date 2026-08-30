@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { ExternalLink } from "lucide-react";
 import AppShell from "@/app/components/AppShell";
+import { ImageUpload, MultiImageUpload } from "@/app/components/ImageUpload";
 import { API, APIWithError, errorText } from "@/app/utils/API";
 import type { TrainingProfile } from "@/app/types/api";
 
@@ -124,18 +125,18 @@ export default function ProfilePage() {
                     </Card>
 
                     <Card title="Зураг">
-                        <Form.Item name="logo" label="Лого (URL)">
-                            <Input placeholder="https://..." />
-                        </Form.Item>
-                        <Form.Item name="cover" label="Ковер зураг (URL)">
-                            <Input placeholder="https://..." />
+                        <Form.Item name="logo" label="Лого">
+                            <ImageUpload height={110} />
                         </Form.Item>
                         <Form.Item
-                            name="photos"
-                            label="Бусад зураг"
-                            tooltip="Олон зургийг таслалаар тусгаарлана"
+                            name="cover"
+                            label="Ковер зураг"
+                            tooltip="Жагсаалт болон дэлгэрэнгүй хуудсанд харагдана"
                         >
-                            <Input.TextArea rows={3} placeholder="https://..., https://..." />
+                            <ImageUpload height={160} />
+                        </Form.Item>
+                        <Form.Item name="photos" label="Бусад зураг">
+                            <MultiImageUpload max={12} />
                         </Form.Item>
                     </Card>
                 </Form>

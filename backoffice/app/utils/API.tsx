@@ -116,6 +116,11 @@ const ERRORS: Record<string, string> = {
     product_not_found: "Бараа олдсонгүй",
     news_not_found: "Мэдээ олдсонгүй",
     training_not_found: "Сургалт олдсонгүй",
+    // upload
+    storage_not_configured: "Зургийн сан тохируулагдаагүй байна",
+    file_required: "Файл сонгоно уу",
+    file_too_large: "Зургийн хэмжээ 5MB-аас хэтэрсэн байна",
+    unsupported_file_type: "Зөвхөн зураг (jpg, png, webp, gif) оруулах боломжтой",
 };
 
 export const errorText = (code?: string): string => ERRORS[code ?? ""] ?? "Алдаа гарлаа";
