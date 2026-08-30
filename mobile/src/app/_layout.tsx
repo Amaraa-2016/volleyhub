@@ -16,7 +16,6 @@ export default function RootLayout() {
                     <Stack.Screen name="register" />
                     <Stack.Screen name="club" />
                     <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="match/[id]" options={{ headerShown: true, title: "Тоглолт" }} />
                 </Stack>
             </AuthProvider>
         </SafeAreaProvider>

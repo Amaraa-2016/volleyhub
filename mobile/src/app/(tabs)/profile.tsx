@@ -3,25 +3,20 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { colors, radius, spacing } from "@/lib/theme";
-import { formatDateTime, fullName } from "@/lib/format";
-import { POSITIONS, ROLES, type MyProfile, type RosterEntry } from "@/lib/types";
+import { formatDate, fullName } from "@/lib/format";
+import { ROLES, money, type AttendanceSummary, type MyProfile } from "@/lib/types";
 
 export default function ProfileScreen() {
     const { session, clubGet, logout } = useAuth();
     const [profile, setProfile] = useState<MyProfile>();
-    const [roster, setRoster] = useState<RosterEntry[]>([]);
+    const [attendance, setAttendance] = useState<AttendanceSummary>();
     const [loading, setLoading] = useState(true);
 
     const load = useCallback(async () => {
         const me = await clubGet<MyProfile>("/api/vh/client/me");
         setProfile(me);
-
-        // Team-mates are only meaningful once the account is linked to a player on a squad.
-        if (me?.player?.teamid) {
-            setRoster(await clubGet<RosterEntry[]>(`/api/vh/client/teams/${me.player.teamid}/roster`) ?? []);
-        } else {
-            setRoster([]);
-        }
+        // Only a linked student has an attendance record to summarise.
+        setAttendance(me?.student ? await clubGet<AttendanceSummary>("/api/vh/client/attendance") : undefined);
         setLoading(false);
     }, [clubGet]);
 
@@ -35,7 +30,7 @@ export default function ProfileScreen() {
         );
     }
 
-    const player = profile?.player;
+    const student = profile?.student;
 
     return (
         <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg }}>
@@ -47,58 +42,40 @@ export default function ProfileScreen() {
                 </Text>
             </View>
 
-            {player ? (
+            {student ? (
                 <View style={styles.card}>
-                    <Text style={styles.section}>Тамирчны мэдээлэл</Text>
-                    <Row label="Нэр" value={fullName(player.last_name, player.first_name)} />
-                    <Row label="Баг" value={player.teamname ?? "-"} />
-                    <Row label="Дугаар" value={player.jersey_no ? String(player.jersey_no) : "-"} />
-                    <Row label="Байрлал" value={player.position ? POSITIONS[player.position] : "-"} />
-                    <Row label="Өндөр" value={player.height_cm ? `${player.height_cm} см` : "-"} />
-                    {player.is_captain && <Row label="Үүрэг" value="Багийн ахлагч" />}
+                    <Text style={styles.section}>Суралцагчийн мэдээлэл</Text>
+                    <Row label="Нэр" value={fullName(student.last_name, student.first_name)} />
+                    <Row label="Групп" value={student.groupname ?? "-"} />
+                    {!!student.date_of_birth && (
+                        <Row label="Төрсөн огноо" value={formatDate(student.date_of_birth)} />
+                    )}
+                    {!!student.height_cm && <Row label="Өндөр" value={`${student.height_cm} см`} />}
+                    <Row label="Сарын төлбөр" value={money(student.fee_amount)} />
+                    {student.balance > 0 && <Row label="Үлдэгдэл" value={money(student.balance)} danger />}
                 </View>
             ) : (
                 <View style={styles.card}>
                     <Text style={styles.meta}>
-                        Таны бүртгэл тамирчны картад холбогдоогүй байна. Клубын админд хандана уу.
+                        Таны бүртгэл суралцагчийн картад холбогдоогүй байна. Сургалтын админд
+                        хандаж, утасны дугаараа бүртгүүлнэ үү.
                     </Text>
                 </View>
             )}
 
-            {profile && profile.next_matches.length > 0 && (
+            {attendance && attendance.total > 0 && (
                 <View style={styles.card}>
-                    <Text style={styles.section}>Миний дараагийн тоглолт</Text>
-                    {profile.next_matches.map((match) => (
-                        <Pressable
-                            key={match.matchid}
-                            style={styles.matchRow}
-                            onPress={() => router.push(`/match/${match.matchid}`)}
-                        >
-                            <Text style={styles.matchTeams}>{match.hometeamname} — {match.awayteamname}</Text>
-                            <Text style={styles.meta}>{formatDateTime(match.scheduled_at)}</Text>
-                        </Pressable>
-                    ))}
-                </View>
-            )}
-
-            {roster.length > 0 && (
-                <View style={styles.card}>
-                    <Text style={styles.section}>Багийн бүрэлдэхүүн</Text>
-                    {roster.map((mate) => (
-                        <View key={mate.teamplayerid} style={styles.mateRow}>
-                            <Text style={styles.mateNumber}>{mate.jersey_no ?? "-"}</Text>
-                            <Text style={styles.mateName}>
-                                {fullName(mate.last_name, mate.first_name)}
-                                {mate.is_captain ? " (ахлагч)" : ""}
-                            </Text>
-                            <Text style={styles.meta}>{mate.position ? POSITIONS[mate.position] : ""}</Text>
-                        </View>
-                    ))}
+                    <Text style={styles.section}>Ирцийн дүн</Text>
+                    <Row label="Ирцийн хувь" value={`${attendance.rate}%`} />
+                    <Row label="Ирсэн" value={String(attendance.present)} />
+                    <Row label="Хоцорсон" value={String(attendance.late)} />
+                    <Row label="Тасалсан" value={String(attendance.absent)} />
+                    <Row label="Чөлөөтэй" value={String(attendance.excused)} />
                 </View>
             )}
 
             <Pressable style={styles.secondaryButton} onPress={() => router.push("/club")}>
-                <Text style={styles.secondaryText}>Клуб солих</Text>
+                <Text style={styles.secondaryText}>Сургалт солих</Text>
             </Pressable>
 
             <Pressable
@@ -111,11 +88,11 @@ export default function ProfileScreen() {
     );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
     return (
         <View style={styles.row}>
             <Text style={styles.rowLabel}>{label}</Text>
-            <Text style={styles.rowValue}>{value}</Text>
+            <Text style={[styles.rowValue, danger && { color: colors.danger }]}>{value}</Text>
         </View>
     );
 }
@@ -125,16 +102,11 @@ const styles = StyleSheet.create({
     center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
     card: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md },
     name: { fontSize: 20, fontWeight: "800", color: colors.text },
-    meta: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
+    meta: { color: colors.textMuted, fontSize: 13, marginTop: 2, lineHeight: 19 },
     section: { fontSize: 13, color: colors.textMuted, marginBottom: spacing.sm },
     row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs },
     rowLabel: { color: colors.textMuted },
     rowValue: { color: colors.text, fontWeight: "600" },
-    matchRow: { paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
-    matchTeams: { color: colors.text, fontWeight: "600" },
-    mateRow: { flexDirection: "row", alignItems: "center", paddingVertical: spacing.sm, gap: spacing.md },
-    mateNumber: { width: 28, color: colors.primary, fontWeight: "800" },
-    mateName: { flex: 1, color: colors.text },
     secondaryButton: {
         borderWidth: 1, borderColor: colors.primary, borderRadius: radius.sm,
         paddingVertical: spacing.md, alignItems: "center", marginTop: spacing.sm,

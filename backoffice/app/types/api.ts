@@ -1,22 +1,39 @@
 // Mirrors the backend DTOs. Field names match the JSON exactly, so responses need no mapping.
 
-export interface Team {
-    teamid: number;
-    name: string;
-    shortname?: string | null;
-    gender: number;
-    agegroup?: string | null;
-    division?: string | null;
-    coach_staffid?: number | null;
-    coachname?: string | null;
-    logo?: string | null;
-    notes?: string | null;
+// ---- training centre ------------------------------------------------------
+
+export interface ScheduleEntry {
+    scheduleid: number;
+    groupid: number;
+    groupname?: string | null;
+    venueid?: number | null;
+    venuename?: string | null;
+    weekday: number;
+    start_minute: number;
+    end_minute: number;
     isactive: boolean;
-    playercount: number;
 }
 
-export interface Player {
-    playerid: number;
+export interface Group {
+    groupid: number;
+    name: string;
+    level?: string | null;
+    agegroup?: string | null;
+    gender: number;
+    coach_staffid?: number | null;
+    coachname?: string | null;
+    venueid?: number | null;
+    venuename?: string | null;
+    capacity: number;
+    fee_amount: number;
+    notes?: string | null;
+    isactive: boolean;
+    studentcount: number;
+    schedule: ScheduleEntry[];
+}
+
+export interface Student {
+    studentid: number;
     accountid: number;
     last_name: string;
     first_name: string;
@@ -24,29 +41,29 @@ export interface Player {
     gender?: number | null;
     reg_no?: string | null;
     phone?: string | null;
-    position?: number | null;
+    parent_name?: string | null;
+    parent_phone?: string | null;
     height_cm?: number | null;
-    reach_cm?: number | null;
     photo?: string | null;
     status: number;
     notes?: string | null;
-    teamid?: number | null;
-    teamname?: string | null;
-    jersey_no?: number | null;
-    is_captain: boolean;
+    groupid?: number | null;
+    groupname?: string | null;
+    fee_amount?: number | null;
+    balance: number;
 }
 
 export interface RosterEntry {
-    teamplayerid: number;
-    playerid: number;
+    enrollmentid: number;
+    studentid: number;
     last_name: string;
     first_name: string;
-    position?: number | null;
-    height_cm?: number | null;
-    jersey_no?: number | null;
-    is_captain: boolean;
-    joined: string;
+    phone?: string | null;
+    parent_phone?: string | null;
+    date_of_birth?: string | null;
     status: number;
+    fee_amount: number;
+    joined: string;
 }
 
 export interface Venue {
@@ -58,84 +75,75 @@ export interface Venue {
     notes?: string | null;
 }
 
-export interface Season {
-    seasonid: number;
-    name: string;
-    startdate: string;
-    enddate: string;
-    isactive: boolean;
-}
-
-export interface Tournament {
-    tournamentid: number;
-    seasonid?: number | null;
-    seasonname?: string | null;
-    name: string;
-    format: number;
-    gender: number;
-    startdate: string;
-    enddate: string;
+export interface Session {
+    sessionid: number;
+    groupid: number;
+    groupname: string;
     venueid?: number | null;
     venuename?: string | null;
+    coach_staffid?: number | null;
+    coachname?: string | null;
+    session_date: string;
+    start_minute: number;
+    end_minute: number;
     status: number;
-    best_of: number;
+    attendance_taken: boolean;
     notes?: string | null;
-    teamcount: number;
-    matchcount: number;
+    present_count: number;
+    student_count: number;
 }
 
-export interface TournamentTeam {
-    tournamentteamid: number;
-    teamid: number;
-    teamname: string;
-    logo?: string | null;
-    seed?: number | null;
-    pool?: string | null;
-}
-
-export interface MatchSet {
-    set_no: number;
-    home_points: number;
-    away_points: number;
-}
-
-export interface Match {
-    matchid: number;
-    tournamentid: number;
-    tournamentname?: string | null;
-    hometeamid: number;
-    hometeamname: string;
-    homelogo?: string | null;
-    awayteamid: number;
-    awayteamname: string;
-    awaylogo?: string | null;
-    venueid?: number | null;
-    venuename?: string | null;
-    scheduled_at: string;
-    round?: string | null;
+export interface AttendanceRow {
+    studentid: number;
+    last_name: string;
+    first_name: string;
     status: number;
-    home_sets: number;
-    away_sets: number;
-    notes?: string | null;
-    sets: MatchSet[];
+    note?: string | null;
 }
 
-export interface Standing {
-    position: number;
-    teamid: number;
-    teamname: string;
-    logo?: string | null;
-    pool?: string | null;
-    played: number;
-    won: number;
-    lost: number;
-    sets_won: number;
-    sets_lost: number;
-    set_ratio: number;
-    points_won: number;
-    points_lost: number;
-    point_ratio: number;
-    points: number;
+export interface AttendanceHistory {
+    sessionid: number;
+    session_date: string;
+    groupname: string;
+    status: number;
+    note?: string | null;
+}
+
+export interface AttendanceSummary {
+    total: number;
+    present: number;
+    absent: number;
+    excused: number;
+    late: number;
+    rate: number;
+    history: AttendanceHistory[];
+}
+
+export interface Payment {
+    paymentid: number;
+    feeid: number;
+    studentid: number;
+    amount: number;
+    method: number;
+    paid_at: string;
+    note?: string | null;
+}
+
+export interface Fee {
+    feeid: number;
+    studentid: number;
+    last_name: string;
+    first_name: string;
+    groupid: number;
+    groupname: string;
+    period: string;
+    amount: number;
+    paid_amount: number;
+    balance: number;
+    due_date?: string | null;
+    status: number;
+    note?: string | null;
+    payments: Payment[];
 }
 
 export interface Announcement {
@@ -168,13 +176,134 @@ export interface Staff {
 }
 
 export interface Dashboard {
-    teams: number;
-    players: number;
-    tournaments: number;
-    upcoming_matches: number;
+    groups: number;
+    students: number;
+    sessions_this_week: number;
     pending_members: number;
-    next_matches: Match[];
-    latest_results: Match[];
+    unpaid_total: number;
+    unpaid_students: number;
+    next_sessions: Session[];
+}
+
+export interface TrainingProfile {
+    tagline?: string | null;
+    description?: string | null;
+    logo?: string | null;
+    cover?: string | null;
+    photos?: string | null;
+    address?: string | null;
+    city?: string | null;
+    district?: string | null;
+    contactphone?: string | null;
+    email?: string | null;
+    website?: string | null;
+    facebook?: string | null;
+    instagram?: string | null;
+    price_from?: number | null;
+    age_from?: number | null;
+    age_to?: number | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    is_published: boolean;
+}
+
+// ---- platform / public site ----------------------------------------------
+
+export interface TrainingCard {
+    tenantid: number;
+    tenantname: string;
+    tagline?: string | null;
+    logo?: string | null;
+    cover?: string | null;
+    city?: string | null;
+    district?: string | null;
+    address?: string | null;
+    price_from?: number | null;
+    age_from?: number | null;
+    age_to?: number | null;
+    groupcount: number;
+}
+
+export interface PublicSchedule {
+    weekday: number;
+    start_minute: number;
+    end_minute: number;
+}
+
+export interface PublicGroup {
+    groupid: number;
+    name: string;
+    level?: string | null;
+    agegroup?: string | null;
+    gender: number;
+    fee_amount: number;
+    capacity: number;
+    enrolled: number;
+    venuename?: string | null;
+    schedule: PublicSchedule[];
+}
+
+export interface TrainingDetail extends TrainingCard {
+    description?: string | null;
+    photos: string[];
+    contactphone?: string | null;
+    email?: string | null;
+    website?: string | null;
+    facebook?: string | null;
+    instagram?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    groups: PublicGroup[];
+}
+
+export interface News {
+    newsid: number;
+    title: string;
+    summary?: string | null;
+    body?: string | null;
+    cover?: string | null;
+    category: number;
+    source?: string | null;
+    source_url?: string | null;
+    published_at?: string | null;
+    view_count: number;
+    created: string;
+}
+
+export interface Product {
+    productid: number;
+    name: string;
+    category?: string | null;
+    brand?: string | null;
+    description?: string | null;
+    price: number;
+    old_price?: number | null;
+    images: string[];
+    stock: number;
+    isactive: boolean;
+    sort_order: number;
+}
+
+export interface OrderItem {
+    orderitemid: number;
+    productid: number;
+    product_name: string;
+    price: number;
+    quantity: number;
+}
+
+export interface Order {
+    orderid: number;
+    accountid: number;
+    customer_name: string;
+    phone: string;
+    address?: string | null;
+    note?: string | null;
+    total: number;
+    status: number;
+    admin_note?: string | null;
+    created: string;
+    items: OrderItem[];
 }
 
 export interface TenantRequest {
@@ -204,27 +333,37 @@ export interface ClubSearchResult {
 
 export const GENDERS: Record<number, string> = { 1: "Эрэгтэй", 2: "Эмэгтэй", 3: "Холимог" };
 
-export const POSITIONS: Record<number, string> = {
-    1: "Довтлогч (outside)",
-    2: "Диагональ",
-    3: "Холбогч",
-    4: "Төв довтлогч",
-    5: "Либеро",
-    6: "Хамгаалагч",
-};
+export const STUDENT_STATUS: Record<number, string> = { 1: "Суралцаж буй", 2: "Түр завсарласан", 3: "Гарсан" };
 
-export const PLAYER_STATUS: Record<number, string> = { 1: "Идэвхтэй", 2: "Бэртэлтэй", 3: "Идэвхгүй" };
+export const SESSION_STATUS: Record<number, string> = { 1: "Товлогдсон", 2: "Явагдсан", 3: "Цуцлагдсан" };
 
-export const TOURNAMENT_FORMATS: Record<number, string> = { 1: "Лиг", 2: "Шигшээ", 3: "Нөхөрсөг" };
+export const ATTENDANCE_STATUS: Record<number, string> = { 1: "Ирсэн", 2: "Тасалсан", 3: "Чөлөөтэй", 4: "Хоцорсон" };
 
-export const TOURNAMENT_STATUS: Record<number, string> = {
-    1: "Ноорог", 2: "Нийтлэгдсэн", 3: "Явагдаж буй", 4: "Дууссан", 5: "Цуцлагдсан",
-};
+export const FEE_STATUS: Record<number, string> = { 1: "Төлөгдөөгүй", 2: "Дутуу", 3: "Төлөгдсөн", 4: "Чөлөөлсөн" };
 
-export const MATCH_STATUS: Record<number, string> = {
-    1: "Товлогдсон", 2: "Явагдаж буй", 3: "Дууссан", 4: "Цуцлагдсан", 5: "Хойшилсон",
+export const PAYMENT_METHODS: Record<number, string> = { 1: "Бэлэн", 2: "Данс", 3: "Карт", 4: "Бусад" };
+
+export const NEWS_CATEGORIES: Record<number, string> = { 1: "Дэлхий", 2: "Монгол", 3: "Платформ" };
+
+export const ORDER_STATUS: Record<number, string> = {
+    1: "Шинэ", 2: "Холбогдсон", 3: "Баталгаажсан", 4: "Хүргэсэн", 5: "Цуцлагдсан",
 };
 
 export const ROLES: Record<string, string> = {
-    owner: "Эзэмшигч", admin: "Админ", coach: "Дасгалжуулагч", player: "Тамирчин", fan: "Дэмжигч",
+    owner: "Эзэмшигч", admin: "Админ", coach: "Дасгалжуулагч", player: "Суралцагч", fan: "Дэмжигч",
 };
+
+export const WEEKDAYS = ["Ням", "Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба"];
+
+// Minutes from midnight is how the backend stores a wall-clock slot: it must not shift with
+// timezones or DST, which a time-of-day column would.
+export const minuteToTime = (minutes: number): string =>
+    `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+export const timeToMinute = (value: string): number => {
+    const [h, m] = value.split(":").map(Number);
+    return (h || 0) * 60 + (m || 0);
+};
+
+export const money = (value?: number | null): string =>
+    value == null ? "-" : `${Math.round(value).toLocaleString("mn-MN")}₮`;

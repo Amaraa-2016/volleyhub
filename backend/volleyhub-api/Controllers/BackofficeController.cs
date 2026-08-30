@@ -5,45 +5,48 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace volleyhub_api.Controllers;
 
-// Club management for the admin web app. Every endpoint is per-club: the tenantid header selects
-// the schema and the tenant provider checks the caller is a member of it, so nothing here filters
-// by tenant itself. The role gate below is the second half of that - membership alone must not let
-// a player edit the squad.
+// Training-centre management. Every endpoint is per-centre: the tenantid header selects the schema
+// and the tenant provider checks the caller is a member of it, so nothing here filters by tenant
+// itself. The role gate below is the second half of that - membership alone must not let a student
+// edit the roster.
 [Authorize]
 [ApiController]
 [Route("api/vh/backoffice")]
 public class BackofficeController : ApiControllerBase
 {
     private readonly ILogger<BackofficeController> _logger;
-    private readonly ClubService _club;
-    private readonly CompetitionService _competition;
+    private readonly TrainingService _training;
+    private readonly ScheduleService _schedule;
+    private readonly BillingService _billing;
     private readonly AccountService _account;
+    private readonly PublicSiteService _site;
 
     protected override ILogger Logger => _logger;
 
     private static readonly string[] ManageRoles = ["owner", "admin"];
     private static readonly string[] StaffRoles = ["owner", "admin", "coach"];
 
-    public BackofficeController(ILogger<BackofficeController> logger, ClubService club,
-        CompetitionService competition, AccountService account)
+    public BackofficeController(ILogger<BackofficeController> logger, TrainingService training,
+        ScheduleService schedule, BillingService billing, AccountService account, PublicSiteService site)
     {
         _logger = logger;
-        _club = club;
-        _competition = competition;
+        _training = training;
+        _schedule = schedule;
+        _billing = billing;
         _account = account;
+        _site = site;
     }
 
-    // A coach may read everything and enter results; changing the club itself needs owner/admin.
+    // A coach may read everything, take the register and enter payments; changing the centre itself
+    // needs owner/admin.
     private void AssertStaff()
     {
-        if (!StaffRoles.Contains(Role()))
-            throw new UnauthorizedAccessException("staff_only");
+        if (!StaffRoles.Contains(Role())) throw new UnauthorizedAccessException("staff_only");
     }
 
     private void AssertManager()
     {
-        if (!ManageRoles.Contains(Role()))
-            throw new UnauthorizedAccessException("admin_only");
+        if (!ManageRoles.Contains(Role())) throw new UnauthorizedAccessException("admin_only");
     }
 
     // ---- dashboard --------------------------------------------------------
@@ -53,169 +56,204 @@ public class BackofficeController : ApiControllerBase
         Run(async () =>
         {
             AssertStaff();
+
+            var today = DateTime.UtcNow.Date;
+            var upcoming = await _schedule.Sessions(null, today, today.AddDays(7), null);
             var pending = (await _account.Members(TenantId(), "pending")).Count;
-            return await _competition.Dashboard(pending);
+            var (owed, debtors) = await _billing.Outstanding();
+
+            return new DashboardRT
+            {
+                groups = (await _training.Groups()).Count,
+                students = (await _training.Students(null, null)).Count,
+                sessions_this_week = upcoming.Count,
+                pending_members = pending,
+                unpaid_total = owed,
+                unpaid_students = debtors,
+                next_sessions = upcoming.Where(s => s.status != 3).Take(6).ToList(),
+            };
         });
 
-    // ---- teams ------------------------------------------------------------
+    // ---- public profile of this centre ------------------------------------
 
-    [HttpGet("teams")]
-    public Task<IActionResult> Teams([FromQuery] bool includeInactive = false) =>
-        Run(async () => { AssertStaff(); return await _club.Teams(includeInactive); });
+    [HttpGet("profile")]
+    public Task<IActionResult> Profile() =>
+        Run(async () => { AssertStaff(); return await _site.Profile(TenantId()); });
 
-    [HttpGet("teams/{id:long}")]
-    public Task<IActionResult> Team(long id) =>
-        Run(async () => { AssertStaff(); return await _club.Team(id); });
+    [HttpPut("profile")]
+    public Task<IActionResult> SaveProfile([FromBody] TrainingProfileBT data) =>
+        Run(async () => { AssertManager(); return await _site.SaveProfile(TenantId(), data); });
 
-    [HttpPost("teams")]
-    public Task<IActionResult> SaveTeam([FromBody] TeamBT data) =>
-        Run(async () => { AssertManager(); return await _club.SaveTeam(data); });
+    // ---- groups -----------------------------------------------------------
 
-    [HttpDelete("teams/{id:long}")]
-    public Task<IActionResult> DeleteTeam(long id) =>
-        Run(async () => { AssertManager(); return await _club.DeleteTeam(id); });
+    [HttpGet("groups")]
+    public Task<IActionResult> Groups([FromQuery] bool includeInactive = false) =>
+        Run(async () => { AssertStaff(); return await _training.Groups(includeInactive); });
 
-    // ---- roster -----------------------------------------------------------
+    [HttpGet("groups/{id:long}")]
+    public Task<IActionResult> Group(long id) =>
+        Run(async () => { AssertStaff(); return await _training.Group(id); });
 
-    [HttpGet("teams/{id:long}/roster")]
+    [HttpPost("groups")]
+    public Task<IActionResult> SaveGroup([FromBody] GroupBT data) =>
+        Run(async () => { AssertManager(); return await _training.SaveGroup(data); });
+
+    [HttpDelete("groups/{id:long}")]
+    public Task<IActionResult> DeleteGroup(long id) =>
+        Run(async () => { AssertManager(); return await _training.DeleteGroup(id); });
+
+    // ---- enrollment -------------------------------------------------------
+
+    [HttpGet("groups/{id:long}/students")]
     public Task<IActionResult> Roster(long id) =>
-        Run(async () => { AssertStaff(); return await _club.Roster(id); });
+        Run(async () => { AssertStaff(); return await _training.Roster(id); });
 
-    [HttpPost("teams/{id:long}/roster")]
-    public Task<IActionResult> AddToRoster(long id, [FromBody] RosterEntryBT data) =>
-        Run(async () => { AssertStaff(); return await _club.AddToRoster(id, data); });
+    [HttpPost("groups/{id:long}/students")]
+    public Task<IActionResult> Enroll(long id, [FromBody] EnrollBT data) =>
+        Run(async () => { AssertStaff(); return await _training.Enroll(id, data); });
 
-    [HttpDelete("teams/{id:long}/roster/{playerId:long}")]
-    public Task<IActionResult> RemoveFromRoster(long id, long playerId) =>
-        Run(async () => { AssertStaff(); return await _club.RemoveFromRoster(id, playerId); });
+    [HttpDelete("groups/{id:long}/students/{studentId:long}")]
+    public Task<IActionResult> Unenroll(long id, long studentId) =>
+        Run(async () => { AssertStaff(); return await _training.Unenroll(id, studentId); });
 
-    // ---- players ----------------------------------------------------------
+    // ---- students ---------------------------------------------------------
 
-    [HttpGet("players")]
-    public Task<IActionResult> Players([FromQuery] long? teamid, [FromQuery] string? search,
+    [HttpGet("students")]
+    public Task<IActionResult> Students([FromQuery] long? groupid, [FromQuery] string? search,
         [FromQuery] bool unassigned = false) =>
-        Run(async () => { AssertStaff(); return await _club.Players(teamid, search, unassigned); });
+        Run(async () => { AssertStaff(); return await _training.Students(groupid, search, unassigned); });
 
-    [HttpGet("players/{id:long}")]
-    public Task<IActionResult> Player(long id) =>
-        Run(async () => { AssertStaff(); return await _club.Player(id); });
+    [HttpGet("students/{id:long}")]
+    public Task<IActionResult> Student(long id) =>
+        Run(async () => { AssertStaff(); return await _training.Student(id); });
 
-    [HttpPost("players")]
-    public Task<IActionResult> SavePlayer([FromBody] PlayerBT data) =>
-        Run(async () => { AssertStaff(); return await _club.SavePlayer(data); });
+    [HttpPost("students")]
+    public Task<IActionResult> SaveStudent([FromBody] StudentBT data) =>
+        Run(async () => { AssertStaff(); return await _training.SaveStudent(data); });
 
-    [HttpDelete("players/{id:long}")]
-    public Task<IActionResult> DeletePlayer(long id) =>
-        Run(async () => { AssertManager(); return await _club.DeletePlayer(id); });
+    [HttpDelete("students/{id:long}")]
+    public Task<IActionResult> DeleteStudent(long id) =>
+        Run(async () => { AssertManager(); return await _training.DeleteStudent(id); });
+
+    [HttpGet("students/{id:long}/attendance")]
+    public Task<IActionResult> StudentAttendance(long id) =>
+        Run(async () => { AssertStaff(); return await _schedule.StudentAttendance(id); });
+
+    // ---- weekly timetable -------------------------------------------------
+
+    [HttpGet("schedule")]
+    public Task<IActionResult> Schedule([FromQuery] long? groupid) =>
+        Run(async () => { AssertStaff(); return await _schedule.Schedule(groupid); });
+
+    [HttpPost("schedule")]
+    public Task<IActionResult> SaveSchedule([FromBody] ScheduleEntryBT data) =>
+        Run(async () => { AssertManager(); return await _schedule.SaveScheduleEntry(data); });
+
+    [HttpDelete("schedule/{id:long}")]
+    public Task<IActionResult> DeleteSchedule(long id) =>
+        Run(async () => { AssertManager(); return await _schedule.DeleteScheduleEntry(id); });
+
+    // ---- dated classes ----------------------------------------------------
+
+    [HttpGet("sessions")]
+    public Task<IActionResult> Sessions([FromQuery] long? groupid, [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to, [FromQuery] short? status) =>
+        Run(async () => { AssertStaff(); return await _schedule.Sessions(groupid, from, to, status); });
+
+    [HttpGet("sessions/{id:long}")]
+    public Task<IActionResult> Session(long id) =>
+        Run(async () => { AssertStaff(); return await _schedule.Session(id); });
+
+    [HttpPost("sessions")]
+    public Task<IActionResult> SaveSession([FromBody] SessionBT data) =>
+        Run(async () => { AssertStaff(); return await _schedule.SaveSession(data); });
+
+    [HttpPost("sessions/generate")]
+    public Task<IActionResult> GenerateSessions([FromBody] GenerateSessionsBT data) =>
+        Run(async () => { AssertManager(); return await _schedule.GenerateSessions(data); });
+
+    [HttpDelete("sessions/{id:long}")]
+    public Task<IActionResult> DeleteSession(long id) =>
+        Run(async () => { AssertManager(); return await _schedule.DeleteSession(id); });
+
+    // ---- attendance -------------------------------------------------------
+
+    [HttpGet("sessions/{id:long}/attendance")]
+    public Task<IActionResult> Attendance(long id) =>
+        Run(async () => { AssertStaff(); return await _schedule.Attendance(id); });
+
+    [HttpPost("sessions/{id:long}/attendance")]
+    public Task<IActionResult> SaveAttendance(long id, [FromBody] AttendanceSaveBT data) =>
+        Run(async () => { AssertStaff(); return await _schedule.SaveAttendance(id, data, StaffId()); });
+
+    // ---- fees and payments ------------------------------------------------
+
+    [HttpGet("fees")]
+    public Task<IActionResult> Fees([FromQuery] long? groupid, [FromQuery] long? studentid,
+        [FromQuery] string? period, [FromQuery] short? status) =>
+        Run(async () => { AssertStaff(); return await _billing.Fees(groupid, studentid, period, status); });
+
+    [HttpPost("fees")]
+    public Task<IActionResult> SaveFee([FromBody] FeeBT data) =>
+        Run(async () => { AssertManager(); return await _billing.SaveFee(data); });
+
+    [HttpPost("fees/generate")]
+    public Task<IActionResult> GenerateFees([FromBody] GenerateFeesBT data) =>
+        Run(async () => { AssertManager(); return await _billing.GenerateFees(data); });
+
+    [HttpPost("fees/{id:long}/waive")]
+    public Task<IActionResult> WaiveFee(long id, [FromBody] FeeBT? data) =>
+        Run(async () => { AssertManager(); return await _billing.WaiveFee(id, data?.note); });
+
+    [HttpDelete("fees/{id:long}")]
+    public Task<IActionResult> DeleteFee(long id) =>
+        Run(async () => { AssertManager(); return await _billing.DeleteFee(id); });
+
+    [HttpPost("payments")]
+    public Task<IActionResult> AddPayment([FromBody] PaymentBT data) =>
+        Run(async () => { AssertStaff(); return await _billing.AddPayment(data, StaffId()); });
+
+    [HttpGet("payments")]
+    public Task<IActionResult> Payments([FromQuery] DateTime? from, [FromQuery] DateTime? to) =>
+        Run(async () => { AssertStaff(); return await _billing.Payments(from, to); });
+
+    [HttpDelete("payments/{id:long}")]
+    public Task<IActionResult> DeletePayment(long id) =>
+        Run(async () => { AssertManager(); return await _billing.DeletePayment(id); });
 
     // ---- venues -----------------------------------------------------------
 
     [HttpGet("venues")]
     public Task<IActionResult> Venues() =>
-        Run(async () => { AssertStaff(); return await _club.Venues(); });
+        Run(async () => { AssertStaff(); return await _training.Venues(); });
 
     [HttpPost("venues")]
     public Task<IActionResult> SaveVenue([FromBody] VenueBT data) =>
-        Run(async () => { AssertManager(); return await _club.SaveVenue(data); });
+        Run(async () => { AssertManager(); return await _training.SaveVenue(data); });
 
     [HttpDelete("venues/{id:long}")]
     public Task<IActionResult> DeleteVenue(long id) =>
-        Run(async () => { AssertManager(); return await _club.DeleteVenue(id); });
-
-    // ---- seasons ----------------------------------------------------------
-
-    [HttpGet("seasons")]
-    public Task<IActionResult> Seasons() =>
-        Run(async () => { AssertStaff(); return await _competition.Seasons(); });
-
-    [HttpPost("seasons")]
-    public Task<IActionResult> SaveSeason([FromBody] SeasonBT data) =>
-        Run(async () => { AssertManager(); return await _competition.SaveSeason(data); });
-
-    [HttpDelete("seasons/{id:long}")]
-    public Task<IActionResult> DeleteSeason(long id) =>
-        Run(async () => { AssertManager(); return await _competition.DeleteSeason(id); });
-
-    // ---- tournaments ------------------------------------------------------
-
-    [HttpGet("tournaments")]
-    public Task<IActionResult> Tournaments([FromQuery] long? seasonid, [FromQuery] short? status) =>
-        Run(async () => { AssertStaff(); return await _competition.Tournaments(seasonid, status); });
-
-    [HttpGet("tournaments/{id:long}")]
-    public Task<IActionResult> Tournament(long id) =>
-        Run(async () => { AssertStaff(); return await _competition.Tournament(id); });
-
-    [HttpPost("tournaments")]
-    public Task<IActionResult> SaveTournament([FromBody] TournamentBT data) =>
-        Run(async () => { AssertManager(); return await _competition.SaveTournament(data); });
-
-    [HttpDelete("tournaments/{id:long}")]
-    public Task<IActionResult> DeleteTournament(long id) =>
-        Run(async () => { AssertManager(); return await _competition.DeleteTournament(id); });
-
-    [HttpGet("tournaments/{id:long}/teams")]
-    public Task<IActionResult> TournamentTeams(long id) =>
-        Run(async () => { AssertStaff(); return await _competition.TournamentTeams(id); });
-
-    [HttpPost("tournaments/{id:long}/teams")]
-    public Task<IActionResult> AddTournamentTeam(long id, [FromBody] TournamentTeamBT data) =>
-        Run(async () => { AssertManager(); return await _competition.AddTournamentTeam(id, data); });
-
-    [HttpDelete("tournaments/{id:long}/teams/{teamId:long}")]
-    public Task<IActionResult> RemoveTournamentTeam(long id, long teamId) =>
-        Run(async () => { AssertManager(); return await _competition.RemoveTournamentTeam(id, teamId); });
-
-    [HttpPost("tournaments/{id:long}/fixtures")]
-    public Task<IActionResult> GenerateFixtures(long id) =>
-        Run(async () => { AssertManager(); return await _competition.GenerateFixtures(id); });
-
-    [HttpGet("tournaments/{id:long}/standings")]
-    public Task<IActionResult> Standings(long id) =>
-        Run(async () => { AssertStaff(); return await _competition.Standings(id); });
-
-    // ---- matches ----------------------------------------------------------
-
-    [HttpGet("matches")]
-    public Task<IActionResult> Matches([FromQuery] long? tournamentid, [FromQuery] long? teamid,
-        [FromQuery] short? status, [FromQuery] DateTime? from, [FromQuery] DateTime? to) =>
-        Run(async () => { AssertStaff(); return await _competition.Matches(tournamentid, teamid, status, from, to); });
-
-    [HttpGet("matches/{id:long}")]
-    public Task<IActionResult> Match(long id) =>
-        Run(async () => { AssertStaff(); return await _competition.Match(id); });
-
-    [HttpPost("matches")]
-    public Task<IActionResult> SaveMatch([FromBody] MatchBT data) =>
-        Run(async () => { AssertStaff(); return await _competition.SaveMatch(data); });
-
-    [HttpPost("matches/{id:long}/result")]
-    public Task<IActionResult> SaveResult(long id, [FromBody] MatchResultBT data) =>
-        Run(async () => { AssertStaff(); return await _competition.SaveResult(id, data); });
-
-    [HttpDelete("matches/{id:long}")]
-    public Task<IActionResult> DeleteMatch(long id) =>
-        Run(async () => { AssertManager(); return await _competition.DeleteMatch(id); });
+        Run(async () => { AssertManager(); return await _training.DeleteVenue(id); });
 
     // ---- announcements ----------------------------------------------------
 
     [HttpGet("announcements")]
     public Task<IActionResult> Announcements() =>
-        Run(async () => { AssertStaff(); return await _club.Announcements(publishedOnly: false); });
+        Run(async () => { AssertStaff(); return await _training.Announcements(publishedOnly: false); });
 
     [HttpPost("announcements")]
     public Task<IActionResult> SaveAnnouncement([FromBody] AnnouncementBT data) =>
-        Run(async () => { AssertStaff(); return await _club.SaveAnnouncement(data, StaffId()); });
+        Run(async () => { AssertStaff(); return await _training.SaveAnnouncement(data, StaffId()); });
 
     [HttpDelete("announcements/{id:long}")]
     public Task<IActionResult> DeleteAnnouncement(long id) =>
-        Run(async () => { AssertManager(); return await _club.DeleteAnnouncement(id); });
+        Run(async () => { AssertManager(); return await _training.DeleteAnnouncement(id); });
 
     // ---- people -----------------------------------------------------------
 
     [HttpGet("staff")]
     public Task<IActionResult> Staff() =>
-        Run(async () => { AssertStaff(); return await _club.Staff(); });
+        Run(async () => { AssertStaff(); return await _training.StaffList(); });
 
     [HttpGet("members")]
     public Task<IActionResult> Members([FromQuery] string? status) =>

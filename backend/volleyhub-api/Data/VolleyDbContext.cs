@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace volleyhub_api.Data;
 
-// Tenant context: every per-club table, scoped to that club's schema (tenant_<id>). Isolation is
-// by schema, so the domain entities carry no tenantid column.
+// Tenant context: every per-training-centre table, scoped to that centre's schema (tenant_<id>).
+// Isolation is by schema, so the domain entities carry no tenantid column.
 public class VolleyDbContext : DbContext, ITenantDbContext
 {
     public string Schema { get; }
@@ -19,20 +19,23 @@ public class VolleyDbContext : DbContext, ITenantDbContext
     public DbSet<Role> role { get; set; }
     public DbSet<Staff> staff { get; set; }
 
-    // Squads.
-    public DbSet<Team> team { get; set; }
-    public DbSet<Player> player { get; set; }
-    public DbSet<TeamPlayer> team_player { get; set; }
+    // Groups and the students in them. The table is training_group, not group, because group is a
+    // reserved word in SQL and a contextual keyword in C# LINQ - both avoidable for free.
+    public DbSet<Group> training_group { get; set; }
+    public DbSet<Student> student { get; set; }
+    public DbSet<Enrollment> enrollment { get; set; }
 
-    // Competition.
+    // Where and when training happens.
     public DbSet<Venue> venue { get; set; }
-    public DbSet<Season> season { get; set; }
-    public DbSet<Tournament> tournament { get; set; }
-    public DbSet<TournamentTeam> tournament_team { get; set; }
-    public DbSet<Match> match { get; set; }
-    public DbSet<MatchSet> match_set { get; set; }
+    public DbSet<ScheduleEntry> schedule_entry { get; set; }
+    public DbSet<TrainingSession> training_session { get; set; }
+    public DbSet<AttendanceRecord> attendance_record { get; set; }
 
-    // Content.
+    // Money.
+    public DbSet<StudentFee> student_fee { get; set; }
+    public DbSet<Payment> payment { get; set; }
+
+    // The centre talking to its own students.
     public DbSet<Announcement> announcement { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

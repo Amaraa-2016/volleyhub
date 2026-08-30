@@ -1,38 +1,42 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { router, useFocusEffect } from "expo-router";
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { useAuth } from "@/lib/auth";
+import { request } from "@/lib/api";
 import { colors, radius, spacing } from "@/lib/theme";
 import { formatDateTime } from "@/lib/format";
-import type { Announcement, Club, Match } from "@/lib/types";
+import { minuteToTime, type Announcement, type MyProfile, type News, type Training } from "@/lib/types";
 
-// Club home: the next fixtures, the latest results, and whatever the club has published.
+// The student's home: which centre they attend, what is next, and what has been posted.
 export default function HomeScreen() {
     const { session, clubGet } = useAuth();
-    const [club, setClub] = useState<Club>();
-    const [fixtures, setFixtures] = useState<Match[]>([]);
-    const [results, setResults] = useState<Match[]>([]);
-    const [news, setNews] = useState<Announcement[]>([]);
+    const [training, setTraining] = useState<Training>();
+    const [profile, setProfile] = useState<MyProfile>();
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    const [news, setNews] = useState<News[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     const load = useCallback(async () => {
-        const [c, f, r, n] = await Promise.all([
-            clubGet<Club>("/api/vh/client/club"),
-            clubGet<Match[]>("/api/vh/client/fixtures"),
-            clubGet<Match[]>("/api/vh/client/results"),
+        const [t, me, posts] = await Promise.all([
+            clubGet<Training>("/api/vh/client/club"),
+            clubGet<MyProfile>("/api/vh/client/me"),
             clubGet<Announcement[]>("/api/vh/client/announcements"),
         ]);
-        setClub(c);
-        setFixtures((f ?? []).slice(0, 3));
-        setResults((r ?? []).slice(0, 3));
-        setNews((n ?? []).slice(0, 5));
+        setTraining(t);
+        setProfile(me);
+        setAnnouncements((posts ?? []).slice(0, 5));
+
+        // Platform news is public, so it needs no club token - it is the same feed the website shows.
+        const platformNews = await request<News[]>("/api/vh/public/news?take=5");
+        setNews(platformNews.data ?? []);
+
         setLoading(false);
         setRefreshing(false);
     }, [clubGet]);
 
-    // Refetch whenever the tab regains focus - a result entered in the backoffice should show up
-    // without restarting the app.
+    // Refetch on focus: a session or announcement added in the console should appear without a
+    // restart.
     useFocusEffect(useCallback(() => { load(); }, [load]));
 
     if (loading) {
@@ -42,6 +46,8 @@ export default function HomeScreen() {
             </View>
         );
     }
+
+    const next = profile?.next_sessions ?? [];
 
     return (
         <ScrollView
@@ -55,51 +61,55 @@ export default function HomeScreen() {
                 />
             }
         >
-            <Text style={styles.club}>{club?.tenantname ?? session?.tenantname}</Text>
-            {!!club?.address && <Text style={styles.clubMeta}>{club.address}</Text>}
+            <Text style={styles.club}>{training?.tenantname ?? session?.tenantname}</Text>
+            {!!training?.tagline && <Text style={styles.clubMeta}>{training.tagline}</Text>}
+            {!!profile?.student?.groupname && (
+                <Text style={styles.clubMeta}>Групп: {profile.student.groupname}</Text>
+            )}
 
-            <Text style={styles.section}>Дараагийн тоглолт</Text>
-            {fixtures.length === 0 && <Text style={styles.empty}>Товлогдсон тоглолт алга</Text>}
-            {fixtures.map((match) => (
-                <Pressable
-                    key={match.matchid}
-                    style={styles.card}
-                    onPress={() => router.push(`/match/${match.matchid}`)}
-                >
-                    <Text style={styles.matchTeams}>{match.hometeamname} — {match.awayteamname}</Text>
-                    <Text style={styles.matchMeta}>
-                        {formatDateTime(match.scheduled_at)}
-                        {match.venuename ? ` · ${match.venuename}` : ""}
+            {(profile?.student?.balance ?? 0) > 0 && (
+                <View style={styles.alert}>
+                    <Text style={styles.alertText}>
+                        Төлбөрийн үлдэгдэл: {Math.round(profile!.student!.balance).toLocaleString("mn-MN")}₮
                     </Text>
-                </Pressable>
+                </View>
+            )}
+
+            <Text style={styles.section}>Дараагийн хичээл</Text>
+            {next.length === 0 ? (
+                <Text style={styles.empty}>Товлогдсон хичээл алга</Text>
+            ) : next.map((s) => (
+                <View key={s.sessionid} style={styles.card}>
+                    <Text style={styles.cardTitle}>{s.groupname}</Text>
+                    <Text style={styles.cardMeta}>
+                        {formatDateTime(s.session_date).slice(0, 10)} · {minuteToTime(s.start_minute)}-{minuteToTime(s.end_minute)}
+                    </Text>
+                    {!!s.venuename && <Text style={styles.cardMeta}>{s.venuename}</Text>}
+                </View>
             ))}
 
-            <Text style={styles.section}>Сүүлийн үр дүн</Text>
-            {results.length === 0 && <Text style={styles.empty}>Үр дүн алга</Text>}
-            {results.map((match) => (
-                <Pressable
-                    key={match.matchid}
-                    style={styles.card}
-                    onPress={() => router.push(`/match/${match.matchid}`)}
-                >
-                    <View style={styles.resultRow}>
-                        <Text style={styles.matchTeams}>{match.hometeamname} — {match.awayteamname}</Text>
-                        <Text style={styles.score}>{match.home_sets}:{match.away_sets}</Text>
-                    </View>
-                    <Text style={styles.matchMeta}>{formatDateTime(match.scheduled_at)}</Text>
-                </Pressable>
-            ))}
+            {announcements.length > 0 && (
+                <>
+                    <Text style={styles.section}>Сургалтын зарлага</Text>
+                    {announcements.map((post) => (
+                        <View key={post.announcementid} style={styles.card}>
+                            <Text style={styles.cardTitle}>{post.title}</Text>
+                            {!!post.body && <Text style={styles.body} numberOfLines={4}>{post.body}</Text>}
+                            {!!post.published_at && (
+                                <Text style={styles.cardMeta}>{formatDateTime(post.published_at)}</Text>
+                            )}
+                        </View>
+                    ))}
+                </>
+            )}
 
             {news.length > 0 && (
                 <>
-                    <Text style={styles.section}>Мэдээ</Text>
-                    {news.map((post) => (
-                        <View key={post.announcementid} style={styles.card}>
-                            <Text style={styles.newsTitle}>{post.title}</Text>
-                            {!!post.body && <Text style={styles.newsBody} numberOfLines={4}>{post.body}</Text>}
-                            <Text style={styles.matchMeta}>
-                                {post.published_at ? formatDateTime(post.published_at) : ""}
-                            </Text>
+                    <Text style={styles.section}>Волейболын мэдээ</Text>
+                    {news.map((n) => (
+                        <View key={n.newsid} style={styles.card}>
+                            <Text style={styles.cardTitle}>{n.title}</Text>
+                            {!!n.summary && <Text style={styles.body} numberOfLines={3}>{n.summary}</Text>}
                         </View>
                     ))}
                 </>
@@ -113,13 +123,14 @@ const styles = StyleSheet.create({
     center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
     club: { fontSize: 22, fontWeight: "800", color: colors.text },
     clubMeta: { color: colors.textMuted, marginTop: 2 },
+    alert: {
+        backgroundColor: "#FDECEA", borderRadius: radius.sm, padding: spacing.md, marginTop: spacing.lg,
+    },
+    alertText: { color: colors.danger, fontWeight: "700" },
     section: { fontSize: 13, color: colors.textMuted, marginTop: spacing.xl, marginBottom: spacing.sm },
     card: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm },
-    matchTeams: { fontSize: 15, fontWeight: "600", color: colors.text, flex: 1 },
-    matchMeta: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
-    resultRow: { flexDirection: "row", alignItems: "center" },
-    score: { fontSize: 17, fontWeight: "800", color: colors.primary, marginLeft: spacing.md },
-    newsTitle: { fontSize: 15, fontWeight: "700", color: colors.text },
-    newsBody: { color: colors.text, marginTop: spacing.xs, lineHeight: 20 },
+    cardTitle: { fontSize: 15, fontWeight: "700", color: colors.text },
+    cardMeta: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
+    body: { color: colors.text, marginTop: spacing.xs, lineHeight: 20 },
     empty: { color: colors.textMuted },
 });

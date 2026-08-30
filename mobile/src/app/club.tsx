@@ -61,7 +61,7 @@ export default function ClubScreen() {
             setError(errorText(res.error));
             return;
         }
-        setNotice("Хүсэлт илгээгдлээ. Клубын админ баталгаажуулна");
+        setNotice("Хүсэлт илгээгдлээ. Сургалтын админ баталгаажуулна");
         await refreshMemberships();
     };
 
@@ -70,7 +70,7 @@ export default function ClubScreen() {
     return (
         <SafeAreaView style={styles.safe}>
             <View style={styles.header}>
-                <Text style={styles.title}>Клуб</Text>
+                <Text style={styles.title}>Сургалт</Text>
                 <Pressable onPress={async () => { await logout(); router.replace("/login"); }}>
                     <Text style={styles.link}>Гарах</Text>
                 </Pressable>
@@ -84,7 +84,7 @@ export default function ClubScreen() {
                     <View>
                         {active.length > 0 && (
                             <>
-                                <Text style={styles.section}>Миний клубууд</Text>
+                                <Text style={styles.section}>Миний сургалтууд</Text>
                                 {active.map((m) => (
                                     <Pressable key={m.tenantid} style={styles.card} onPress={() => choose(m.tenantid)}>
                                         <View style={{ flex: 1 }}>
@@ -110,12 +110,12 @@ export default function ClubScreen() {
                         {error && <Text style={styles.error}>{error}</Text>}
                         {notice && <Text style={styles.notice}>{notice}</Text>}
 
-                        <Text style={styles.section}>Клуб хайх</Text>
+                        <Text style={styles.section}>Сургалт хайх</Text>
                         <TextInput
                             style={styles.input}
                             value={query}
                             onChangeText={(text) => { setQuery(text); search(text); }}
-                            placeholder="Клубын нэр"
+                            placeholder="Сургалтын нэр"
                             placeholderTextColor={colors.textMuted}
                         />
                     </View>
@@ -129,7 +129,7 @@ export default function ClubScreen() {
                         <Text style={styles.cardAction}>Нэгдэх</Text>
                     </Pressable>
                 )}
-                ListEmptyComponent={<Text style={styles.empty}>Клуб олдсонгүй</Text>}
+                ListEmptyComponent={<Text style={styles.empty}>Сургалт олдсонгүй</Text>}
             />
         </SafeAreaView>
     );

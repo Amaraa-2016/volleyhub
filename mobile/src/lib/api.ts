@@ -71,10 +71,11 @@ const ERRORS: Record<string, string> = {
     phone_taken: "Энэ дугаараар бүртгэл үүссэн байна",
     password_too_short: "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой",
     wrong_password: "Одоогийн нууц үг буруу байна",
-    not_a_member: "Та энэ клубын гишүүн биш байна",
+    not_a_member: "Та энэ сургалтын гишүүн биш байна",
     membership_pending: "Таны хүсэлт хараахан батлагдаагүй байна",
-    invalid_tenant: "Клуб олдсонгүй",
+    invalid_tenant: "Сургалт олдсонгүй",
     account_not_found: "Бүртгэл олдсонгүй",
+    not_a_student: "Таны бүртгэл суралцагчийн картад холбогдоогүй байна",
 };
 
 export const errorText = (code?: string): string => (code && ERRORS[code]) || "Алдаа гарлаа";

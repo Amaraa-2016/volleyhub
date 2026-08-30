@@ -31,138 +31,163 @@ export interface AccountLogin {
     selected?: SwitchResult | null;
 }
 
-export interface Club {
+// The training centre the student attends.
+export interface Training {
     tenantid: number;
     tenantname: string;
+    tagline?: string | null;
     address?: string | null;
     contactphone?: string | null;
     logo?: string | null;
+    cover?: string | null;
 }
 
-export interface Team {
-    teamid: number;
-    name: string;
-    shortname?: string | null;
-    gender: number;
-    agegroup?: string | null;
-    division?: string | null;
+export interface Session {
+    sessionid: number;
+    groupid: number;
+    groupname: string;
+    venueid?: number | null;
+    venuename?: string | null;
     coachname?: string | null;
-    logo?: string | null;
-    playercount: number;
+    session_date: string;
+    start_minute: number;
+    end_minute: number;
+    status: number;
+    attendance_taken: boolean;
+    notes?: string | null;
+    present_count: number;
+    student_count: number;
 }
 
-export interface RosterEntry {
-    teamplayerid: number;
-    playerid: number;
+export interface StudentCard {
+    studentid: number;
+    accountid: number;
     last_name: string;
     first_name: string;
-    position?: number | null;
+    date_of_birth?: string | null;
+    phone?: string | null;
     height_cm?: number | null;
-    jersey_no?: number | null;
-    is_captain: boolean;
     status: number;
+    groupid?: number | null;
+    groupname?: string | null;
+    fee_amount?: number | null;
+    balance: number;
 }
 
-export interface MatchSet {
-    set_no: number;
-    home_points: number;
-    away_points: number;
+export interface MyProfile {
+    role: string;
+    student?: StudentCard | null;
+    next_sessions: Session[];
 }
 
-export interface Match {
-    matchid: number;
-    tournamentid: number;
-    tournamentname?: string | null;
-    hometeamid: number;
-    hometeamname: string;
-    awayteamid: number;
-    awayteamname: string;
-    venuename?: string | null;
-    scheduled_at: string;
-    round?: string | null;
+export interface AttendanceHistory {
+    sessionid: number;
+    session_date: string;
+    groupname: string;
     status: number;
-    home_sets: number;
-    away_sets: number;
-    notes?: string | null;
-    sets: MatchSet[];
+    note?: string | null;
 }
 
-export interface Tournament {
-    tournamentid: number;
-    name: string;
-    seasonname?: string | null;
-    format: number;
-    gender: number;
-    startdate: string;
-    enddate: string;
+export interface AttendanceSummary {
+    total: number;
+    present: number;
+    absent: number;
+    excused: number;
+    late: number;
+    rate: number;
+    history: AttendanceHistory[];
+}
+
+export interface Payment {
+    paymentid: number;
+    feeid: number;
+    amount: number;
+    method: number;
+    paid_at: string;
+    note?: string | null;
+}
+
+export interface Fee {
+    feeid: number;
+    groupname: string;
+    period: string;
+    amount: number;
+    paid_amount: number;
+    balance: number;
+    due_date?: string | null;
     status: number;
-    teamcount: number;
-    matchcount: number;
+    note?: string | null;
+    payments: Payment[];
 }
 
-export interface Standing {
-    position: number;
-    teamid: number;
-    teamname: string;
-    pool?: string | null;
-    played: number;
-    won: number;
-    lost: number;
-    sets_won: number;
-    sets_lost: number;
-    set_ratio: number;
-    points: number;
+export interface FeesResponse {
+    balance: number;
+    fees: Fee[];
 }
 
 export interface Announcement {
     announcementid: number;
     title: string;
     body?: string | null;
+    cover?: string | null;
     authorname?: string | null;
     published_at?: string | null;
     created: string;
 }
 
-export interface PlayerCard {
-    playerid: number;
-    last_name: string;
-    first_name: string;
-    position?: number | null;
-    height_cm?: number | null;
-    jersey_no?: number | null;
-    is_captain: boolean;
-    teamid?: number | null;
-    teamname?: string | null;
-    status: number;
+export interface News {
+    newsid: number;
+    title: string;
+    summary?: string | null;
+    body?: string | null;
+    cover?: string | null;
+    category: number;
+    published_at?: string | null;
 }
 
-export interface MyProfile {
-    role: string;
-    player?: PlayerCard | null;
-    next_matches: Match[];
-}
+// ---- labels ---------------------------------------------------------------
 
-export const POSITIONS: Record<number, string> = {
-    1: "Довтлогч",
-    2: "Диагональ",
-    3: "Холбогч",
-    4: "Төв довтлогч",
-    5: "Либеро",
-    6: "Хамгаалагч",
+export const SESSION_STATUS: Record<number, string> = {
+    1: "Товлогдсон",
+    2: "Явагдсан",
+    3: "Цуцлагдсан",
 };
 
-export const MATCH_STATUS: Record<number, string> = {
-    1: "Товлогдсон",
-    2: "Явагдаж буй",
-    3: "Дууссан",
-    4: "Цуцлагдсан",
-    5: "Хойшилсон",
+export const ATTENDANCE_STATUS: Record<number, string> = {
+    1: "Ирсэн",
+    2: "Тасалсан",
+    3: "Чөлөөтэй",
+    4: "Хоцорсон",
+};
+
+export const FEE_STATUS: Record<number, string> = {
+    1: "Төлөгдөөгүй",
+    2: "Дутуу",
+    3: "Төлөгдсөн",
+    4: "Чөлөөлсөн",
+};
+
+export const PAYMENT_METHODS: Record<number, string> = {
+    1: "Бэлэн",
+    2: "Данс",
+    3: "Карт",
+    4: "Бусад",
 };
 
 export const ROLES: Record<string, string> = {
     owner: "Эзэмшигч",
     admin: "Админ",
     coach: "Дасгалжуулагч",
-    player: "Тамирчин",
-    fan: "Дэмжигч",
+    player: "Суралцагч",
+    fan: "Эцэг эх / дэмжигч",
 };
+
+export const WEEKDAYS = ["Ням", "Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба"];
+
+// Minutes from midnight is how the backend stores a wall-clock slot: it must not shift with
+// timezones or DST, which a time-of-day column would.
+export const minuteToTime = (minutes: number): string =>
+    `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+export const money = (value?: number | null): string =>
+    value == null ? "-" : `${Math.round(value).toLocaleString("mn-MN")}₮`;

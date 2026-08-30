@@ -35,7 +35,7 @@ export default function LoginScreen() {
             <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
                 <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
                     <Text style={styles.brand}>Volleyhub</Text>
-                    <Text style={styles.subtitle}>Клубын аппликейшн</Text>
+                    <Text style={styles.subtitle}>Волейболын сургалтын апп</Text>
 
                     <View style={styles.card}>
                         <Text style={styles.label}>Утасны дугаар</Text>

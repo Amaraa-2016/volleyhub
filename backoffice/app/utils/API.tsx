@@ -55,44 +55,67 @@ export const AccountAPI = async <T = object,>(path: string, options: APIOptions 
 export const AccountAPIWithError = <T = object,>(path: string, options: APIOptions = {}): Promise<APIResult<T>> =>
     request<T>("/api/ui/account", path, options);
 
+// The public site (/api/vh/public/*) - no session needed.
+export const PublicAPI = async <T = object,>(path: string, options: APIOptions = {}): Promise<T | undefined> =>
+    (await request<T>("/api/ui/public", path, options)).data;
+
+export const PublicAPIWithError = <T = object,>(path: string, options: APIOptions = {}): Promise<APIResult<T>> =>
+    request<T>("/api/ui/public", path, options);
+
 // Backend error codes are stable identifiers, not sentences. Everything the UI can currently
 // provoke is listed here; anything else falls back to a generic message.
 const ERRORS: Record<string, string> = {
+    // auth
     invalid_credentials: "Утасны дугаар эсвэл нууц үг буруу байна",
     phone_taken: "Энэ дугаараар бүртгэл үүссэн байна",
     password_too_short: "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой",
     wrong_password: "Одоогийн нууц үг буруу байна",
-    tenant_name_taken: "Ийм нэртэй клуб бүртгэлтэй байна",
-    request_already_pending: "Танд хүлээгдэж буй хүсэлт байна",
-    not_a_member: "Та энэ клубын гишүүн биш байна",
+    not_a_member: "Та энэ сургалтын гишүүн биш байна",
     admin_only: "Зөвхөн админ хийх боломжтой үйлдэл",
     staff_only: "Зөвхөн ажилтан хийх боломжтой үйлдэл",
-    no_club_selected: "Клуб сонгоно уу",
+    not_platform_admin: "Зөвхөн платформын админ хийх боломжтой үйлдэл",
+    no_club_selected: "Сургалт сонгоно уу",
+    // registration
+    tenant_name_taken: "Ийм нэртэй сургалт бүртгэлтэй байна",
+    request_already_pending: "Танд хүлээгдэж буй хүсэлт байна",
+    request_already_reviewed: "Энэ хүсэлт аль хэдийн шийдэгдсэн байна",
+    // common
     name_required: "Нэр оруулна уу",
     title_required: "Гарчиг оруулна уу",
     first_name_required: "Нэр оруулна уу",
-    teams_must_differ: "Нэг баг өөртэйгөө тоглох боломжгүй",
-    jersey_taken: "Энэ дугаар аль хэдийн эзэмшигдсэн байна",
-    team_has_matches: "Тоглолт бүртгэгдсэн тул хасах боломжгүй",
-    tournament_has_results: "Үр дүн бүртгэгдсэн тэмцээнийг устгах боломжгүй",
-    fixtures_already_exist: "Хуваарь аль хэдийн үүссэн байна",
-    need_at_least_two_teams: "Дор хаяж хоёр баг бүртгүүлсэн байх шаардлагатай",
-    venue_in_use: "Тоглолт бүртгэгдсэн тул устгах боломжгүй",
-    season_in_use: "Тэмцээн бүртгэгдсэн тул устгах боломжгүй",
-    match_incomplete: "Тоглолт дуусаагүй байна - ялагч тодрох ёстой",
-    both_teams_cannot_win: "Хоёр баг зэрэг ялж болохгүй",
-    set_cannot_be_drawn: "Сет тэнцэж дуусах боломжгүй",
-    negative_points: "Оноо сөрөг байж болохгүй",
-    too_many_sets: "Сетийн тоо хэтэрсэн байна",
+    phone_required: "Утасны дугаар оруулна уу",
     cannot_change_owner: "Эзэмшигчийн эрхийг өөрчлөх боломжгүй",
     cannot_remove_owner: "Эзэмшигчийг хасах боломжгүй",
+    // groups and students
+    group_full: "Групп дүүрсэн байна",
+    group_not_found: "Групп олдсонгүй",
+    student_not_found: "Суралцагч олдсонгүй",
+    student_has_unpaid_fees: "Төлөгдөөгүй төлбөртэй тул устгах боломжгүй",
+    fee_cannot_be_negative: "Төлбөр сөрөг байж болохгүй",
+    // schedule
+    weekday_out_of_range: "Гараг буруу байна",
+    end_before_start: "Дуусах цаг нь эхлэх цагаас хойш байх ёстой",
+    venue_busy: "Тухайн цагт заал завгүй байна",
+    no_schedule: "Эхлээд долоо хоногийн хуваарь үүсгэнэ үү",
+    to_before_from: "Дуусах огноо нь эхлэх огнооноос хойш байх ёстой",
+    range_too_long: "Хугацааны зай хэт урт байна",
+    attendance_already_taken: "Ирц бүртгэгдсэн тул устгах боломжгүй",
+    session_cancelled: "Цуцлагдсан хичээлд ирц бүртгэх боломжгүй",
+    venue_in_use: "Хичээл бүртгэгдсэн тул устгах боломжгүй",
+    // billing
+    period_must_be_yyyy_mm: "Сарыг YYYY-MM хэлбэрээр оруулна уу",
+    fee_already_exists: "Тухайн сарын төлбөр аль хэдийн үүссэн байна",
+    fee_has_payments: "Төлөлт бүртгэгдсэн тул устгах боломжгүй",
+    fee_is_waived: "Чөлөөлсөн төлбөр дээр төлөлт бүртгэх боломжгүй",
+    payment_exceeds_fee: "Төлөлт нь төлбөрийн дүнгээс хэтэрсэн байна",
+    amount_must_be_positive: "Дүн 0-ээс их байх ёстой",
+    no_enrolled_students: "Бүртгэлтэй суралцагч алга",
+    // shop
+    no_items: "Бараа сонгоно уу",
+    product_unavailable: "Сонгосон бараа боломжгүй байна",
+    product_not_found: "Бараа олдсонгүй",
+    news_not_found: "Мэдээ олдсонгүй",
+    training_not_found: "Сургалт олдсонгүй",
 };
 
-export const errorText = (code?: string): string => {
-    if (!code) return "Алдаа гарлаа";
-    if (ERRORS[code]) return ERRORS[code];
-    // Set validation codes carry the set number, e.g. set_3_margin_below_2.
-    const set = /^set_(\d+)_(.+)$/.exec(code);
-    if (set) return `${set[1]}-р сетийн оноо буруу байна`;
-    return "Алдаа гарлаа";
-};
+export const errorText = (code?: string): string => ERRORS[code ?? ""] ?? "Алдаа гарлаа";

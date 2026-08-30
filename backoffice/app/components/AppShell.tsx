@@ -4,15 +4,15 @@ import { Layout, Menu, Dropdown, Avatar, Button } from "antd";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
-    LayoutDashboard, Users, User, Trophy, CalendarDays, MapPin,
-    Megaphone, UserCog, ShieldCheck, LogOut, Repeat, Volleyball,
+    LayoutDashboard, Users, User, CalendarDays, CalendarClock, Wallet, MapPin,
+    Megaphone, UserCog, ShieldCheck, LogOut, Repeat, Volleyball, Globe, Store,
 } from "lucide-react";
 import { useMemo } from "react";
 
 const { Header, Sider, Content } = Layout;
 
-// Chrome for every authenticated page. Kept as a component rather than a layout.tsx so the bare
-// screens (login, register, club select) can opt out simply by not using it.
+// Chrome for the training centre's console. Kept as a component rather than a layout.tsx so the
+// public site and the bare screens (login, register, centre select) simply do not use it.
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
@@ -23,27 +23,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     const items = useMemo(() => {
         const base = [
-            { key: "/dashboard", icon: <LayoutDashboard size={16} />, label: "Хяналтын самбар" },
-            { key: "/teams", icon: <Users size={16} />, label: "Багууд" },
-            { key: "/players", icon: <User size={16} />, label: "Тамирчид" },
-            { key: "/tournaments", icon: <Trophy size={16} />, label: "Тэмцээн" },
-            { key: "/matches", icon: <CalendarDays size={16} />, label: "Тоглолт" },
-            { key: "/venues", icon: <MapPin size={16} />, label: "Заал" },
-            { key: "/announcements", icon: <Megaphone size={16} />, label: "Мэдээ" },
+            { key: "/manage/dashboard", icon: <LayoutDashboard size={16} />, label: "Хяналтын самбар" },
+            { key: "/manage/groups", icon: <Users size={16} />, label: "Группүүд" },
+            { key: "/manage/students", icon: <User size={16} />, label: "Суралцагчид" },
+            { key: "/manage/schedule", icon: <CalendarDays size={16} />, label: "Долоо хоногийн хуваарь" },
+            { key: "/manage/sessions", icon: <CalendarClock size={16} />, label: "Хичээл, ирц" },
+            { key: "/manage/fees", icon: <Wallet size={16} />, label: "Төлбөр" },
+            { key: "/manage/venues", icon: <MapPin size={16} />, label: "Заал" },
+            { key: "/manage/announcements", icon: <Megaphone size={16} />, label: "Зарлага" },
         ];
-        if (isManager) base.push({ key: "/members", icon: <UserCog size={16} />, label: "Гишүүд" });
+        if (isManager) {
+            base.push({ key: "/manage/profile", icon: <Globe size={16} />, label: "Нээлттэй хуудас" });
+            base.push({ key: "/manage/members", icon: <UserCog size={16} />, label: "Гишүүд" });
+        }
         if (session?.isPlatformAdmin) {
             base.push({ key: "/admin", icon: <ShieldCheck size={16} />, label: "Платформ" });
         }
         return base;
     }, [isManager, session?.isPlatformAdmin]);
 
-    // /teams/12 has to light up /teams, so match on the first path segment.
-    const selected = "/" + (pathname?.split("/")[1] ?? "");
+    // /manage/groups/12 has to light up /manage/groups, so match on the first two segments.
+    const segments = pathname?.split("/").filter(Boolean) ?? [];
+    const selected = "/" + segments.slice(0, 2).join("/");
 
     return (
         <Layout style={{ minHeight: "100vh" }}>
-            <Sider breakpoint="lg" collapsedWidth="0" width={220} style={{ background: "#141922" }}>
+            <Sider breakpoint="lg" collapsedWidth="0" width={230} style={{ background: "#141922" }}>
                 <div
                     style={{
                         display: "flex", alignItems: "center", gap: 8, color: "#fff",
@@ -71,31 +76,36 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     }}
                 >
                     <div style={{ fontWeight: 600 }}>{session?.selectedTenantName ?? ""}</div>
-                    <Dropdown
-                        menu={{
-                            items: [
-                                {
-                                    key: "switch",
-                                    icon: <Repeat size={14} />,
-                                    label: "Клуб солих",
-                                    onClick: () => router.push("/club"),
-                                },
-                                {
-                                    key: "logout",
-                                    icon: <LogOut size={14} />,
-                                    label: "Гарах",
-                                    onClick: () => signOut({ callbackUrl: "/login" }),
-                                },
-                            ],
-                        }}
-                    >
-                        <Button type="text" style={{ height: 44, display: "flex", alignItems: "center", gap: 8 }}>
-                            <Avatar size={28} style={{ background: "#F26522" }}>
-                                {(session?.firstname ?? session?.phone ?? "?").slice(0, 1).toUpperCase()}
-                            </Avatar>
-                            <span>{session?.name ?? session?.phone}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <Button type="text" icon={<Store size={15} />} onClick={() => router.push("/")}>
+                            Сайт
                         </Button>
-                    </Dropdown>
+                        <Dropdown
+                            menu={{
+                                items: [
+                                    {
+                                        key: "switch",
+                                        icon: <Repeat size={14} />,
+                                        label: "Сургалт солих",
+                                        onClick: () => router.push("/club"),
+                                    },
+                                    {
+                                        key: "logout",
+                                        icon: <LogOut size={14} />,
+                                        label: "Гарах",
+                                        onClick: () => signOut({ callbackUrl: "/login" }),
+                                    },
+                                ],
+                            }}
+                        >
+                            <Button type="text" style={{ height: 44, display: "flex", alignItems: "center", gap: 8 }}>
+                                <Avatar size={28} style={{ background: "#F26522" }}>
+                                    {(session?.firstname ?? session?.phone ?? "?").slice(0, 1).toUpperCase()}
+                                </Avatar>
+                                <span>{session?.name ?? session?.phone}</span>
+                            </Button>
+                        </Dropdown>
+                    </div>
                 </Header>
                 <Content style={{ padding: 20 }}>{children}</Content>
             </Layout>

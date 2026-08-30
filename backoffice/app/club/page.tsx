@@ -1,12 +1,12 @@
 "use client";
 
-import { Button, Form, Input, Typography, App, List, Tag, Tabs, Empty, Select, Spin } from "antd";
+import { App, Button, Empty, Form, Input, List, Select, Spin, Tabs, Tag, Typography } from "antd";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Volleyball } from "lucide-react";
 import { AccountAPI, AccountAPIWithError, errorText } from "@/app/utils/API";
-import type { ClubSearchResult, TenantRequest } from "@/app/types/api";
+import { ROLES, type ClubSearchResult, type TenantRequest } from "@/app/types/api";
 
 interface SwitchResult {
     tenantid: number;
@@ -15,8 +15,8 @@ interface SwitchResult {
     token: string;
 }
 
-// Where a user lands with no club selected: pick one they already belong to, apply to register a
-// new club, or ask to join an existing one. Also reachable later via "Клуб солих".
+// Where a user lands with no training centre selected: pick one they already belong to, apply to
+// register a new one, or ask to join an existing one. Also reachable later via "Сургалт солих".
 export default function ClubPage() {
     const router = useRouter();
     const { data: session, update } = useSession();
@@ -30,11 +30,13 @@ export default function ClubPage() {
     const active = memberships.filter((m) => m.status === "active");
     const pending = memberships.filter((m) => m.status !== "active");
 
-    useEffect(() => {
-        AccountAPI<TenantRequest[]>("/api/vh/account/tenant/request")
-            .then((rows) => setRequests(rows ?? []))
-            .finally(() => setLoadingRequests(false));
+    const loadRequests = useCallback(async () => {
+        setRequests(await AccountAPI<TenantRequest[]>("/api/vh/account/tenant/request") ?? []);
     }, []);
+
+    useEffect(() => {
+        loadRequests().finally(() => setLoadingRequests(false));
+    }, [loadRequests]);
 
     const select = async (tenantid: number) => {
         setBusy(true);
@@ -45,23 +47,24 @@ export default function ClubPage() {
             message.error(errorText(res.error));
             return;
         }
-        // The per-club token lives in the session, so the proxy can pair it with the tenantid.
+        // The per-centre token lives in the session, so the proxy can pair it with the tenantid.
         await update({
             selectedTenantId: String(res.data.tenantid),
             selectedTenantName: res.data.tenantname,
             selectedRole: res.data.role,
             accessToken: res.data.token,
         });
-        router.push("/dashboard");
+        router.push("/manage/dashboard");
         router.refresh();
     };
 
     const searchClubs = async (q: string) => {
-        const rows = await AccountAPI<ClubSearchResult[]>(`/api/vh/account/clubs?q=${encodeURIComponent(q)}`);
-        setClubs(rows ?? []);
+        setClubs(await AccountAPI<ClubSearchResult[]>(`/api/vh/account/clubs?q=${encodeURIComponent(q)}`) ?? []);
     };
 
-    const applyForClub = async (values: { tenantname: string; registernumber?: string; address?: string; contactphone?: string }) => {
+    const applyForClub = async (values: {
+        tenantname: string; registernumber?: string; address?: string; contactphone?: string;
+    }) => {
         setBusy(true);
         const res = await AccountAPIWithError("/api/vh/account/tenant/request", { data: values });
         setBusy(false);
@@ -71,7 +74,7 @@ export default function ClubPage() {
             return;
         }
         message.success("Хүсэлт илгээгдлээ. Платформын админ шалгах болно");
-        setRequests(await AccountAPI<TenantRequest[]>("/api/vh/account/tenant/request") ?? []);
+        loadRequests();
     };
 
     const join = async (values: { tenantid: number; role: string }) => {
@@ -83,7 +86,7 @@ export default function ClubPage() {
             message.error(errorText(res.error));
             return;
         }
-        message.success("Хүсэлт илгээгдлээ. Клубын админ баталгаажуулна");
+        message.success("Хүсэлт илгээгдлээ. Сургалтын админ баталгаажуулна");
     };
 
     return (
@@ -96,7 +99,7 @@ export default function ClubPage() {
 
                 {active.length > 0 && (
                     <>
-                        <Typography.Title level={5} style={{ marginTop: 0 }}>Клуб сонгох</Typography.Title>
+                        <Typography.Title level={5} style={{ marginTop: 0 }}>Сургалт сонгох</Typography.Title>
                         <List
                             bordered
                             dataSource={active}
@@ -109,7 +112,7 @@ export default function ClubPage() {
                                         </Button>,
                                     ]}
                                 >
-                                    <List.Item.Meta title={m.tenantname} description={m.role} />
+                                    <List.Item.Meta title={m.tenantname} description={ROLES[m.role] ?? m.role} />
                                 </List.Item>
                             )}
                         />
@@ -130,13 +133,17 @@ export default function ClubPage() {
                     items={[
                         {
                             key: "join",
-                            label: "Клубд нэгдэх",
+                            label: "Сургалтад нэгдэх",
                             children: (
                                 <Form layout="vertical" onFinish={join} requiredMark={false}>
-                                    <Form.Item name="tenantid" label="Клуб" rules={[{ required: true, message: "Клуб сонгоно уу" }]}>
+                                    <Form.Item
+                                        name="tenantid"
+                                        label="Сургалт"
+                                        rules={[{ required: true, message: "Сургалт сонгоно уу" }]}
+                                    >
                                         <Select
                                             showSearch
-                                            placeholder="Клубын нэрээр хайх"
+                                            placeholder="Сургалтын нэрээр хайх"
                                             filterOption={false}
                                             onSearch={searchClubs}
                                             onFocus={() => searchClubs("")}
@@ -147,9 +154,9 @@ export default function ClubPage() {
                                     <Form.Item name="role" label="Хэн болж нэгдэх" initialValue="player">
                                         <Select
                                             options={[
-                                                { value: "player", label: "Тамирчин" },
+                                                { value: "player", label: "Суралцагч" },
                                                 { value: "coach", label: "Дасгалжуулагч" },
-                                                { value: "fan", label: "Дэмжигч" },
+                                                { value: "fan", label: "Эцэг эх / дэмжигч" },
                                             ]}
                                         />
                                     </Form.Item>
@@ -159,11 +166,20 @@ export default function ClubPage() {
                         },
                         {
                             key: "new",
-                            label: "Шинэ клуб бүртгүүлэх",
+                            label: "Сургалтаа бүртгүүлэх",
                             children: (
                                 <>
+                                    <Typography.Paragraph type="secondary">
+                                        Волейболын сургалт эрхэлдэг бол хүсэлтээ илгээнэ үү. Платформын админ
+                                        баталгаажуулсны дараа та системд нэвтэрч, группээ үүсгэн, суралцагчдаа
+                                        бүртгэж эхэлнэ.
+                                    </Typography.Paragraph>
                                     <Form layout="vertical" onFinish={applyForClub} requiredMark={false}>
-                                        <Form.Item name="tenantname" label="Клубын нэр" rules={[{ required: true, message: "Нэр оруулна уу" }]}>
+                                        <Form.Item
+                                            name="tenantname"
+                                            label="Сургалтын нэр"
+                                            rules={[{ required: true, message: "Нэр оруулна уу" }]}
+                                        >
                                             <Input />
                                         </Form.Item>
                                         <Form.Item name="registernumber" label="Регистрийн дугаар">
@@ -202,7 +218,8 @@ export default function ClubPage() {
                     ]}
                 />
 
-                <div style={{ marginTop: 24, textAlign: "center" }}>
+                <div style={{ marginTop: 24, display: "flex", justifyContent: "space-between" }}>
+                    <Button type="link" onClick={() => router.push("/")}>Нүүр хуудас</Button>
                     <Button type="link" onClick={() => signOut({ callbackUrl: "/login" })}>Гарах</Button>
                 </div>
             </div>

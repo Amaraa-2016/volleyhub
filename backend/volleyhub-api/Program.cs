@@ -13,8 +13,11 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<AccountService>();
-builder.Services.AddScoped<ClubService>();
-builder.Services.AddScoped<CompetitionService>();
+builder.Services.AddScoped<TrainingService>();
+builder.Services.AddScoped<ScheduleService>();
+builder.Services.AddScoped<BillingService>();
+builder.Services.AddScoped<PlatformContentService>();
+builder.Services.AddScoped<PublicSiteService>();
 
 builder.Services.AddControllers().AddNewtonsoftJson(options =>
 {

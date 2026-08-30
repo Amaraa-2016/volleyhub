@@ -23,7 +23,7 @@ function LoginForm() {
             return;
         }
         // Where the user actually lands is the middleware's call: a club is selected or it is not.
-        router.push(params.get("callbackUrl") ?? "/dashboard");
+        router.push(params.get("callbackUrl") ?? "/manage/dashboard");
         router.refresh();
     };
 

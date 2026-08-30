@@ -20,17 +20,17 @@ export default function TabsLayout() {
                 }}
             />
             <Tabs.Screen
-                name="fixtures"
+                name="schedule"
                 options={{
                     title: "Хуваарь",
                     tabBarIcon: ({ color, size }) => <Ionicons name="calendar" color={color} size={size} />,
                 }}
             />
             <Tabs.Screen
-                name="standings"
+                name="fees"
                 options={{
-                    title: "Хүснэгт",
-                    tabBarIcon: ({ color, size }) => <Ionicons name="podium" color={color} size={size} />,
+                    title: "Төлбөр",
+                    tabBarIcon: ({ color, size }) => <Ionicons name="wallet" color={color} size={size} />,
                 }}
             />
             <Tabs.Screen
