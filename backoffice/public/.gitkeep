@@ -1,0 +1,8 @@
+# Keeps public/ in git even while it holds no assets yet.
+#
+# next build --output standalone deliberately leaves public/ and .next/static out of the
+# standalone bundle, so the Dockerfile copies both by hand. Git does not track empty
+# directories, so without this file the folder never reaches the build context and the
+# image build dies on `COPY --from=builder /app/public ./public`.
+#
+# Delete this once there is a real asset in here.
