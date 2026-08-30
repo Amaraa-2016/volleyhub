@@ -71,14 +71,35 @@ public class S3FileStorage : IFileStorage
         await content.CopyToAsync(buffer, ct);
         buffer.Position = 0;
 
-        await _client.PutObjectAsync(new PutObjectRequest
+        try
         {
-            BucketName = _bucket,
-            Key = key,
-            InputStream = buffer,
-            ContentType = contentType,
-            DisablePayloadSigning = true,
-        }, ct);
+            await _client.PutObjectAsync(new PutObjectRequest
+            {
+                BucketName = _bucket,
+                Key = key,
+                InputStream = buffer,
+                ContentType = contentType,
+                // MinIO does not accept the SDK's default aws-chunked payload encoding: it answers
+                // 501, or fails the signature check, depending on the build. Turning it off sends
+                // one ordinary signed PUT with a Content-Length, which is what MinIO expects.
+                UseChunkEncoding = false,
+            }, ct);
+        }
+        catch (AmazonS3Exception ex)
+        {
+            // The S3 error code is the whole diagnosis - NoSuchBucket, AccessDenied,
+            // SignatureDoesNotMatch each mean something different - so carry it to the caller
+            // instead of letting it collapse into a generic 500.
+            _logger.LogError(ex, "Upload to {Bucket}/{Key} failed: {Code} {Status}",
+                _bucket, key, ex.ErrorCode, ex.StatusCode);
+            throw new InvalidOperationException($"storage_upload_failed|{ex.ErrorCode ?? ex.StatusCode.ToString()}");
+        }
+        catch (HttpRequestException ex)
+        {
+            // Wrong endpoint, MinIO not running, DNS - never reached the service at all.
+            _logger.LogError(ex, "Could not reach storage at {Endpoint}", _client.Config.ServiceURL);
+            throw new InvalidOperationException("storage_unreachable");
+        }
 
         return new StoredFile($"{_publicUrl}/{_bucket}/{key}", key, buffer.Length);
     }

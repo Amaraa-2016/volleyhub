@@ -117,10 +117,21 @@ const ERRORS: Record<string, string> = {
     news_not_found: "Мэдээ олдсонгүй",
     training_not_found: "Сургалт олдсонгүй",
     // upload
+    backend_unreachable: "Сервертэй холбогдож чадсангүй",
     storage_not_configured: "Зургийн сан тохируулагдаагүй байна",
+    storage_unreachable: "Зургийн сан (MinIO) руу холбогдож чадсангүй",
+    storage_upload_failed: "Зураг хадгалахад алдаа гарлаа",
     file_required: "Файл сонгоно уу",
     file_too_large: "Зургийн хэмжээ 5MB-аас хэтэрсэн байна",
     unsupported_file_type: "Зөвхөн зураг (jpg, png, webp, gif) оруулах боломжтой",
 };
 
-export const errorText = (code?: string): string => ERRORS[code ?? ""] ?? "Алдаа гарлаа";
+export const errorText = (code?: string): string => {
+    if (!code) return "Алдаа гарлаа";
+    // Storage failures carry the S3 error code after a pipe (storage_upload_failed|NoSuchBucket).
+    // Showing it saves a trip to the pod logs for the one class of error whose cause is not
+    // guessable from the message alone.
+    const [base, detail] = code.split("|");
+    const text = ERRORS[base] ?? "Алдаа гарлаа";
+    return detail ? `${text} (${detail})` : text;
+};

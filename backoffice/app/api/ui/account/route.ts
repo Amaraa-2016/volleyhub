@@ -43,7 +43,13 @@ async function handleProxy(req: NextRequest) {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token?.accountToken) headers.Authorization = `Bearer ${token.accountToken}`;
 
-    const backendRes = await fetch(backendUrl, { method, headers, body });
+    let backendRes: Response;
+    try {
+        backendRes = await fetch(backendUrl, { method, headers, body });
+    } catch {
+        // The API is down or API_BASE_URL is wrong - report it as such rather than as an HTML 500.
+        return NextResponse.json({ error: "backend_unreachable" }, { status: 502 });
+    }
 
     const resBody = await backendRes.text();
     return new NextResponse(resBody, {

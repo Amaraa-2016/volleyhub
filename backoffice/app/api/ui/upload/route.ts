@@ -40,7 +40,15 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.arrayBuffer();
-    const backendRes = await fetch(target, { method: "POST", headers, body });
+
+    let backendRes: Response;
+    try {
+        backendRes = await fetch(target, { method: "POST", headers, body });
+    } catch {
+        // The API is down or API_BASE_URL is wrong. Without this the route throws and Next answers
+        // with an HTML 500, which the client can only report as a generic failure.
+        return NextResponse.json({ error: "backend_unreachable" }, { status: 502 });
+    }
 
     const resBody = await backendRes.text();
     return new NextResponse(resBody, {
