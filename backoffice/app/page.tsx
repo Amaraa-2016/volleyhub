@@ -110,7 +110,12 @@ export default function HomePage() {
                                     <div className="site-card__body">
                                         <div className="site-card__title">{c.name}</div>
                                         <div className="site-card__meta">{c.tenantname}</div>
-                                        {!!c.agegroup && <div className="site-card__meta">Нас: {c.agegroup}</div>}
+                                        {!!(c.level || c.agegroup) && (
+                                            <div className="site-card__meta">
+                                                {[c.level, c.agegroup && `Нас: ${c.agegroup}`]
+                                                    .filter(Boolean).join(" · ")}
+                                            </div>
+                                        )}
                                         {!!c.address && <div className="site-card__meta">{c.address}</div>}
                                         <div className="site-card__price">
                                             {c.fee_amount > 0 ? `${money(c.fee_amount)} / сар` : "Үнэ тодорхойгүй"}
@@ -146,6 +151,11 @@ export default function HomePage() {
                                     <div className="site-card__body">
                                         <div className="site-card__title">{n.title}</div>
                                         {!!n.summary && <div className="site-card__meta">{n.summary}</div>}
+                                        {!!n.source && (
+                                            <div className="site-card__meta" style={{ marginTop: "auto", paddingTop: 8 }}>
+                                                Эх сурвалж: {n.source}
+                                            </div>
+                                        )}
                                     </div>
                                 </Link>
                             ))}

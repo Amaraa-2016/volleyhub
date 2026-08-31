@@ -68,6 +68,14 @@ export default function NewsPage() {
                                         </div>
                                         <div className="site-card__title">{n.title}</div>
                                         {!!n.summary && <div className="site-card__meta">{n.summary}</div>}
+                                        {/* Plain text, not a link: the whole card is already an
+                                            anchor, and an anchor inside an anchor is invalid. The
+                                            detail page carries the clickable source. */}
+                                        {!!n.source && (
+                                            <div className="site-card__meta" style={{ marginTop: "auto", paddingTop: 8 }}>
+                                                Эх сурвалж: {n.source}
+                                            </div>
+                                        )}
                                     </div>
                                 </Link>
                             ))}

@@ -104,7 +104,12 @@ function TrainingsList() {
                                     <div className="site-card__body">
                                         <div className="site-card__title">{c.name}</div>
                                         <div className="site-card__meta">{c.tenantname}</div>
-                                        {!!c.agegroup && <div className="site-card__meta">Нас: {c.agegroup}</div>}
+                                        {!!(c.level || c.agegroup) && (
+                                            <div className="site-card__meta">
+                                                {[c.level, c.agegroup && `Нас: ${c.agegroup}`]
+                                                    .filter(Boolean).join(" · ")}
+                                            </div>
+                                        )}
                                         {!!c.address && <div className="site-card__meta">{c.address}</div>}
 
                                         {c.schedule.length > 0 && (

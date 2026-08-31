@@ -4,11 +4,21 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Skeleton } from "antd";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
 import { PublicAPI } from "@/app/utils/API";
 import { NEWS_CATEGORIES, type News } from "@/app/types/api";
+
+// The bare host is a readable stand-in when a link was pasted without naming the source. An
+// unparseable value falls back to itself rather than throwing over a cosmetic label.
+function hostOf(url: string): string {
+    try {
+        return new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+        return url;
+    }
+}
 
 export default function NewsDetailPage() {
     const params = useParams<{ id: string }>();
@@ -60,11 +70,27 @@ export default function NewsDetailPage() {
                                 <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.8, fontSize: 16 }}>{post.body}</div>
                             )}
 
-                            {!!post.source && (
-                                <div style={{ marginTop: 28, color: "#79808A" }}>
+                            {/* Either half is enough to be worth showing: a link with no name still
+                                credits the source, and a name with no link still says where it came
+                                from. When only the URL is given, its host stands in for the name. */}
+                            {!!(post.source || post.source_url) && (
+                                <div
+                                    style={{
+                                        marginTop: 32, paddingTop: 16, borderTop: "1px solid #eceef1",
+                                        color: "#79808A",
+                                    }}
+                                >
                                     Эх сурвалж:{" "}
                                     {post.source_url ? (
-                                        <a href={post.source_url} target="_blank" rel="noreferrer">{post.source}</a>
+                                        <a
+                                            href={post.source_url}
+                                            target="_blank"
+                                            rel="noreferrer noopener"
+                                            style={{ color: "#F26522", fontWeight: 600 }}
+                                        >
+                                            {post.source || hostOf(post.source_url)}
+                                            <ExternalLink size={13} style={{ verticalAlign: "-2px", marginLeft: 4 }} />
+                                        </a>
                                     ) : post.source}
                                 </div>
                             )}
