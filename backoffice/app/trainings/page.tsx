@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Input, Segmented, Skeleton, Tag } from "antd";
-import { ExternalLink, GraduationCap, List as ListIcon, Map as MapIcon, MapPin, Search } from "lucide-react";
+import { ExternalLink, GraduationCap, List as ListIcon, Map as MapIcon, Search } from "lucide-react";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
 import CenterStrip from "@/app/components/CenterStrip";
@@ -46,7 +46,7 @@ function TrainingsList() {
     }, []);
 
     // A course is pinnable only once its Google Maps link yielded coordinates; the rest are counted
-    // under the list rather than silently dropped.
+    // under the map rather than silently dropped.
     const mappable = useMemo(
         () => (rows ?? []).filter((c) => c.latitude != null && c.longitude != null),
         [rows],
@@ -177,38 +177,7 @@ function TrainingsList() {
                             Байршил тэмдэглэсэн сургалт алга байна. Жагсаалт хэсгээс үзнэ үү.
                         </div>
                     ) : (
-                        <div className="map-layout">
-                            <div className="map-list">
-                                {mappable.map((c) => {
-                                    const active = focused?.tenantid === c.tenantid && focused?.groupid === c.groupid;
-                                    return (
-                                        <button
-                                            key={`${c.tenantid}-${c.groupid}`}
-                                            type="button"
-                                            className={`map-item${active ? " map-item--active" : ""}`}
-                                            onClick={() => setFocused(c)}
-                                        >
-                                            <div className="map-item__title">{c.name}</div>
-                                            <div className="map-item__meta">{c.tenantname}</div>
-                                            <div className="map-item__meta">
-                                                <MapPin size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} />
-                                                {c.address}
-                                            </div>
-                                            <div className="map-item__price">
-                                                {c.fee_amount > 0 ? `${money(c.fee_amount)} / сар` : "Үнэ тодорхойгүй"}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-
-                                {unmappable.length > 0 && (
-                                    <div className="map-item__note">
-                                        {unmappable.length} сургалт байршлаа тэмдэглээгүй тул зураг дээр
-                                        харагдахгүй.
-                                    </div>
-                                )}
-                            </div>
-
+                        <>
                             <div className="map-panel">
                                 <CourseMap courses={mappable} selected={focused} onSelect={setFocused} />
                                 {focused && (
@@ -231,7 +200,14 @@ function TrainingsList() {
                                     </div>
                                 )}
                             </div>
-                        </div>
+
+                            {unmappable.length > 0 && (
+                                <div className="map-note">
+                                    {unmappable.length} сургалт байршлаа тэмдэглээгүй тул зураг дээр
+                                    харагдахгүй.
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </section>
