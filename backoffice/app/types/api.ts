@@ -339,6 +339,7 @@ export interface TenantRequest {
     registernumber?: string | null;
     address?: string | null;
     contactphone?: string | null;
+    logo?: string | null;
     status: string;
     note?: string | null;
     tenantid?: number | null;
@@ -356,6 +357,10 @@ export interface ClubSearchResult {
 // ---- shared labels --------------------------------------------------------
 
 export const GENDERS: Record<number, string> = { 1: "Эрэгтэй", 2: "Эмэгтэй", 3: "Холимог" };
+
+// The canonical course levels. Stored as free text so a centre is never blocked by a list it did
+// not write, but offered as suggestions so the common ones stay spelled the same everywhere.
+export const LEVELS = ["Анхан шат", "Дунд шат", "Ахисан шат", "Мэргэжлийн"];
 
 export const STUDENT_STATUS: Record<number, string> = { 1: "Суралцаж буй", 2: "Түр завсарласан", 3: "Гарсан" };
 

@@ -8,6 +8,7 @@ import { API_BASE_URL } from "@/app/utils/backend";
 //
 // `scope` picks which token goes with it, and therefore which upload endpoint is allowed:
 //   training  -> the per-centre token, for that centre's own gallery
+//   account   -> the account token, for someone applying who has no centre yet
 //   platform  -> the account token, for news covers and product photos
 export async function POST(req: NextRequest) {
     const url = new URL(req.url);
@@ -24,12 +25,14 @@ export async function POST(req: NextRequest) {
     if (contentType) headers["Content-Type"] = contentType;
 
     let target: string;
-    if (scope === "platform") {
+    if (scope === "platform" || scope === "account") {
         if (!token.accountToken) {
             return NextResponse.json({ error: "unauthorized" }, { status: 401 });
         }
         headers.Authorization = `Bearer ${token.accountToken}`;
-        target = `${API_BASE_URL}/api/vh/media/platform${folder ? `?folder=${encodeURIComponent(folder)}` : ""}`;
+        target = scope === "account"
+            ? `${API_BASE_URL}/api/vh/media/account`
+            : `${API_BASE_URL}/api/vh/media/platform${folder ? `?folder=${encodeURIComponent(folder)}` : ""}`;
     } else {
         if (!token.accessToken || !token.selectedTenantId) {
             return NextResponse.json({ error: "no_club_selected" }, { status: 409 });

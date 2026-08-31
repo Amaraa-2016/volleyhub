@@ -176,10 +176,6 @@ public class PublicScheduleRT
     public int end_minute { get; set; }
 }
 
-public class LogoBT
-{
-    public string? logo { get; set; }
-}
 
 // What a training centre edits about its own public listing.
 public class TrainingProfileBT

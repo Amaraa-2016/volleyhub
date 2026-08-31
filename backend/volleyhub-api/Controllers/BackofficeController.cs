@@ -84,12 +84,6 @@ public class BackofficeController : ApiControllerBase
     public Task<IActionResult> SaveProfile([FromBody] TrainingProfileBT data) =>
         Run(async () => { AssertManager(); return await _site.SaveProfile(TenantId(), data); });
 
-    // Just the logo, for the dashboard. A partial profile object sent to the endpoint above would
-    // blank every field it omitted.
-    [HttpPut("profile/logo")]
-    public Task<IActionResult> SaveLogo([FromBody] LogoBT data) =>
-        Run(async () => { AssertManager(); return await _site.SaveLogo(TenantId(), data.logo); });
-
     // ---- groups -----------------------------------------------------------
 
     [HttpGet("groups")]

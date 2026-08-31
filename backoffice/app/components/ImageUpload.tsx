@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
 import { errorText } from "@/app/utils/API";
 
-type Scope = "training" | "platform";
+type Scope = "training" | "account" | "platform";
 
 interface UploadResult {
     url: string;

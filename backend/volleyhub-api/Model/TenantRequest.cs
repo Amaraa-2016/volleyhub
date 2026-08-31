@@ -17,6 +17,9 @@ public class TenantRequest
     public string? address { get; set; }
     [MaxLength(100)]
     public string? contactphone { get; set; }
+    // Uploaded while applying, before any tenant exists. Copied onto the centre on approval, so a
+    // newly approved centre already has a logo in the public directory.
+    public string? logo { get; set; }
     // pending | approved | rejected
     [MaxLength(20)]
     public string status { get; set; } = "pending";

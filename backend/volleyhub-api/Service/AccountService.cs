@@ -312,6 +312,7 @@ public class AccountService
             registernumber = Norm(data.registernumber) is { Length: > 0 } rn ? rn : null,
             address = Norm(data.address) is { Length: > 0 } ad ? ad : null,
             contactphone = Norm(data.contactphone) is { Length: > 0 } cp ? cp : null,
+            logo = Norm(data.logo) is { Length: > 0 } lg ? lg : null,
             status = "pending",
             created = DateTime.UtcNow,
         };
@@ -462,6 +463,9 @@ public class AccountService
             registernumber = request.registernumber,
             address = request.address,
             contactphone = request.contactphone,
+            // Carried over from the application, so an approved centre appears in the directory
+            // with its logo already in place.
+            logo = request.logo,
             locale = "mn",
             currency = "MNT",
             isactive = true,
@@ -539,6 +543,7 @@ public class AccountService
         registernumber = r.registernumber,
         address = r.address,
         contactphone = r.contactphone,
+        logo = r.logo,
         status = r.status,
         note = r.note,
         tenantid = r.tenantid,

@@ -161,18 +161,6 @@ public class PublicSiteService
         return cards;
     }
 
-    // Only the logo, so saving it from the dashboard cannot blank the rest of the profile the way
-    // posting a partial profile object would.
-    public async Task<object> SaveLogo(int tenantId, string? logo)
-    {
-        var t = await _db.tenant.FirstOrDefaultAsync(x => x.tenantid == tenantId)
-            ?? throw new InvalidOperationException("training_not_found");
-
-        t.logo = (logo ?? "").Trim() is { Length: > 0 } v ? v : null;
-        await _db.SaveChangesAsync();
-        return new { ok = true, t.logo };
-    }
-
     public async Task<CourseDetailRT> Course(int tenantId, long groupId)
     {
         var tenant = await _db.tenant.AsNoTracking()

@@ -67,6 +67,18 @@ public class MediaController : ApiControllerBase
             return await Store(file, $"trainings/{TenantId()}");
         });
 
+    // For someone who has an account but no centre yet - the logo on a registration application.
+    // Scoped by account id, so one applicant's uploads cannot land in another's folder.
+    [HttpPost("account")]
+    [RequestSizeLimit(MaxBytes + 8192)]
+    public Task<IActionResult> UploadAccount(IFormFile? file) =>
+        Run(async () =>
+        {
+            var accountId = AccountId();
+            if (accountId <= 0) throw new UnauthorizedAccessException("unauthorized");
+            return await Store(file, $"applications/{accountId}");
+        });
+
     // News covers and product photos.
     [HttpPost("platform")]
     [RequestSizeLimit(MaxBytes + 8192)]

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-    App, Button, DatePicker, Divider, Form, Input, InputNumber, Modal, Popconfirm,
+    App, AutoComplete, Button, DatePicker, Divider, Form, Input, InputNumber, Modal, Popconfirm,
     Select, Switch, Table, Tag, TimePicker,
 } from "antd";
 import { useCallback, useEffect, useState } from "react";
@@ -12,7 +12,7 @@ import AppShell from "@/app/components/AppShell";
 import { ImageUpload } from "@/app/components/ImageUpload";
 import { API, APIWithError, errorText } from "@/app/utils/API";
 import {
-    GENDERS, WEEKDAYS, minuteToTime, money, timeToMinute,
+    GENDERS, LEVELS, WEEKDAYS, minuteToTime, money, timeToMinute,
     type Coach, type Group,
 } from "@/app/types/api";
 
@@ -279,6 +279,20 @@ export default function CoursesPage() {
 
                     <Form.Item name="agegroup" label="Насны ангилал">
                         <Input placeholder="18+, 8-12 нас, U16" />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="level"
+                        label="Түвшин"
+                        tooltip="Жагсаалтаас сонгох, эсвэл өөрийн нэршлээ бичиж болно"
+                    >
+                        <AutoComplete
+                            allowClear
+                            placeholder="Анхан шат"
+                            options={LEVELS.map((value) => ({ value }))}
+                            filterOption={(input, option) =>
+                                (option?.value ?? "").toLowerCase().includes(input.toLowerCase())}
+                        />
                     </Form.Item>
 
                     <Form.Item name="start_date" label="Эхлэх огноо">

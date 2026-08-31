@@ -85,6 +85,7 @@ public class TenantRequestBT
     public string? registernumber { get; set; }
     public string? address { get; set; }
     public string? contactphone { get; set; }
+    public string? logo { get; set; }
 }
 
 public class TenantRequestRT
@@ -97,6 +98,7 @@ public class TenantRequestRT
     public string? registernumber { get; set; }
     public string? address { get; set; }
     public string? contactphone { get; set; }
+    public string? logo { get; set; }
     public string status { get; set; } = string.Empty;
     public string? note { get; set; }
     public int? tenantid { get; set; }

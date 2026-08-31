@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Volleyball } from "lucide-react";
 import { AccountAPI, AccountAPIWithError, errorText } from "@/app/utils/API";
+import { ImageUpload } from "@/app/components/ImageUpload";
 import { ROLES, type ClubSearchResult, type TenantRequest } from "@/app/types/api";
 
 interface SwitchResult {
@@ -63,7 +64,7 @@ export default function ClubPage() {
     };
 
     const applyForClub = async (values: {
-        tenantname: string; registernumber?: string; address?: string; contactphone?: string;
+        tenantname: string; registernumber?: string; address?: string; contactphone?: string; logo?: string;
     }) => {
         setBusy(true);
         const res = await AccountAPIWithError("/api/vh/account/tenant/request", { data: values });
@@ -190,6 +191,16 @@ export default function ClubPage() {
                                         </Form.Item>
                                         <Form.Item name="contactphone" label="Холбоо барих утас">
                                             <Input />
+                                        </Form.Item>
+                                        <Form.Item
+                                            name="logo"
+                                            label="Лого"
+                                            tooltip="Батлагдсаны дараа сайт дээрх төвүүдийн жагсаалтад харагдана"
+                                        >
+                                            {/* Uploaded before any centre exists, so it goes to the
+                                                account-scoped endpoint and is copied onto the centre
+                                                when the application is approved. */}
+                                            <ImageUpload scope="account" height={110} />
                                         </Form.Item>
                                         <Button type="primary" htmlType="submit" loading={busy}>Хүсэлт илгээх</Button>
                                     </Form>

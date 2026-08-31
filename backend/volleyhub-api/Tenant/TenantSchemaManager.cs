@@ -97,6 +97,7 @@ public class TenantSchemaManager
                 created timestamp with time zone NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_tenant_request_status ON public.tenant_request (status);
+            ALTER TABLE public.tenant_request ADD COLUMN IF NOT EXISTS logo text;
 
             ALTER TABLE public.tenant ADD COLUMN IF NOT EXISTS registernumber character varying(100);
             ALTER TABLE public.tenant ADD COLUMN IF NOT EXISTS address character varying(500);
