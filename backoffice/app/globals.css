@@ -475,6 +475,122 @@ a {
     letter-spacing: -0.6px;
 }
 
+/* ---- course list / map toolbar ---- */
+
+.trainings-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 20px 0 24px;
+}
+
+/* The list scrolls beside a map that stays put, so picking one course after another never moves
+   the map out of view. */
+.map-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.map-list {
+    max-height: 620px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 4px;
+}
+
+.map-item {
+    text-align: left;
+    background: #fff;
+    border: 1px solid #eceef1;
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.map-item:hover {
+    border-color: var(--vh-accent);
+}
+
+.map-item--active {
+    border-color: var(--vh-accent);
+    box-shadow: 0 0 0 1px var(--vh-accent) inset;
+}
+
+.map-item__title {
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.map-item__meta {
+    color: #79808a;
+    font-size: 13px;
+    margin-top: 2px;
+}
+
+.map-item__price {
+    margin-top: 8px;
+    font-weight: 700;
+    color: var(--vh-accent);
+}
+
+.map-item__note {
+    color: #79808a;
+    font-size: 13px;
+    padding: 8px 2px;
+}
+
+.map-panel {
+    position: sticky;
+    top: 84px;
+    border: 1px solid #eceef1;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.map-frame {
+    display: block;
+    width: 100%;
+    height: 520px;
+    border: 0;
+}
+
+.map-panel__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    border-top: 1px solid #eceef1;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 860px) {
+    .map-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .map-panel {
+        position: static;
+        order: -1;
+    }
+
+    .map-frame {
+        height: 320px;
+    }
+
+    .map-list {
+        max-height: none;
+    }
+}
+
 /* ---- training centre logo strip ---- */
 
 .center-strip {

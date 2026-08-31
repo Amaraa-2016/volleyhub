@@ -258,6 +258,7 @@ export interface CourseCard {
     start_date?: string | null;
     address?: string | null;
     phone?: string | null;
+    map_url?: string | null;
     schedule: PublicSchedule[];
 }
 
@@ -273,7 +274,6 @@ export interface PublicCoach {
 
 export interface CourseDetail extends CourseCard {
     notes?: string | null;
-    map_url?: string | null;
     venuename?: string | null;
     tenantphone?: string | null;
     tenantlogo?: string | null;

@@ -143,6 +143,8 @@ public class CourseCardRT
     public DateTime? start_date { get; set; }
     public string? address { get; set; }
     public string? phone { get; set; }
+    // Carried on the card as well as the detail, because the map view links out from the list.
+    public string? map_url { get; set; }
     public List<PublicScheduleRT> schedule { get; set; } = new();
 }
 
@@ -150,7 +152,6 @@ public class CourseCardRT
 public class CourseDetailRT : CourseCardRT
 {
     public string? notes { get; set; }
-    public string? map_url { get; set; }
     public string? venuename { get; set; }
     public string? tenantphone { get; set; }
     public string? tenantlogo { get; set; }

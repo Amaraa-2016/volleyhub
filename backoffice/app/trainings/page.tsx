@@ -1,15 +1,26 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Input, Skeleton, Tag } from "antd";
-import { GraduationCap, Search } from "lucide-react";
+import { Button, Input, Segmented, Skeleton, Tag } from "antd";
+import { ExternalLink, GraduationCap, List as ListIcon, Map as MapIcon, MapPin, Search } from "lucide-react";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
 import CenterStrip from "@/app/components/CenterStrip";
 import { PublicAPI } from "@/app/utils/API";
 import { WEEKDAYS, minuteToTime, money, type CenterCard, type CourseCard } from "@/app/types/api";
+
+type View = "list" | "map";
+
+// Courses carry an address and a Google Maps link, not coordinates, so the map view centres on one
+// course at a time by address rather than dropping every pin at once. The embed needs no API key;
+// plotting them all together would mean storing latitude/longitude per course first.
+const embedSrc = (address: string) =>
+    `https://www.google.com/maps?q=${encodeURIComponent(address)}&hl=mn&z=15&output=embed`;
+
+const externalMap = (course: CourseCard) =>
+    course.map_url ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.address ?? "")}`;
 
 function TrainingsList() {
     const router = useRouter();
@@ -23,6 +34,8 @@ function TrainingsList() {
     const [rows, setRows] = useState<CourseCard[]>();
     const [centers, setCenters] = useState<CenterCard[]>([]);
     const [search, setSearch] = useState("");
+    const [view, setView] = useState<View>("list");
+    const [focused, setFocused] = useState<CourseCard>();
 
     const load = useCallback(async () => {
         const query = new URLSearchParams();
@@ -36,6 +49,21 @@ function TrainingsList() {
     useEffect(() => {
         PublicAPI<CenterCard[]>("/api/vh/public/centers").then((c) => setCenters(c ?? []));
     }, []);
+
+    // Only courses with an address can be placed; the rest are listed under the map as unplaceable
+    // rather than silently dropped.
+    const mappable = useMemo(() => (rows ?? []).filter((c) => !!c.address), [rows]);
+    const unmappable = useMemo(() => (rows ?? []).filter((c) => !c.address), [rows]);
+
+    // Keep the focused course valid as filters change.
+    useEffect(() => {
+        if (mappable.length === 0) { setFocused(undefined); return; }
+        setFocused((current) => {
+            const stillThere = current
+                && mappable.some((c) => c.tenantid === current.tenantid && c.groupid === current.groupid);
+            return stillThere ? current : mappable[0];
+        });
+    }, [mappable]);
 
     const selectCenter = (tenantid?: number) => {
         setRows(undefined);
@@ -66,13 +94,21 @@ function TrainingsList() {
                         </>
                     )}
 
-                    <div style={{ margin: "20px 0 24px" }}>
+                    <div className="trainings-toolbar">
                         <Input
                             prefix={<Search size={14} />}
                             placeholder="Сургалт, хаяг, насны ангиллаар хайх"
                             allowClear
                             style={{ maxWidth: 340 }}
                             onChange={(e) => setSearch(e.target.value)}
+                        />
+                        <Segmented
+                            value={view}
+                            onChange={(v) => setView(v as View)}
+                            options={[
+                                { value: "list", label: "Жагсаалт", icon: <ListIcon size={14} /> },
+                                { value: "map", label: "Газрын зураг", icon: <MapIcon size={14} /> },
+                            ]}
                         />
                     </div>
 
@@ -90,7 +126,7 @@ function TrainingsList() {
                                 ? `${selectedName} дээр нээлттэй сургалт алга байна.`
                                 : "Одоогоор нээлттэй сургалт алга байна."}
                         </div>
-                    ) : (
+                    ) : view === "list" ? (
                         <div className="site-grid">
                             {rows.map((c) => (
                                 <Link
@@ -134,6 +170,71 @@ function TrainingsList() {
                                     </div>
                                 </Link>
                             ))}
+                        </div>
+                    ) : mappable.length === 0 ? (
+                        <div className="site-empty">
+                            Хаяг оруулсан сургалт алга байна. Жагсаалт хэсгээс үзнэ үү.
+                        </div>
+                    ) : (
+                        <div className="map-layout">
+                            <div className="map-list">
+                                {mappable.map((c) => {
+                                    const active = focused?.tenantid === c.tenantid && focused?.groupid === c.groupid;
+                                    return (
+                                        <button
+                                            key={`${c.tenantid}-${c.groupid}`}
+                                            type="button"
+                                            className={`map-item${active ? " map-item--active" : ""}`}
+                                            onClick={() => setFocused(c)}
+                                        >
+                                            <div className="map-item__title">{c.name}</div>
+                                            <div className="map-item__meta">{c.tenantname}</div>
+                                            <div className="map-item__meta">
+                                                <MapPin size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} />
+                                                {c.address}
+                                            </div>
+                                            <div className="map-item__price">
+                                                {c.fee_amount > 0 ? `${money(c.fee_amount)} / сар` : "Үнэ тодорхойгүй"}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+
+                                {unmappable.length > 0 && (
+                                    <div className="map-item__note">
+                                        {unmappable.length} сургалт хаяггүй тул зураг дээр харагдахгүй.
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="map-panel">
+                                {focused && (
+                                    <>
+                                        <iframe
+                                            key={`${focused.tenantid}-${focused.groupid}`}
+                                            className="map-frame"
+                                            src={embedSrc(focused.address!)}
+                                            loading="lazy"
+                                            referrerPolicy="no-referrer-when-downgrade"
+                                            title={focused.name}
+                                        />
+                                        <div className="map-panel__foot">
+                                            <div>
+                                                <div style={{ fontWeight: 700 }}>{focused.name}</div>
+                                                <div style={{ color: "#79808A", fontSize: 13 }}>{focused.address}</div>
+                                            </div>
+                                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                                <a href={externalMap(focused)} target="_blank" rel="noreferrer">
+                                                    <Button icon={<ExternalLink size={14} />}>Google Map</Button>
+                                                </a>
+                                                <Link href={`/trainings/${focused.tenantid}/${focused.groupid}`}>
+                                                    <Button type="primary">Дэлгэрэнгүй</Button>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

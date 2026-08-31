@@ -110,6 +110,7 @@ public class PublicSiteService
                         start_date = g.start_date,
                         address = g.address,
                         phone = g.phone,
+                        map_url = g.map_url,
                         schedule = schedule.TryGetValue(g.groupid, out var sch) ? sch : [],
                     });
                 }
