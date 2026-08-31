@@ -4,17 +4,22 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Skeleton } from "antd";
 import { ArrowRight, CalendarCheck, MapPin, Users, Wallet } from "lucide-react";
+import { useRouter } from "next/navigation";
 import SiteShell from "@/app/components/SiteShell";
+import CenterStrip from "@/app/components/CenterStrip";
 import { PublicAPI } from "@/app/utils/API";
-import { money, type CourseCard, type News, type Product } from "@/app/types/api";
+import { money, type CenterCard, type CourseCard, type News, type Product } from "@/app/types/api";
 
 export default function HomePage() {
+    const router = useRouter();
     const [trainings, setTrainings] = useState<CourseCard[]>();
+    const [centers, setCenters] = useState<CenterCard[]>([]);
     const [news, setNews] = useState<News[]>();
     const [products, setProducts] = useState<Product[]>();
 
     useEffect(() => {
         PublicAPI<CourseCard[]>("/api/vh/public/trainings").then((rows) => setTrainings(rows ?? []));
+        PublicAPI<CenterCard[]>("/api/vh/public/centers").then((rows) => setCenters(rows ?? []));
         PublicAPI<News[]>("/api/vh/public/news?take=3").then((rows) => setNews(rows ?? []));
         PublicAPI<Product[]>("/api/vh/public/products").then((rows) => setProducts(rows ?? []));
     }, []);
@@ -59,7 +64,26 @@ export default function HomePage() {
                 </div>
             </section>
 
-            <section className="site-section site-section--muted">
+            {centers.length > 0 && (
+                <section className="site-section site-section--muted">
+                    <div className="site-container">
+                        <div className="site-section__head">
+                            <h2>Сургалтын төвүүд</h2>
+                            <Link href="/trainings">
+                                Бүгдийг харах <ArrowRight size={14} style={{ verticalAlign: "-2px" }} />
+                            </Link>
+                        </div>
+                        {/* Clicking a logo opens the course list already filtered to that centre. */}
+                        <CenterStrip
+                            centers={centers}
+                            onSelect={(tenantid) =>
+                                router.push(tenantid ? `/trainings?center=${tenantid}` : "/trainings")}
+                        />
+                    </div>
+                </section>
+            )}
+
+            <section className="site-section">
                 <div className="site-container">
                     <div className="site-section__head">
                         <h2>Сургалтууд</h2>
@@ -99,7 +123,7 @@ export default function HomePage() {
                 </div>
             </section>
 
-            <section className="site-section">
+            <section className="site-section site-section--muted">
                 <div className="site-container">
                     <div className="site-section__head">
                         <h2>Мэдээ</h2>
@@ -131,7 +155,7 @@ export default function HomePage() {
             </section>
 
             {!!products?.length && (
-                <section className="site-section site-section--muted">
+                <section className="site-section">
                     <div className="site-container">
                         <div className="site-section__head">
                             <h2>Дэлгүүр</h2>

@@ -295,6 +295,75 @@ a {
     letter-spacing: -0.6px;
 }
 
+/* ---- training centre logo strip ---- */
+
+.center-strip {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding: 4px 2px 12px;
+    scrollbar-width: thin;
+}
+
+.center-chip {
+    flex: 0 0 auto;
+    width: 104px;
+    padding: 12px 8px;
+    border: 1px solid #eceef1;
+    border-radius: 12px;
+    background: #fff;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.center-chip:hover {
+    border-color: #d6dae0;
+    transform: translateY(-2px);
+}
+
+.center-chip--active {
+    border-color: #f26522;
+    box-shadow: 0 0 0 1px #f26522 inset;
+}
+
+/* A fixed round window, so a wide banner logo and a square badge sit the same way. */
+.center-chip__logo {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 8px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #f0f2f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9aa3b0;
+}
+
+.center-chip__logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.center-chip__name {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #1f2329;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.center-chip__count {
+    font-size: 11px;
+    color: #79808a;
+    margin-top: 2px;
+}
+
 .site-empty {
     padding: 48px 0;
     text-align: center;

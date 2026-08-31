@@ -234,6 +234,14 @@ export interface PublicSchedule {
     end_minute: number;
 }
 
+// A training centre in the logo strip. Centres with no active course are left out by the API.
+export interface CenterCard {
+    tenantid: number;
+    tenantname: string;
+    logo?: string | null;
+    coursecount: number;
+}
+
 // The public site lists courses, not organisations: tenantid + groupid together identify one.
 export interface CourseCard {
     tenantid: number;

@@ -38,10 +38,11 @@ public class PublicSiteService
 
     // ---- directory --------------------------------------------------------
 
-    public async Task<List<CourseCardRT>> Courses(string? search)
+    // `tenantId` narrows the list to one centre, which is what the logo strip does when clicked.
+    public async Task<List<CourseCardRT>> Courses(string? search, int? tenantId = null)
     {
         var tenants = await _db.tenant.AsNoTracking()
-            .Where(t => t.isactive)
+            .Where(t => t.isactive && (tenantId == null || t.tenantid == tenantId))
             .OrderBy(t => t.tenantname)
             .ToListAsync();
 
@@ -122,6 +123,54 @@ public class PublicSiteService
         }
 
         return cards;
+    }
+
+    // The logo strip. A centre with no active course is left out on purpose: clicking its logo
+    // would land on an empty list, which reads as a broken site rather than an empty centre.
+    public async Task<List<CenterCardRT>> Centers()
+    {
+        var tenants = await _db.tenant.AsNoTracking()
+            .Where(t => t.isactive)
+            .OrderBy(t => t.tenantname)
+            .ToListAsync();
+
+        var cards = new List<CenterCardRT>();
+        foreach (var tenant in tenants)
+        {
+            try
+            {
+                await using var db = OpenTenant(tenant.tenantid);
+                var count = await db.training_group.AsNoTracking()
+                    .CountAsync(g => !g.is_deleted && g.isactive);
+                if (count == 0) continue;
+
+                cards.Add(new CenterCardRT
+                {
+                    tenantid = tenant.tenantid,
+                    tenantname = tenant.tenantname,
+                    logo = tenant.logo,
+                    coursecount = count,
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Skipped tenant {Tenant} while listing centers", tenant.tenantid);
+            }
+        }
+
+        return cards;
+    }
+
+    // Only the logo, so saving it from the dashboard cannot blank the rest of the profile the way
+    // posting a partial profile object would.
+    public async Task<object> SaveLogo(int tenantId, string? logo)
+    {
+        var t = await _db.tenant.FirstOrDefaultAsync(x => x.tenantid == tenantId)
+            ?? throw new InvalidOperationException("training_not_found");
+
+        t.logo = (logo ?? "").Trim() is { Length: > 0 } v ? v : null;
+        await _db.SaveChangesAsync();
+        return new { ok = true, t.logo };
     }
 
     public async Task<CourseDetailRT> Course(int tenantId, long groupId)

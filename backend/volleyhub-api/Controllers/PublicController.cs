@@ -56,9 +56,14 @@ public class PublicController : ApiControllerBase
 
     // ---- course directory -------------------------------------------------
 
+    // `center` narrows the list to one training centre - what the logo strip does when clicked.
     [HttpGet("trainings")]
-    public Task<IActionResult> Trainings([FromQuery] string? q) =>
-        Run(async () => await _site.Courses(q));
+    public Task<IActionResult> Trainings([FromQuery] string? q, [FromQuery] int? center) =>
+        Run(async () => await _site.Courses(q, center));
+
+    [HttpGet("centers")]
+    public Task<IActionResult> Centers() =>
+        Run(async () => await _site.Centers());
 
     // A course is identified by its centre and its id together: group ids are only unique inside
     // one centre's schema.

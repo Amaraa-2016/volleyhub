@@ -1,24 +1,48 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Input, Skeleton, Tag } from "antd";
 import { GraduationCap, Search } from "lucide-react";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
+import CenterStrip from "@/app/components/CenterStrip";
 import { PublicAPI } from "@/app/utils/API";
-import { WEEKDAYS, minuteToTime, money, type CourseCard } from "@/app/types/api";
+import { WEEKDAYS, minuteToTime, money, type CenterCard, type CourseCard } from "@/app/types/api";
 
-export default function TrainingsPage() {
+function TrainingsList() {
+    const router = useRouter();
+    const params = useSearchParams();
+
+    // The selected centre lives in the URL so the filtered view can be shared and survives a
+    // reload - the home page links straight into it.
+    const centerParam = params.get("center");
+    const center = centerParam ? Number(centerParam) : undefined;
+
     const [rows, setRows] = useState<CourseCard[]>();
+    const [centers, setCenters] = useState<CenterCard[]>([]);
     const [search, setSearch] = useState("");
 
     const load = useCallback(async () => {
-        const suffix = search ? `?q=${encodeURIComponent(search)}` : "";
+        const query = new URLSearchParams();
+        if (search) query.set("q", search);
+        if (center) query.set("center", String(center));
+        const suffix = query.toString() ? `?${query}` : "";
         setRows(await PublicAPI<CourseCard[]>(`/api/vh/public/trainings${suffix}`) ?? []);
-    }, [search]);
+    }, [search, center]);
 
     useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        PublicAPI<CenterCard[]>("/api/vh/public/centers").then((c) => setCenters(c ?? []));
+    }, []);
+
+    const selectCenter = (tenantid?: number) => {
+        setRows(undefined);
+        router.push(tenantid ? `/trainings?center=${tenantid}` : "/trainings");
+    };
+
+    const selectedName = centers.find((c) => c.tenantid === center)?.tenantname;
 
     return (
         <SiteShell>
@@ -33,7 +57,16 @@ export default function TrainingsPage() {
 
             <section className="site-section">
                 <div className="site-container">
-                    <div style={{ marginBottom: 24 }}>
+                    {centers.length > 0 && (
+                        <>
+                            <div className="site-section__head" style={{ marginBottom: 12 }}>
+                                <h2 style={{ fontSize: 20 }}>Сургалтын төвүүд</h2>
+                            </div>
+                            <CenterStrip centers={centers} selected={center} onSelect={selectCenter} />
+                        </>
+                    )}
+
+                    <div style={{ margin: "20px 0 24px" }}>
                         <Input
                             prefix={<Search size={14} />}
                             placeholder="Сургалт, хаяг, насны ангиллаар хайх"
@@ -43,10 +76,20 @@ export default function TrainingsPage() {
                         />
                     </div>
 
+                    {!!selectedName && (
+                        <div style={{ marginBottom: 16, color: "#79808A" }}>
+                            <b style={{ color: "#1F2329" }}>{selectedName}</b>-ийн сургалтууд
+                        </div>
+                    )}
+
                     {!rows ? (
                         <Skeleton active />
                     ) : rows.length === 0 ? (
-                        <div className="site-empty">Одоогоор нээлттэй сургалт алга байна.</div>
+                        <div className="site-empty">
+                            {selectedName
+                                ? `${selectedName} дээр нээлттэй сургалт алга байна.`
+                                : "Одоогоор нээлттэй сургалт алга байна."}
+                        </div>
                     ) : (
                         <div className="site-grid">
                             {rows.map((c) => (
@@ -91,5 +134,14 @@ export default function TrainingsPage() {
                 </div>
             </section>
         </SiteShell>
+    );
+}
+
+export default function TrainingsPage() {
+    // useSearchParams needs a Suspense boundary under the app router.
+    return (
+        <Suspense>
+            <TrainingsList />
+        </Suspense>
     );
 }

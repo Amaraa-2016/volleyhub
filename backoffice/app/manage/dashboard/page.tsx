@@ -1,27 +1,64 @@
 "use client";
 
-import { Card, Col, Row, Statistic, Table, Tag, Spin } from "antd";
+import { App, Card, Col, Row, Statistic, Table, Tag, Spin } from "antd";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import dayjs from "dayjs";
 import AppShell from "@/app/components/AppShell";
-import { API } from "@/app/utils/API";
-import { SESSION_STATUS, minuteToTime, money, type Dashboard, type Session } from "@/app/types/api";
+import { ImageUpload } from "@/app/components/ImageUpload";
+import { API, APIWithError, errorText } from "@/app/utils/API";
+import {
+    SESSION_STATUS, minuteToTime, money,
+    type Dashboard, type Session, type TrainingProfile,
+} from "@/app/types/api";
 
 export default function DashboardPage() {
+    const { data: session } = useSession();
+    const { message } = App.useApp();
     const [data, setData] = useState<Dashboard>();
+    const [logo, setLogo] = useState<string>();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         API<Dashboard>("/api/vh/backoffice/dashboard")
             .then(setData)
             .finally(() => setLoading(false));
+        API<TrainingProfile>("/api/vh/backoffice/profile").then((p) => setLogo(p?.logo ?? undefined));
     }, []);
+
+    // Saved on its own endpoint so it cannot blank the rest of the profile.
+    const saveLogo = async (value: string | undefined) => {
+        setLogo(value);
+        const res = await APIWithError("/api/vh/backoffice/profile/logo", {
+            method: "PUT",
+            data: { logo: value ?? null },
+        });
+        if (res.error) {
+            message.error(errorText(res.error));
+            return;
+        }
+        message.success("Лого хадгалагдлаа");
+    };
 
     return (
         <AppShell>
             <div className="page-header">
                 <h1 className="page-title">Хяналтын самбар</h1>
             </div>
+
+            <Card style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <div>
+                        <div style={{ fontWeight: 600, marginBottom: 8 }}>Сургалтын төвийн лого</div>
+                        <ImageUpload value={logo} onChange={saveLogo} height={96} />
+                    </div>
+                    <div style={{ color: "#79808A", maxWidth: 420, paddingTop: 26 }}>
+                        <b style={{ color: "#1F2329" }}>{session?.selectedTenantName}</b> — энэ лого нь
+                        сайтын нүүр болон Сургалтууд хуудасны төвүүдийн жагсаалтад харагдана. Дарахад
+                        зөвхөн танай сургалтууд шүүгдэж харагдана.
+                    </div>
+                </div>
+            </Card>
 
             {loading ? <Spin /> : (
                 <>

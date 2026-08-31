@@ -112,6 +112,16 @@ public class OrderStatusBT
 
 // ---- public course directory ----------------------------------------------
 
+// A training centre as the logo strip on the public site shows it. Only centres that actually have
+// something on offer appear: a logo that leads to an empty list is worse than no logo.
+public class CenterCardRT
+{
+    public int tenantid { get; set; }
+    public string tenantname { get; set; } = string.Empty;
+    public string? logo { get; set; }
+    public int coursecount { get; set; }
+}
+
 // One course as the public site lists it. The listing is of COURSES, not of organisations: a
 // visitor is choosing something to attend at a place, price and time, and one centre may run
 // several very different courses. `tenantid` + `groupid` together identify it, since group ids are
@@ -164,6 +174,11 @@ public class PublicScheduleRT
     public short weekday { get; set; }
     public int start_minute { get; set; }
     public int end_minute { get; set; }
+}
+
+public class LogoBT
+{
+    public string? logo { get; set; }
 }
 
 // What a training centre edits about its own public listing.
