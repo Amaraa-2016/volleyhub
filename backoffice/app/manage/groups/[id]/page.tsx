@@ -121,8 +121,12 @@ export default function GroupDetailPage() {
                     <Descriptions.Item label="Түвшин">{group?.level ?? "-"}</Descriptions.Item>
                     <Descriptions.Item label="Насны ангилал">{group?.agegroup ?? "-"}</Descriptions.Item>
                     <Descriptions.Item label="Хүйс">{group ? GENDERS[group.gender] : ""}</Descriptions.Item>
-                    <Descriptions.Item label="Дасгалжуулагч">{group?.coachname ?? "-"}</Descriptions.Item>
-                    <Descriptions.Item label="Заал">{group?.venuename ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label="Багш">
+                        {group?.coaches.length
+                            ? group.coaches.map((c) => `${c.last_name} ${c.first_name}`.trim()).join(", ")
+                            : "-"}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Хаяг">{group?.address ?? "-"}</Descriptions.Item>
                     <Descriptions.Item label="Сарын төлбөр">{money(group?.fee_amount)}</Descriptions.Item>
                 </Descriptions>
             </Card>

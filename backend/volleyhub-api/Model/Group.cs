@@ -22,7 +22,7 @@ public class Group
     public string? agegroup { get; set; }
     // 1=Male, 2=Female, 3=Mixed
     public short gender { get; set; } = 3;
-    public int? coach_staffid { get; set; }
+    // Coaches are a list, not a column - see GroupCoach.
     public long? venueid { get; set; }
     public int capacity { get; set; }
     public decimal fee_amount { get; set; }

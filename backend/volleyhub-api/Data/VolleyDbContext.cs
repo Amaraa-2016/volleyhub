@@ -19,7 +19,11 @@ public class VolleyDbContext : DbContext, ITenantDbContext
     public DbSet<Role> role { get; set; }
     public DbSet<Staff> staff { get; set; }
 
-    // Groups and the students in them. The table is training_group, not group, because group is a
+    // Coaches: public profiles, not logins - see Coach.
+    public DbSet<Coach> coach { get; set; }
+    public DbSet<GroupCoach> group_coach { get; set; }
+
+    // Courses and the students in them. The table is training_group, not group, because group is a
     // reserved word in SQL and a contextual keyword in C# LINQ - both avoidable for free.
     public DbSet<Group> training_group { get; set; }
     public DbSet<Student> student { get; set; }

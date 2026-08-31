@@ -13,7 +13,7 @@ import { ImageUpload } from "@/app/components/ImageUpload";
 import { API, APIWithError, errorText } from "@/app/utils/API";
 import {
     GENDERS, WEEKDAYS, minuteToTime, money, timeToMinute,
-    type Group, type Staff, type Venue,
+    type Coach, type Group,
 } from "@/app/types/api";
 
 // A row of the weekly timetable inside the course form. `scheduleid` is absent for a row the user
@@ -28,8 +28,7 @@ export default function CoursesPage() {
     const router = useRouter();
     const { message } = App.useApp();
     const [rows, setRows] = useState<Group[]>([]);
-    const [staff, setStaff] = useState<Staff[]>([]);
-    const [venues, setVenues] = useState<Venue[]>([]);
+    const [coaches, setCoaches] = useState<Coach[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [editing, setEditing] = useState<Group | null>(null);
@@ -47,8 +46,7 @@ export default function CoursesPage() {
 
     useEffect(() => {
         load();
-        API<Staff[]>("/api/vh/backoffice/staff").then((s) => setStaff(s ?? []));
-        API<Venue[]>("/api/vh/backoffice/venues").then((v) => setVenues(v ?? []));
+        API<Coach[]>("/api/vh/backoffice/coaches").then((c) => setCoaches(c ?? []));
     }, [load]);
 
     const openForm = (group: Group | null) => {
@@ -59,6 +57,7 @@ export default function CoursesPage() {
                 ? {
                     ...group,
                     start_date: group.start_date ? dayjs(group.start_date) : null,
+                    coachids: group.coaches.map((c) => c.coachid),
                     slots: group.schedule.map((s) => ({
                         scheduleid: s.scheduleid,
                         weekday: s.weekday,
@@ -73,6 +72,7 @@ export default function CoursesPage() {
                     isactive: true,
                     capacity: 0,
                     fee_amount: 0,
+                    coachids: [],
                     slots: [{
                         weekday: 1,
                         time: [dayjs().hour(18).minute(0).second(0), dayjs().hour(19).minute(30).second(0)],
@@ -119,7 +119,8 @@ export default function CoursesPage() {
                 data: {
                     scheduleid: slot.scheduleid ?? 0,
                     groupid: groupId,
-                    venueid: values.venueid ?? null,
+                    // No hall on a course any more, so a slot carries none either.
+                    venueid: null,
                     weekday: slot.weekday,
                     start_minute: timeToMinute(slot.time[0].format("HH:mm")),
                     end_minute: timeToMinute(slot.time[1].format("HH:mm")),
@@ -201,6 +202,20 @@ export default function CoursesPage() {
                                         7 хоногт {g.schedule.length} удаа
                                     </div>
                                 </>
+                            ),
+                    },
+                    {
+                        title: "Багш",
+                        width: 170,
+                        render: (_: unknown, g: Group) =>
+                            g.coaches.length === 0 ? <span style={{ color: "#9AA3B0" }}>-</span> : (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                    {g.coaches.map((c) => (
+                                        <Tag key={c.coachid} style={{ marginInlineEnd: 0 }}>
+                                            {`${c.last_name} ${c.first_name}`.trim()}
+                                        </Tag>
+                                    ))}
+                                </div>
                             ),
                     },
                     {
@@ -344,11 +359,22 @@ export default function CoursesPage() {
                     <Form.Item name="gender" label="Хүйс">
                         <Select options={Object.entries(GENDERS).map(([v, l]) => ({ value: Number(v), label: l }))} />
                     </Form.Item>
-                    <Form.Item name="venueid" label="Заал">
-                        <Select allowClear options={venues.map((v) => ({ value: v.venueid, label: v.name }))} />
-                    </Form.Item>
-                    <Form.Item name="coach_staffid" label="Дасгалжуулагч">
-                        <Select allowClear options={staff.map((s) => ({ value: s.staffid, label: s.staffname ?? s.phone }))} />
+                    <Form.Item
+                        name="coachids"
+                        label="Багш нар"
+                        tooltip="Нэг сургалтад хэд хэдэн багш байж болно"
+                    >
+                        <Select
+                            mode="multiple"
+                            allowClear
+                            placeholder="Багш сонгох"
+                            optionFilterProp="label"
+                            notFoundContent="Багш бүртгээгүй байна — Багш цэснээс нэмнэ үү"
+                            options={coaches.map((c) => ({
+                                value: c.coachid,
+                                label: `${c.last_name} ${c.first_name}`.trim() + (c.position ? ` — ${c.position}` : ""),
+                            }))}
+                        />
                     </Form.Item>
                     <Form.Item name="notes" label="Тайлбар" tooltip="Сайт дээрх дэлгэрэнгүй хуудсанд харагдана">
                         <Input.TextArea rows={3} />

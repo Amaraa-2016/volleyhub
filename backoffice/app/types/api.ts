@@ -14,14 +14,27 @@ export interface ScheduleEntry {
     isactive: boolean;
 }
 
+export interface Coach {
+    coachid: number;
+    last_name: string;
+    first_name: string;
+    photo?: string | null;
+    position?: string | null;
+    rank?: string | null;
+    bio?: string | null;
+    phone?: string | null;
+    isactive: boolean;
+    sort_order: number;
+    coursecount: number;
+}
+
 export interface Group {
     groupid: number;
     name: string;
     level?: string | null;
     agegroup?: string | null;
     gender: number;
-    coach_staffid?: number | null;
-    coachname?: string | null;
+    coaches: Coach[];
     venueid?: number | null;
     venuename?: string | null;
     capacity: number;
@@ -240,13 +253,23 @@ export interface CourseCard {
     schedule: PublicSchedule[];
 }
 
+export interface PublicCoach {
+    coachid: number;
+    last_name: string;
+    first_name: string;
+    photo?: string | null;
+    position?: string | null;
+    rank?: string | null;
+    bio?: string | null;
+}
+
 export interface CourseDetail extends CourseCard {
     notes?: string | null;
     map_url?: string | null;
     venuename?: string | null;
-    coachname?: string | null;
     tenantphone?: string | null;
     tenantlogo?: string | null;
+    coaches: PublicCoach[];
 }
 
 export interface News {

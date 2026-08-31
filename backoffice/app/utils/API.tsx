@@ -87,8 +87,9 @@ const ERRORS: Record<string, string> = {
     cannot_change_owner: "Эзэмшигчийн эрхийг өөрчлөх боломжгүй",
     cannot_remove_owner: "Эзэмшигчийг хасах боломжгүй",
     // groups and students
-    group_full: "Групп дүүрсэн байна",
-    group_not_found: "Групп олдсонгүй",
+    group_full: "Сургалт дүүрсэн байна",
+    group_not_found: "Сургалт олдсонгүй",
+    coach_not_found: "Багш олдсонгүй",
     student_not_found: "Суралцагч олдсонгүй",
     student_has_unpaid_fees: "Төлөгдөөгүй төлбөртэй тул устгах боломжгүй",
     fee_cannot_be_negative: "Төлбөр сөрөг байж болохгүй",

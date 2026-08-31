@@ -142,9 +142,21 @@ public class CourseDetailRT : CourseCardRT
     public string? notes { get; set; }
     public string? map_url { get; set; }
     public string? venuename { get; set; }
-    public string? coachname { get; set; }
     public string? tenantphone { get; set; }
     public string? tenantlogo { get; set; }
+    public List<PublicCoachRT> coaches { get; set; } = new();
+}
+
+// A coach as the public page shows them: no phone number, since that is for the centre to give out.
+public class PublicCoachRT
+{
+    public long coachid { get; set; }
+    public string last_name { get; set; } = string.Empty;
+    public string first_name { get; set; } = string.Empty;
+    public string? photo { get; set; }
+    public string? position { get; set; }
+    public string? rank { get; set; }
+    public string? bio { get; set; }
 }
 
 public class PublicScheduleRT

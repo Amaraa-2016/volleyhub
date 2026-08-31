@@ -44,8 +44,17 @@ public class TrainingService
             .Select(g => new { groupid = g.Key, count = g.Count() })
             .ToDictionaryAsync(x => x.groupid, x => x.count);
 
-        var coaches = await _db.staff.AsNoTracking().ToDictionaryAsync(s => s.staffid, s => s.staffname);
         var venues = await _db.venue.AsNoTracking().ToDictionaryAsync(v => v.venueid, v => v.name);
+
+        // One pass for the whole page rather than a query per course.
+        var coachesByGroup = (await (from gc in _db.group_coach.AsNoTracking()
+                                     join c in _db.coach.AsNoTracking() on gc.coachid equals c.coachid
+                                     where ids.Contains(gc.groupid) && !c.is_deleted
+                                     orderby c.sort_order, c.last_name
+                                     select new { gc.groupid, c })
+                             .ToListAsync())
+            .GroupBy(x => x.groupid)
+            .ToDictionary(g => g.Key, g => g.Select(x => ToCoachRT(x.c, 0)).ToList());
 
         var schedule = (await _db.schedule_entry.AsNoTracking()
                 .Where(s => ids.Contains(s.groupid) && s.isactive)
@@ -71,8 +80,7 @@ public class TrainingService
             level = g.level,
             agegroup = g.agegroup,
             gender = g.gender,
-            coach_staffid = g.coach_staffid,
-            coachname = g.coach_staffid is int c && coaches.TryGetValue(c, out var cn) ? cn : null,
+            coaches = coachesByGroup.TryGetValue(g.groupid, out var gc) ? gc : [],
             venueid = g.venueid,
             venuename = g.venueid is long vid && venues.TryGetValue(vid, out var vname) ? vname : null,
             capacity = g.capacity,
@@ -118,7 +126,6 @@ public class TrainingService
         group.level = NullIfEmpty(data.level);
         group.agegroup = NullIfEmpty(data.agegroup);
         group.gender = data.gender;
-        group.coach_staffid = data.coach_staffid;
         group.venueid = data.venueid;
         group.capacity = data.capacity;
         group.fee_amount = data.fee_amount;
@@ -132,7 +139,37 @@ public class TrainingService
         group.updated = now;
 
         await _db.SaveChangesAsync();
+        await SetGroupCoaches(group.groupid, data.coachids);
+
         return new { group.groupid };
+    }
+
+    // The assignment is replaced wholesale: the form always posts the complete list, so diffing
+    // rows one by one would only add ways for the two to drift apart.
+    private async Task SetGroupCoaches(long groupId, List<long>? coachIds)
+    {
+        var wanted = (coachIds ?? []).Distinct().ToList();
+
+        if (wanted.Count > 0)
+        {
+            // Ignore ids that are not real coaches of this centre rather than failing the save -
+            // the course itself is already written by this point.
+            var valid = await _db.coach.AsNoTracking()
+                .Where(c => wanted.Contains(c.coachid) && !c.is_deleted)
+                .Select(c => c.coachid)
+                .ToListAsync();
+            wanted = valid;
+        }
+
+        var existing = await _db.group_coach.Where(gc => gc.groupid == groupId).ToListAsync();
+
+        _db.group_coach.RemoveRange(existing.Where(gc => !wanted.Contains(gc.coachid)));
+        var already = existing.Select(gc => gc.coachid).ToHashSet();
+        _db.group_coach.AddRange(wanted
+            .Where(id => !already.Contains(id))
+            .Select(id => new GroupCoach { groupid = groupId, coachid = id }));
+
+        await _db.SaveChangesAsync();
     }
 
     // A group with history behind it is archived rather than deleted, so past attendance and fees
@@ -158,6 +195,7 @@ public class TrainingService
 
         _db.enrollment.RemoveRange(await _db.enrollment.Where(e => e.groupid == groupId).ToListAsync());
         _db.schedule_entry.RemoveRange(await _db.schedule_entry.Where(s => s.groupid == groupId).ToListAsync());
+        _db.group_coach.RemoveRange(await _db.group_coach.Where(gc => gc.groupid == groupId).ToListAsync());
 
         await _db.SaveChangesAsync();
         return new { ok = true, archived = false };
@@ -382,6 +420,91 @@ public class TrainingService
         var students = await Students(null, null);
         return students.FirstOrDefault(s => s.accountid == accountId);
     }
+
+    // ---- coaches ----------------------------------------------------------
+
+    public async Task<List<CoachRT>> Coaches(bool includeInactive = false)
+    {
+        var query = _db.coach.AsNoTracking().Where(c => !c.is_deleted);
+        if (!includeInactive) query = query.Where(c => c.isactive);
+
+        var coaches = await query.OrderBy(c => c.sort_order).ThenBy(c => c.last_name).ToListAsync();
+        if (coaches.Count == 0) return [];
+
+        var ids = coaches.Select(c => c.coachid).ToList();
+        var counts = await _db.group_coach.AsNoTracking()
+            .Where(gc => ids.Contains(gc.coachid))
+            .GroupBy(gc => gc.coachid)
+            .Select(g => new { coachid = g.Key, n = g.Count() })
+            .ToDictionaryAsync(x => x.coachid, x => x.n);
+
+        return coaches
+            .Select(c => ToCoachRT(c, counts.TryGetValue(c.coachid, out var n) ? n : 0))
+            .ToList();
+    }
+
+    public async Task<object> SaveCoach(CoachBT data)
+    {
+        if (Norm(data.first_name).Length == 0) throw new ArgumentException("first_name_required");
+
+        var now = DateTime.UtcNow;
+        Coach coach;
+        if (data.coachid > 0)
+        {
+            coach = await _db.coach.FirstOrDefaultAsync(c => c.coachid == data.coachid && !c.is_deleted)
+                ?? throw new InvalidOperationException("coach_not_found");
+        }
+        else
+        {
+            coach = new Coach { created = now };
+            _db.coach.Add(coach);
+        }
+
+        coach.last_name = Norm(data.last_name);
+        coach.first_name = Norm(data.first_name);
+        coach.photo = NullIfEmpty(data.photo);
+        coach.position = NullIfEmpty(data.position);
+        coach.rank = NullIfEmpty(data.rank);
+        coach.bio = data.bio;
+        coach.phone = NullIfEmpty(data.phone);
+        coach.isactive = data.isactive;
+        coach.sort_order = data.sort_order;
+        coach.updated = now;
+
+        await _db.SaveChangesAsync();
+        return new { coach.coachid };
+    }
+
+    public async Task<object> DeleteCoach(long coachId)
+    {
+        var coach = await _db.coach.FirstOrDefaultAsync(c => c.coachid == coachId && !c.is_deleted)
+            ?? throw new InvalidOperationException("coach_not_found");
+
+        coach.is_deleted = true;
+        coach.isactive = false;
+        coach.updated = DateTime.UtcNow;
+
+        // Drop the assignments too: a deleted coach must stop appearing on a course page.
+        _db.group_coach.RemoveRange(await _db.group_coach.Where(gc => gc.coachid == coachId).ToListAsync());
+
+        await _db.SaveChangesAsync();
+        return new { ok = true };
+    }
+
+    private static CoachRT ToCoachRT(Coach c, int courseCount) => new()
+    {
+        coachid = c.coachid,
+        last_name = c.last_name,
+        first_name = c.first_name,
+        photo = c.photo,
+        position = c.position,
+        rank = c.rank,
+        bio = c.bio,
+        phone = c.phone,
+        isactive = c.isactive,
+        sort_order = c.sort_order,
+        coursecount = courseCount,
+    };
 
     // ---- venues -----------------------------------------------------------
 

@@ -102,6 +102,20 @@ public class BackofficeController : ApiControllerBase
     public Task<IActionResult> DeleteGroup(long id) =>
         Run(async () => { AssertManager(); return await _training.DeleteGroup(id); });
 
+    // ---- coaches ----------------------------------------------------------
+
+    [HttpGet("coaches")]
+    public Task<IActionResult> Coaches([FromQuery] bool includeInactive = false) =>
+        Run(async () => { AssertStaff(); return await _training.Coaches(includeInactive); });
+
+    [HttpPost("coaches")]
+    public Task<IActionResult> SaveCoach([FromBody] CoachBT data) =>
+        Run(async () => { AssertManager(); return await _training.SaveCoach(data); });
+
+    [HttpDelete("coaches/{id:long}")]
+    public Task<IActionResult> DeleteCoach(long id) =>
+        Run(async () => { AssertManager(); return await _training.DeleteCoach(id); });
+
     // ---- enrollment -------------------------------------------------------
 
     [HttpGet("groups/{id:long}/students")]

@@ -4,7 +4,7 @@ import { Layout, Menu, Dropdown, Avatar, Button } from "antd";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
-    LayoutDashboard, User, GraduationCap, ShieldCheck, LogOut, Repeat, Volleyball, Store,
+    LayoutDashboard, User, Users, GraduationCap, ShieldCheck, LogOut, Repeat, Volleyball, Store,
 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -24,6 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         const base = [
             { key: "/manage/dashboard", icon: <LayoutDashboard size={16} />, label: "Хяналтын самбар" },
             { key: "/manage/groups", icon: <GraduationCap size={16} />, label: "Сургалт" },
+            { key: "/manage/coaches", icon: <Users size={16} />, label: "Багш" },
             { key: "/manage/students", icon: <User size={16} />, label: "Суралцагчид" },
         ];
         if (session?.isPlatformAdmin) {

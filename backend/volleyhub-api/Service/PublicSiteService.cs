@@ -153,9 +153,21 @@ public class PublicSiteService
         var venue = g.venueid is long vid
             ? await db.venue.AsNoTracking().Where(v => v.venueid == vid).Select(v => v.name).FirstOrDefaultAsync()
             : null;
-        var coach = g.coach_staffid is int cid
-            ? await db.staff.AsNoTracking().Where(s => s.staffid == cid).Select(s => s.staffname).FirstOrDefaultAsync()
-            : null;
+
+        var coaches = await (from gc in db.group_coach.AsNoTracking()
+                             join c in db.coach.AsNoTracking() on gc.coachid equals c.coachid
+                             where gc.groupid == groupId && !c.is_deleted && c.isactive
+                             orderby c.sort_order, c.last_name
+                             select new PublicCoachRT
+                             {
+                                 coachid = c.coachid,
+                                 last_name = c.last_name,
+                                 first_name = c.first_name,
+                                 photo = c.photo,
+                                 position = c.position,
+                                 rank = c.rank,
+                                 bio = c.bio,
+                             }).ToListAsync();
 
         return new CourseDetailRT
         {
@@ -178,7 +190,7 @@ public class PublicSiteService
             map_url = g.map_url,
             notes = g.notes,
             venuename = venue,
-            coachname = coach,
+            coaches = coaches,
             schedule = schedule,
         };
     }

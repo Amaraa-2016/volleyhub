@@ -126,11 +126,6 @@ public class ScheduleService
             .ToListAsync();
         if (slots.Count == 0) throw new InvalidOperationException("no_schedule");
 
-        var groupIds = slots.Select(s => s.groupid).Distinct().ToList();
-        var coaches = await _db.training_group.AsNoTracking()
-            .Where(g => groupIds.Contains(g.groupid))
-            .ToDictionaryAsync(g => g.groupid, g => g.coach_staffid);
-
         var fromUtc = DateTime.SpecifyKind(from, DateTimeKind.Utc);
         var toUtc = DateTime.SpecifyKind(to, DateTimeKind.Utc);
 
@@ -156,7 +151,9 @@ public class ScheduleService
                 {
                     groupid = slot.groupid,
                     venueid = slot.venueid,
-                    coach_staffid = coaches.TryGetValue(slot.groupid, out var coach) ? coach : null,
+                    // Left unset: a course's coaches are a list now, and which of them takes a
+                    // given class is a per-class decision the register can record later.
+                    coach_staffid = null,
                     session_date = DateTime.SpecifyKind(day, DateTimeKind.Utc),
                     start_minute = slot.start_minute,
                     end_minute = slot.end_minute,

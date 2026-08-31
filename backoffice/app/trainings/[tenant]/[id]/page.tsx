@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, Descriptions, Skeleton, Tag } from "antd";
-import { ArrowLeft, CalendarDays, MapPin, Phone, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, MapPin, Phone, UserRound, Users } from "lucide-react";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
 import { PublicAPI } from "@/app/utils/API";
@@ -70,6 +70,56 @@ export default function CourseDetailPage() {
                                 </Card>
                             )}
 
+                            {course.coaches.length > 0 && (
+                                <Card title="Багш нар" style={{ marginBottom: 20 }}>
+                                    {course.coaches.map((c) => (
+                                        <div
+                                            key={c.coachid}
+                                            style={{
+                                                display: "flex", gap: 16, padding: "14px 0",
+                                                borderTop: "1px solid #f0f1f3",
+                                            }}
+                                        >
+                                            {c.photo ? (
+                                                <img
+                                                    src={c.photo}
+                                                    alt=""
+                                                    style={{
+                                                        width: 76, height: 76, objectFit: "cover",
+                                                        borderRadius: "50%", flexShrink: 0,
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div
+                                                    style={{
+                                                        width: 76, height: 76, borderRadius: "50%",
+                                                        background: "#eceef1", flexShrink: 0,
+                                                        display: "flex", alignItems: "center",
+                                                        justifyContent: "center", color: "#9AA3B0",
+                                                    }}
+                                                >
+                                                    <UserRound size={28} />
+                                                </div>
+                                            )}
+                                            <div>
+                                                <div style={{ fontWeight: 700, fontSize: 15 }}>
+                                                    {`${c.last_name} ${c.first_name}`.trim()}
+                                                </div>
+                                                {!!c.position && (
+                                                    <div style={{ color: "#79808A", fontSize: 13 }}>{c.position}</div>
+                                                )}
+                                                {!!c.rank && <Tag color="orange" style={{ marginTop: 6 }}>{c.rank}</Tag>}
+                                                {!!c.bio && (
+                                                    <div style={{ marginTop: 8, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                                                        {c.bio}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </Card>
+                            )}
+
                             <Card title="Хичээллэх цаг">
                                 {course.schedule.length === 0 ? (
                                     <div style={{ color: "#79808A" }}>Хуваарь оруулаагүй байна.</div>
@@ -117,9 +167,6 @@ export default function CourseDetailPage() {
                                     )}
                                     {!!course.venuename && (
                                         <Descriptions.Item label="Заал">{course.venuename}</Descriptions.Item>
-                                    )}
-                                    {!!course.coachname && (
-                                        <Descriptions.Item label="Дасгалжуулагч">{course.coachname}</Descriptions.Item>
                                     )}
                                 </Descriptions>
                             </Card>

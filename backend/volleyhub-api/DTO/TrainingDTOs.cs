@@ -2,6 +2,40 @@ namespace volleyhub_api.DTO;
 
 // ---- groups ---------------------------------------------------------------
 
+// ---- coaches --------------------------------------------------------------
+
+public class CoachBT
+{
+    public long coachid { get; set; }
+    public string last_name { get; set; } = string.Empty;
+    public string first_name { get; set; } = string.Empty;
+    public string? photo { get; set; }
+    public string? position { get; set; }
+    public string? rank { get; set; }
+    public string? bio { get; set; }
+    public string? phone { get; set; }
+    public bool isactive { get; set; } = true;
+    public int sort_order { get; set; }
+}
+
+public class CoachRT
+{
+    public long coachid { get; set; }
+    public string last_name { get; set; } = string.Empty;
+    public string first_name { get; set; } = string.Empty;
+    public string? photo { get; set; }
+    public string? position { get; set; }
+    public string? rank { get; set; }
+    public string? bio { get; set; }
+    public string? phone { get; set; }
+    public bool isactive { get; set; }
+    public int sort_order { get; set; }
+    // How many courses this coach is on, so the list can warn before a delete.
+    public int coursecount { get; set; }
+}
+
+// ---- courses --------------------------------------------------------------
+
 public class GroupBT
 {
     public long groupid { get; set; }
@@ -9,7 +43,8 @@ public class GroupBT
     public string? level { get; set; }
     public string? agegroup { get; set; }
     public short gender { get; set; } = 3;
-    public int? coach_staffid { get; set; }
+    // A course can be taught by several coaches; an empty list simply means none assigned yet.
+    public List<long> coachids { get; set; } = new();
     public long? venueid { get; set; }
     public int capacity { get; set; }
     public decimal fee_amount { get; set; }
@@ -30,8 +65,7 @@ public class GroupRT
     public string? level { get; set; }
     public string? agegroup { get; set; }
     public short gender { get; set; }
-    public int? coach_staffid { get; set; }
-    public string? coachname { get; set; }
+    public List<CoachRT> coaches { get; set; } = new();
     public long? venueid { get; set; }
     public string? venuename { get; set; }
     public int capacity { get; set; }
