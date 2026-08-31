@@ -591,6 +591,149 @@ a {
     }
 }
 
+/* ---- map pins, clusters and popup card ---- */
+
+/* A round photo of the hall with a tail pointing at the spot, rather than a generic pin: on a city
+   map the picture is what tells one venue from another at a glance. */
+.vh-pin {
+    display: block;
+    position: relative;
+    width: 54px;
+    height: 62px;
+}
+
+.vh-pin__photo {
+    display: block;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #e9edf3;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(20, 25, 34, 0.35);
+}
+
+.vh-pin__photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.vh-pin__blank {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #e9edf3, #cfd6e0);
+}
+
+/* The tail: a small square rotated to a diamond, half hidden behind the circle. */
+.vh-pin__dot {
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: 14px;
+    height: 14px;
+    margin-left: -7px;
+    background: #fff;
+    transform: rotate(45deg);
+    box-shadow: 2px 2px 6px rgba(20, 25, 34, 0.25);
+}
+
+.vh-pin--active .vh-pin__photo {
+    border-color: var(--vh-accent);
+    box-shadow: 0 3px 12px rgba(242, 101, 34, 0.55);
+}
+
+.vh-pin--active .vh-pin__dot {
+    background: var(--vh-accent);
+}
+
+/* Several pins in one place collapse into a count until the map is zoomed in. */
+.vh-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #141922;
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(20, 25, 34, 0.35);
+}
+
+/* Leaflet's own popup chrome is replaced by the card, so its padding and border are stripped. */
+.vh-popup .leaflet-popup-content-wrapper {
+    padding: 0;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(20, 25, 34, 0.24);
+}
+
+.vh-popup .leaflet-popup-content {
+    margin: 0;
+    width: 260px !important;
+}
+
+.vh-popup .leaflet-popup-tip {
+    box-shadow: none;
+}
+
+.vh-card__media {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background: linear-gradient(135deg, #e9edf3, #cfd6e0);
+}
+
+.vh-card__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.vh-card__price {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    background: var(--vh-accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 999px;
+}
+
+.vh-card__body {
+    padding: 12px 14px 14px;
+}
+
+.vh-card__title {
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.3;
+    color: #1f2329;
+}
+
+.vh-card__center,
+.vh-card__address {
+    color: #79808a;
+    font-size: 12.5px;
+    margin-top: 3px;
+    line-height: 1.45;
+}
+
+.vh-card__link {
+    display: inline-block;
+    margin-top: 10px;
+    color: var(--vh-accent);
+    font-weight: 600;
+    font-size: 13px;
+}
+
 /* ---- training centre logo strip ---- */
 
 .center-strip {
