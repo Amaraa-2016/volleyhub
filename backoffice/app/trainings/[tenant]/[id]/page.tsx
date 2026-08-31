@@ -60,7 +60,8 @@ export default function CourseDetailPage() {
                                 <img
                                     src={course.cover}
                                     alt={course.name}
-                                    style={{ width: "100%", borderRadius: 14, marginBottom: 20 }}
+                                    className="site-detail-cover"
+                                    style={{ marginBottom: 20 }}
                                 />
                             )}
 

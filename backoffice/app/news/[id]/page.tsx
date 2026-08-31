@@ -45,7 +45,8 @@ export default function NewsDetailPage() {
                                 <img
                                     src={post.cover}
                                     alt={post.title}
-                                    style={{ width: "100%", borderRadius: 12, marginBottom: 20 }}
+                                    className="site-detail-cover"
+                                    style={{ marginBottom: 20 }}
                                 />
                             )}
 
