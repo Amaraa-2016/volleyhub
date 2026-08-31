@@ -44,7 +44,8 @@ export default function RegisterPage() {
             router.push("/login");
             return;
         }
-        router.push("/club");
+        // A new account belongs to no centre yet: the home page is where they can apply.
+        router.push("/");
         router.refresh();
     };
 

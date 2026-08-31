@@ -18,6 +18,8 @@ public class Account
     public string? lastname { get; set; }
     [MaxLength(250)]
     public string? firstname { get; set; }
+    // Uploaded by the person themselves; shown in the site header and on their profile.
+    public string? photo { get; set; }
     public bool isactive { get; set; } = true;
     public DateTime created { get; set; }
 }

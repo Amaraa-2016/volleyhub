@@ -145,6 +145,7 @@ public class AccountService
             name = NameHelper.JoinFullName(account.lastname, account.firstname) ?? account.name,
             lastname = account.lastname,
             firstname = account.firstname,
+            photo = account.photo,
             token = token.token,
             expirydate = token.expirydate,
             isplatformadmin = isAdmin,
@@ -213,10 +214,11 @@ public class AccountService
 
         account.lastname = Norm(data.lastname) is { Length: > 0 } ln ? ln : null;
         account.firstname = Norm(data.firstname) is { Length: > 0 } fn ? fn : null;
+        account.photo = Norm(data.photo) is { Length: > 0 } ph ? ph : null;
         account.name = NameHelper.JoinFullName(account.lastname, account.firstname);
         await _db.SaveChangesAsync();
 
-        return new { account.accountid, account.name, account.lastname, account.firstname };
+        return new { account.accountid, account.name, account.lastname, account.firstname, account.photo };
     }
 
     public async Task<object> ChangePassword(int accountId, ChangePasswordBT data)
@@ -313,6 +315,8 @@ public class AccountService
             address = Norm(data.address) is { Length: > 0 } ad ? ad : null,
             contactphone = Norm(data.contactphone) is { Length: > 0 } cp ? cp : null,
             logo = Norm(data.logo) is { Length: > 0 } lg ? lg : null,
+            email = Norm(data.email) is { Length: > 0 } em ? em : null,
+            tagline = Norm(data.tagline) is { Length: > 0 } tl ? tl : null,
             status = "pending",
             created = DateTime.UtcNow,
         };
@@ -464,8 +468,10 @@ public class AccountService
             address = request.address,
             contactphone = request.contactphone,
             // Carried over from the application, so an approved centre appears in the directory
-            // with its logo already in place.
+            // already filled in rather than as a bare name.
             logo = request.logo,
+            email = request.email,
+            tagline = request.tagline,
             locale = "mn",
             currency = "MNT",
             isactive = true,
@@ -544,6 +550,8 @@ public class AccountService
         address = r.address,
         contactphone = r.contactphone,
         logo = r.logo,
+        email = r.email,
+        tagline = r.tagline,
         status = r.status,
         note = r.note,
         tenantid = r.tenantid,

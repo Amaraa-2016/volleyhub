@@ -23,6 +23,7 @@ declare module "next-auth" {
         accountid?: number;
         name?: string | null;
         lastname?: string | null;
+        photo?: string | null;
         firstname?: string | null;
         phone?: string;
         tenants?: TenantMembership[];
@@ -37,6 +38,7 @@ declare module "next-auth" {
         selectedRole?: string;
         accountid?: number;
         lastname?: string | null;
+        photo?: string | null;
         firstname?: string | null;
         phone?: string;
         tenants?: TenantMembership[];
@@ -53,6 +55,7 @@ declare module "next-auth/jwt" {
         selectedRole?: string;
         accountid?: number;
         lastname?: string | null;
+        photo?: string | null;
         firstname?: string | null;
         phone?: string;
         tenants?: TenantMembership[];

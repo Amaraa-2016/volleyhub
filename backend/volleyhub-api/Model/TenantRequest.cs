@@ -20,6 +20,11 @@ public class TenantRequest
     // Uploaded while applying, before any tenant exists. Copied onto the centre on approval, so a
     // newly approved centre already has a logo in the public directory.
     public string? logo { get; set; }
+    [MaxLength(100)]
+    public string? email { get; set; }
+    // Товч танилцуулга - one line about the centre, also carried over on approval.
+    [MaxLength(500)]
+    public string? tagline { get; set; }
     // pending | approved | rejected
     [MaxLength(20)]
     public string status { get; set; } = "pending";

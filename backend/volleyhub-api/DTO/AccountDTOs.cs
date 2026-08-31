@@ -58,6 +58,7 @@ public class AccountLoginRT
     public string? name { get; set; }
     public string? lastname { get; set; }
     public string? firstname { get; set; }
+    public string? photo { get; set; }
     public string token { get; set; } = string.Empty;
     public DateTime expirydate { get; set; }
     public bool isplatformadmin { get; set; }
@@ -69,6 +70,7 @@ public class AccountProfileBT
 {
     public string? lastname { get; set; }
     public string? firstname { get; set; }
+    public string? photo { get; set; }
 }
 
 public class ChangePasswordBT
@@ -86,6 +88,8 @@ public class TenantRequestBT
     public string? address { get; set; }
     public string? contactphone { get; set; }
     public string? logo { get; set; }
+    public string? email { get; set; }
+    public string? tagline { get; set; }
 }
 
 public class TenantRequestRT
@@ -99,6 +103,8 @@ public class TenantRequestRT
     public string? address { get; set; }
     public string? contactphone { get; set; }
     public string? logo { get; set; }
+    public string? email { get; set; }
+    public string? tagline { get; set; }
     public string status { get; set; } = string.Empty;
     public string? note { get; set; }
     public int? tenantid { get; set; }

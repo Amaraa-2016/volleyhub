@@ -33,7 +33,8 @@ export async function middleware(req: NextRequest) {
 
     const needsSession = pathname.startsWith(MANAGE_PREFIX)
         || pathname.startsWith(ADMIN_PREFIX)
-        || pathname.startsWith(CLUB_SELECT_PATH);
+        || pathname.startsWith(CLUB_SELECT_PATH)
+        || pathname.startsWith("/profile");
     if (!needsSession) return NextResponse.next();
 
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });

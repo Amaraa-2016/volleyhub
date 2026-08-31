@@ -14,6 +14,7 @@ interface AccountLoginResult {
     accountid: number;
     name?: string | null;
     lastname?: string | null;
+    photo?: string | null;
     firstname?: string | null;
     phone: string;
     token: string;
@@ -52,6 +53,7 @@ export const authOptions: NextAuthOptions = {
                     accountid: data.accountid,
                     name: data.name ?? null,
                     lastname: data.lastname ?? null,
+                    photo: data.photo ?? null,
                     firstname: data.firstname ?? null,
                     phone: data.phone,
                     accountToken: data.token,
@@ -76,6 +78,7 @@ export const authOptions: NextAuthOptions = {
                 token.accountid = user.accountid;
                 token.name = user.name ?? null;
                 token.lastname = user.lastname ?? null;
+                token.photo = user.photo ?? null;
                 token.firstname = user.firstname ?? null;
                 token.phone = user.phone;
                 token.tenants = user.tenants;
@@ -94,6 +97,11 @@ export const authOptions: NextAuthOptions = {
                 if (session.accessToken !== undefined) token.accessToken = session.accessToken;
                 if (session.tenants !== undefined) token.tenants = session.tenants;
                 if (session.isPlatformAdmin !== undefined) token.isPlatformAdmin = session.isPlatformAdmin;
+                // The profile page updates these without a re-login.
+                if (session.photo !== undefined) token.photo = session.photo;
+                if (session.name !== undefined) token.name = session.name;
+                if (session.lastname !== undefined) token.lastname = session.lastname;
+                if (session.firstname !== undefined) token.firstname = session.firstname;
             }
 
             return token;
@@ -107,6 +115,7 @@ export const authOptions: NextAuthOptions = {
             session.accountid = token.accountid;
             session.name = token.name ?? null;
             session.lastname = token.lastname ?? null;
+            session.photo = token.photo ?? null;
             session.firstname = token.firstname ?? null;
             session.phone = token.phone;
             session.tenants = token.tenants;

@@ -7,6 +7,7 @@ import { ArrowRight, CalendarCheck, MapPin, Users, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import SiteShell from "@/app/components/SiteShell";
 import CenterStrip from "@/app/components/CenterStrip";
+import ApplySection from "@/app/components/ApplySection";
 import { PublicAPI } from "@/app/utils/API";
 import { money, type CenterCard, type CourseCard, type News, type Product } from "@/app/types/api";
 
@@ -38,7 +39,7 @@ export default function HomePage() {
                         <Link href="/trainings">
                             <Button type="primary" size="large">Сургалт хайх</Button>
                         </Link>
-                        <Link href="/club">
+                        <Link href="#apply">
                             <Button size="large" ghost>Сургалтаа бүртгүүлэх</Button>
                         </Link>
                     </div>
@@ -190,6 +191,8 @@ export default function HomePage() {
                     </div>
                 </section>
             )}
+
+            <ApplySection />
         </SiteShell>
     );
 }

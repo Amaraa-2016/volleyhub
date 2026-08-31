@@ -340,11 +340,31 @@ export interface TenantRequest {
     address?: string | null;
     contactphone?: string | null;
     logo?: string | null;
+    email?: string | null;
+    tagline?: string | null;
     status: string;
     note?: string | null;
     tenantid?: number | null;
     created: string;
     reviewedat?: string | null;
+}
+
+// The signed-in person's own account, as the profile page edits it.
+export interface AccountProfile {
+    accountid: number;
+    phone: string;
+    name?: string | null;
+    lastname?: string | null;
+    firstname?: string | null;
+    photo?: string | null;
+    isplatformadmin: boolean;
+    tenants: {
+        tenantid: number;
+        tenantname: string;
+        role: string;
+        status: string;
+        logo?: string | null;
+    }[];
 }
 
 export interface ClubSearchResult {
