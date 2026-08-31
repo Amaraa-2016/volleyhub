@@ -5,16 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Skeleton } from "antd";
 import {
-    ArrowRight, CalendarCheck, GraduationCap, MapPin, Newspaper, ShoppingBag, Users, Wallet,
+    ArrowRight, CalendarCheck, MapPin, Newspaper, ShoppingBag, Users, Wallet,
 } from "lucide-react";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
 import CenterStrip from "@/app/components/CenterStrip";
+import ApplyForm from "@/app/components/ApplyForm";
 import ApplyModal from "@/app/components/ApplyModal";
 import { PublicAPI } from "@/app/utils/API";
 import {
-    WEEKDAYS, minuteToTime, money,
-    type CenterCard, type CourseCard, type News, type Product,
+    money, type CenterCard, type CourseCard, type News, type Product,
 } from "@/app/types/api";
 
 export default function HomePage() {
@@ -83,58 +83,37 @@ export default function HomePage() {
                 </section>
             )}
 
-            <section className="site-section site-section--muted">
-                <div className="site-container">
-                    <div className="site-section__head">
-                        <div>
-                            <h2>Сургалтууд</h2>
-                            <p className="site-section__sub">Шинээр нээгдсэн болон элсэлт авч буй сургалтууд</p>
-                        </div>
-                        <Link href="/trainings">
-                            Бүгдийг харах <ArrowRight size={14} style={{ verticalAlign: "-2px" }} />
-                        </Link>
+            {/* The courses themselves live one click away under Сургалтууд, so the space here goes
+                to the one thing only this page can start: a centre signing up. */}
+            <section className="site-section site-section--muted" id="apply">
+                <div className="site-container apply-layout">
+                    <div className="apply-copy">
+                        <span className="site-hero__eyebrow">Сургалт эрхлэгчдэд</span>
+                        <h2>Сургалтаа Volleyhub дээр бүртгүүлээрэй</h2>
+                        <p>
+                            Хүсэлтээ илгээгээд баталгаажмагц сургалтаа сайтад гаргаж, суралцагч,
+                            ирц, төлбөрөө нэг системээс удирдаж эхэлнэ.
+                        </p>
+
+                        <ol className="apply-steps">
+                            <li>
+                                <b>Бүртгэлээ үүсгэнэ</b>
+                                Овог, нэр, утасны дугаар, нууц үг л хангалттай.
+                            </li>
+                            <li>
+                                <b>Хүсэлтээ илгээнэ</b>
+                                Төвийн нэр, лого, холбоо барих мэдээллээ бөглөнө.
+                            </li>
+                            <li>
+                                <b>Баталгаажсаны дараа</b>
+                                Удирдлага хэсэг нээгдэж, сургалт, багш, суралцагчаа бүртгэнэ.
+                            </li>
+                        </ol>
                     </div>
 
-                    {!trainings ? (
-                        <Skeleton active />
-                    ) : trainings.length === 0 ? (
-                        <div className="site-empty">Одоогоор нээлттэй сургалт алга байна.</div>
-                    ) : (
-                        <div className="site-grid">
-                            {trainings.slice(0, 6).map((c) => (
-                                <Link
-                                    key={`${c.tenantid}-${c.groupid}`}
-                                    href={`/trainings/${c.tenantid}/${c.groupid}`}
-                                    className="site-card"
-                                >
-                                    <div className="site-card__media">
-                                        {c.cover ? <img src={c.cover} alt={c.name} /> : <GraduationCap size={28} />}
-                                    </div>
-                                    <div className="site-card__body">
-                                        <div className="site-card__title">{c.name}</div>
-                                        <div className="site-card__meta">{c.tenantname}</div>
-                                        {!!(c.level || c.agegroup) && (
-                                            <div className="site-card__meta">
-                                                {[c.level, c.agegroup && `Нас: ${c.agegroup}`]
-                                                    .filter(Boolean).join(" · ")}
-                                            </div>
-                                        )}
-                                        {!!c.address && <div className="site-card__meta">{c.address}</div>}
-                                        {c.schedule.length > 0 && (
-                                            <div className="site-card__meta">
-                                                {c.schedule
-                                                    .map((s) => `${WEEKDAYS[s.weekday]} ${minuteToTime(s.start_minute)}`)
-                                                    .join(", ")}
-                                            </div>
-                                        )}
-                                        <div className="site-card__price">
-                                            {c.fee_amount > 0 ? `${money(c.fee_amount)} / сар` : "Үнэ тодорхойгүй"}
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
+                    <div className="apply-card">
+                        <ApplyForm />
+                    </div>
                 </div>
             </section>
 
@@ -235,7 +214,8 @@ export default function HomePage() {
                 </section>
             )}
 
-            {/* A second way into the same dialog, for someone who reached the bottom still reading. */}
+            {/* Someone who read to the bottom is sent back up to the form rather than handed a
+                second copy of it. */}
             <section className="site-cta">
                 <div className="site-container site-cta__inner">
                     <div>
@@ -245,9 +225,9 @@ export default function HomePage() {
                             бүртгэж эхэлнэ.
                         </p>
                     </div>
-                    <Button type="primary" size="large" onClick={() => setApplyOpen(true)}>
-                        Хүсэлт илгээх
-                    </Button>
+                    <a href="#apply">
+                        <Button type="primary" size="large">Хүсэлт илгээх</Button>
+                    </a>
                 </div>
             </section>
 

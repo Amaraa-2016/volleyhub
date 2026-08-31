@@ -502,20 +502,110 @@ a {
     border: 0;
 }
 
-.map-note {
-    color: #79808a;
-    font-size: 13px;
-    padding: 10px 2px 0;
+/* ---- registering a training centre, on the home page ---- */
+
+/* The pitch on one side, the form itself on the other - a centre owner can read why and start
+   typing without a click in between. */
+.apply-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
+    gap: 40px;
+    align-items: start;
 }
 
-.map-panel__foot {
+.apply-copy h2 {
+    font-size: 30px;
+    line-height: 1.25;
+    margin: 10px 0 12px;
+}
+
+.apply-copy > p {
+    color: #79808a;
+    font-size: 15px;
+    line-height: 1.65;
+    max-width: 46ch;
+    margin: 0;
+}
+
+.apply-steps {
+    list-style: none;
+    counter-reset: apply;
+    margin: 28px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.apply-steps li {
+    counter-increment: apply;
+    position: relative;
+    padding-left: 46px;
+    color: #79808a;
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.apply-steps li::before {
+    content: counter(apply);
+    position: absolute;
+    left: 0;
+    top: -2px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--vh-accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 14px 16px;
-    border-top: 1px solid #eceef1;
-    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.apply-steps b {
+    display: block;
+    color: #1f2329;
+    font-size: 15px;
+    margin-bottom: 2px;
+}
+
+.apply-card {
+    background: #fff;
+    border: 1px solid #eceef1;
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 14px 40px rgba(20, 25, 34, 0.08);
+}
+
+/* Two short fields side by side, so the form is not one long column of boxes. */
+.apply-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+}
+
+.apply-rejected {
+    background: #fdecea;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 18px;
+    font-size: 13px;
+}
+
+@media (max-width: 860px) {
+    .apply-layout {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+
+    .apply-card {
+        padding: 20px;
+    }
+
+    .apply-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 860px) {

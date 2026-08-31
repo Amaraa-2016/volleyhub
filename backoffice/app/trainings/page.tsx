@@ -3,8 +3,8 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Input, Segmented, Skeleton, Tag } from "antd";
-import { ExternalLink, GraduationCap, List as ListIcon, Map as MapIcon, Search } from "lucide-react";
+import { Input, Segmented, Skeleton, Tag } from "antd";
+import { GraduationCap, List as ListIcon, Map as MapIcon, Search } from "lucide-react";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
 import CenterStrip from "@/app/components/CenterStrip";
@@ -13,9 +13,6 @@ import { PublicAPI } from "@/app/utils/API";
 import { WEEKDAYS, minuteToTime, money, type CenterCard, type CourseCard } from "@/app/types/api";
 
 type View = "list" | "map";
-
-const externalMap = (course: CourseCard) =>
-    course.map_url ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.address ?? "")}`;
 
 function TrainingsList() {
     const router = useRouter();
@@ -45,14 +42,10 @@ function TrainingsList() {
         PublicAPI<CenterCard[]>("/api/vh/public/centers").then((c) => setCenters(c ?? []));
     }, []);
 
-    // A course is pinnable only once its Google Maps link yielded coordinates; the rest are counted
-    // under the map rather than silently dropped.
+    // A course is pinnable only once its Google Maps link yielded coordinates; the rest simply
+    // have no place on the map and stay in the list view.
     const mappable = useMemo(
         () => (rows ?? []).filter((c) => c.latitude != null && c.longitude != null),
-        [rows],
-    );
-    const unmappable = useMemo(
-        () => (rows ?? []).filter((c) => c.latitude == null || c.longitude == null),
         [rows],
     );
 
@@ -177,37 +170,11 @@ function TrainingsList() {
                             Байршил тэмдэглэсэн сургалт алга байна. Жагсаалт хэсгээс үзнэ үү.
                         </div>
                     ) : (
-                        <>
-                            <div className="map-panel">
-                                <CourseMap courses={mappable} selected={focused} onSelect={setFocused} />
-                                {focused && (
-                                    <div className="map-panel__foot">
-                                        <div>
-                                            <div style={{ fontWeight: 700 }}>{focused.name}</div>
-                                            <div style={{ color: "#79808A", fontSize: 13 }}>
-                                                {focused.tenantname}
-                                                {focused.address ? ` · ${focused.address}` : ""}
-                                            </div>
-                                        </div>
-                                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                            <a href={externalMap(focused)} target="_blank" rel="noreferrer">
-                                                <Button icon={<ExternalLink size={14} />}>Google Map</Button>
-                                            </a>
-                                            <Link href={`/trainings/${focused.tenantid}/${focused.groupid}`}>
-                                                <Button type="primary">Дэлгэрэнгүй</Button>
-                                            </Link>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {unmappable.length > 0 && (
-                                <div className="map-note">
-                                    {unmappable.length} сургалт байршлаа тэмдэглээгүй тул зураг дээр
-                                    харагдахгүй.
-                                </div>
-                            )}
-                        </>
+                        <div className="map-panel">
+                            {/* Nothing under the map: the card that opens on a pin already carries
+                                the name, the centre, the address and the way in. */}
+                            <CourseMap courses={mappable} selected={focused} onSelect={setFocused} />
+                        </div>
                     )}
                 </div>
             </section>
