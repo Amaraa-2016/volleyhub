@@ -154,18 +154,69 @@ a {
 }
 
 .site-hero {
-    background: linear-gradient(135deg, #141922 0%, #23304a 60%, #6b3315 100%);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #10141c 0%, #1d2942 55%, #4a2410 100%);
     color: #fff;
-    padding: 72px 0 84px;
+    padding: 84px 0 92px;
+}
+
+/* Two soft light sources rather than a flat gradient - it keeps the dark panel from reading as a
+   solid block behind the text. */
+.site-hero::before,
+.site-hero::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.site-hero::before {
+    width: 520px;
+    height: 520px;
+    top: -220px;
+    right: -120px;
+    background: radial-gradient(circle, rgba(242, 101, 34, 0.35), transparent 68%);
+}
+
+.site-hero::after {
+    width: 420px;
+    height: 420px;
+    bottom: -240px;
+    left: -100px;
+    background: radial-gradient(circle, rgba(90, 140, 255, 0.22), transparent 70%);
+}
+
+.site-hero__inner {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 40px;
+    flex-wrap: wrap;
+}
+
+.site-hero__copy {
+    max-width: 640px;
+}
+
+.site-hero__eyebrow {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    font-size: 12px;
+    letter-spacing: 0.2px;
+    margin-bottom: 18px;
 }
 
 .site-hero h1 {
     margin: 0 0 16px;
-    font-size: 42px;
-    line-height: 1.15;
-    letter-spacing: -1px;
+    font-size: 46px;
+    line-height: 1.1;
+    letter-spacing: -1.4px;
     font-weight: 800;
-    max-width: 640px;
 }
 
 .site-hero p {
@@ -173,7 +224,39 @@ a {
     font-size: 17px;
     color: #c3c9d3;
     max-width: 560px;
-    line-height: 1.6;
+    line-height: 1.65;
+}
+
+.site-hero__actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.site-hero__stats {
+    display: flex;
+    gap: 14px;
+}
+
+.site-stat {
+    min-width: 132px;
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(6px);
+}
+
+.site-stat__value {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+}
+
+.site-stat__label {
+    font-size: 12px;
+    color: #b8bfca;
+    margin-top: 2px;
 }
 
 .site-section {
@@ -197,6 +280,62 @@ a {
     margin: 0;
     font-size: 26px;
     letter-spacing: -0.5px;
+}
+
+.site-section__sub {
+    margin: 6px 0 0;
+    color: #79808a;
+    font-size: 14px;
+}
+
+/* ---- feature tiles ---- */
+
+.site-feature {
+    background: #fff;
+    border: 1px solid #eceef1;
+    border-radius: 14px;
+    padding: 22px;
+}
+
+.site-feature__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: #fff1e9;
+    color: #f26522;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+}
+
+/* ---- closing call to action ---- */
+
+.site-cta {
+    padding: 44px 0;
+    background: linear-gradient(120deg, #141922 0%, #24304a 100%);
+    color: #fff;
+}
+
+.site-cta__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.site-cta h2 {
+    margin: 0 0 6px;
+    font-size: 24px;
+    letter-spacing: -0.4px;
+}
+
+.site-cta p {
+    margin: 0;
+    color: #b8bfca;
+    max-width: 520px;
+    line-height: 1.6;
 }
 
 .site-grid {
@@ -414,5 +553,22 @@ a {
 
     .site-hero h1 {
         font-size: 30px;
+    }
+
+    .site-hero__inner {
+        align-items: flex-start;
+    }
+
+    .site-hero__stats {
+        width: 100%;
+    }
+
+    .site-stat {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .site-cta__inner {
+        align-items: flex-start;
     }
 }
