@@ -8,16 +8,11 @@ import { ExternalLink, GraduationCap, List as ListIcon, Map as MapIcon, MapPin, 
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
 import CenterStrip from "@/app/components/CenterStrip";
+import CourseMap from "@/app/components/CourseMap";
 import { PublicAPI } from "@/app/utils/API";
 import { WEEKDAYS, minuteToTime, money, type CenterCard, type CourseCard } from "@/app/types/api";
 
 type View = "list" | "map";
-
-// Courses carry an address and a Google Maps link, not coordinates, so the map view centres on one
-// course at a time by address rather than dropping every pin at once. The embed needs no API key;
-// plotting them all together would mean storing latitude/longitude per course first.
-const embedSrc = (address: string) =>
-    `https://www.google.com/maps?q=${encodeURIComponent(address)}&hl=mn&z=15&output=embed`;
 
 const externalMap = (course: CourseCard) =>
     course.map_url ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.address ?? "")}`;
@@ -50,10 +45,16 @@ function TrainingsList() {
         PublicAPI<CenterCard[]>("/api/vh/public/centers").then((c) => setCenters(c ?? []));
     }, []);
 
-    // Only courses with an address can be placed; the rest are listed under the map as unplaceable
-    // rather than silently dropped.
-    const mappable = useMemo(() => (rows ?? []).filter((c) => !!c.address), [rows]);
-    const unmappable = useMemo(() => (rows ?? []).filter((c) => !c.address), [rows]);
+    // A course is pinnable only once its Google Maps link yielded coordinates; the rest are counted
+    // under the list rather than silently dropped.
+    const mappable = useMemo(
+        () => (rows ?? []).filter((c) => c.latitude != null && c.longitude != null),
+        [rows],
+    );
+    const unmappable = useMemo(
+        () => (rows ?? []).filter((c) => c.latitude == null || c.longitude == null),
+        [rows],
+    );
 
     // Keep the focused course valid as filters change.
     useEffect(() => {
@@ -173,7 +174,7 @@ function TrainingsList() {
                         </div>
                     ) : mappable.length === 0 ? (
                         <div className="site-empty">
-                            Хаяг оруулсан сургалт алга байна. Жагсаалт хэсгээс үзнэ үү.
+                            Байршил тэмдэглэсэн сургалт алга байна. Жагсаалт хэсгээс үзнэ үү.
                         </div>
                     ) : (
                         <div className="map-layout">
@@ -202,37 +203,32 @@ function TrainingsList() {
 
                                 {unmappable.length > 0 && (
                                     <div className="map-item__note">
-                                        {unmappable.length} сургалт хаяггүй тул зураг дээр харагдахгүй.
+                                        {unmappable.length} сургалт байршлаа тэмдэглээгүй тул зураг дээр
+                                        харагдахгүй.
                                     </div>
                                 )}
                             </div>
 
                             <div className="map-panel">
+                                <CourseMap courses={mappable} selected={focused} onSelect={setFocused} />
                                 {focused && (
-                                    <>
-                                        <iframe
-                                            key={`${focused.tenantid}-${focused.groupid}`}
-                                            className="map-frame"
-                                            src={embedSrc(focused.address!)}
-                                            loading="lazy"
-                                            referrerPolicy="no-referrer-when-downgrade"
-                                            title={focused.name}
-                                        />
-                                        <div className="map-panel__foot">
-                                            <div>
-                                                <div style={{ fontWeight: 700 }}>{focused.name}</div>
-                                                <div style={{ color: "#79808A", fontSize: 13 }}>{focused.address}</div>
-                                            </div>
-                                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                                <a href={externalMap(focused)} target="_blank" rel="noreferrer">
-                                                    <Button icon={<ExternalLink size={14} />}>Google Map</Button>
-                                                </a>
-                                                <Link href={`/trainings/${focused.tenantid}/${focused.groupid}`}>
-                                                    <Button type="primary">Дэлгэрэнгүй</Button>
-                                                </Link>
+                                    <div className="map-panel__foot">
+                                        <div>
+                                            <div style={{ fontWeight: 700 }}>{focused.name}</div>
+                                            <div style={{ color: "#79808A", fontSize: 13 }}>
+                                                {focused.tenantname}
+                                                {focused.address ? ` · ${focused.address}` : ""}
                                             </div>
                                         </div>
-                                    </>
+                                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                            <a href={externalMap(focused)} target="_blank" rel="noreferrer">
+                                                <Button icon={<ExternalLink size={14} />}>Google Map</Button>
+                                            </a>
+                                            <Link href={`/trainings/${focused.tenantid}/${focused.groupid}`}>
+                                                <Button type="primary">Дэлгэрэнгүй</Button>
+                                            </Link>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         </div>

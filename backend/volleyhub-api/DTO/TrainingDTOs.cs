@@ -56,6 +56,9 @@ public class GroupBT
     public string? address { get; set; }
     public string? map_url { get; set; }
     public string? phone { get; set; }
+    // Optional override. Left null the coordinates are read from map_url instead.
+    public double? latitude { get; set; }
+    public double? longitude { get; set; }
 }
 
 public class GroupRT
@@ -77,6 +80,8 @@ public class GroupRT
     public string? address { get; set; }
     public string? map_url { get; set; }
     public string? phone { get; set; }
+    public double? latitude { get; set; }
+    public double? longitude { get; set; }
     public int studentcount { get; set; }
     public List<ScheduleEntryRT> schedule { get; set; } = new();
 }

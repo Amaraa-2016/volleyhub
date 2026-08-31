@@ -145,6 +145,9 @@ public class CourseCardRT
     public string? phone { get; set; }
     // Carried on the card as well as the detail, because the map view links out from the list.
     public string? map_url { get; set; }
+    // Null when the map link carried no position - such a course has no pin.
+    public double? latitude { get; set; }
+    public double? longitude { get; set; }
     public List<PublicScheduleRT> schedule { get; set; } = new();
 }
 

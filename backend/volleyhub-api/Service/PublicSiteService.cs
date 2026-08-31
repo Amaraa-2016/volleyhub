@@ -111,6 +111,8 @@ public class PublicSiteService
                         address = g.address,
                         phone = g.phone,
                         map_url = g.map_url,
+                        latitude = g.latitude,
+                        longitude = g.longitude,
                         schedule = schedule.TryGetValue(g.groupid, out var sch) ? sch : [],
                     });
                 }
@@ -226,6 +228,8 @@ public class PublicSiteService
             address = g.address,
             phone = g.phone,
             map_url = g.map_url,
+            latitude = g.latitude,
+            longitude = g.longitude,
             notes = g.notes,
             venuename = venue,
             coaches = coaches,

@@ -47,6 +47,8 @@ export interface Group {
     address?: string | null;
     map_url?: string | null;
     phone?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
     studentcount: number;
     schedule: ScheduleEntry[];
 }
@@ -259,6 +261,10 @@ export interface CourseCard {
     address?: string | null;
     phone?: string | null;
     map_url?: string | null;
+    // Read out of map_url when the course was saved; null when it carried no position, in which
+    // case the course has no pin on the map.
+    latitude?: number | null;
+    longitude?: number | null;
     schedule: PublicSchedule[];
 }
 

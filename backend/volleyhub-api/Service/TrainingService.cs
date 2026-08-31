@@ -15,12 +15,18 @@ public class TrainingService
     // The public schema, needed only to link a student card to the login of the same person.
     private readonly AccountDbContext _accounts;
     private readonly ITenantProvider _tenant;
+    // Only to follow a Google share link far enough to read its coordinates - see MapLink.
+    private readonly IHttpClientFactory _http;
+    private readonly ILogger<TrainingService> _logger;
 
-    public TrainingService(VolleyDbContext db, AccountDbContext accounts, ITenantProvider tenant)
+    public TrainingService(VolleyDbContext db, AccountDbContext accounts, ITenantProvider tenant,
+        IHttpClientFactory http, ILogger<TrainingService> logger)
     {
         _db = db;
         _accounts = accounts;
         _tenant = tenant;
+        _http = http;
+        _logger = logger;
     }
 
     private static string Norm(string? s) => (s ?? string.Empty).Trim();
@@ -92,6 +98,8 @@ public class TrainingService
             address = g.address,
             map_url = g.map_url,
             phone = g.phone,
+            latitude = g.latitude,
+            longitude = g.longitude,
             studentcount = counts.TryGetValue(g.groupid, out var n) ? n : 0,
             schedule = schedule.TryGetValue(g.groupid, out var sch) ? sch : [],
         }).ToList();
@@ -136,6 +144,21 @@ public class TrainingService
         group.address = NullIfEmpty(data.address);
         group.map_url = NullIfEmpty(data.map_url);
         group.phone = NullIfEmpty(data.phone);
+
+        // Coordinates come from the pasted link so nobody has to type them. An explicit pair wins,
+        // for the case where the link is unparseable and someone corrects the pin by hand.
+        if (data.latitude is double lat && data.longitude is double lng)
+        {
+            group.latitude = lat;
+            group.longitude = lng;
+        }
+        else
+        {
+            var found = await MapLink.Resolve(group.map_url, _http, _logger);
+            group.latitude = found?.lat;
+            group.longitude = found?.lng;
+        }
+
         group.updated = now;
 
         await _db.SaveChangesAsync();

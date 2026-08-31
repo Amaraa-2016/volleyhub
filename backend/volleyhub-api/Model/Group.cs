@@ -36,10 +36,14 @@ public class Group
     public DateTime? start_date { get; set; }
     [MaxLength(500)]
     public string? address { get; set; }
-    // A share link pasted from Google Maps. Kept as the raw URL rather than parsed coordinates:
-    // that is what someone actually has to hand, and the site only ever links out to it.
+    // A share link pasted from Google Maps, kept as-is because that is what the site links out to.
     [MaxLength(1000)]
     public string? map_url { get; set; }
+    // Read out of that link when the course is saved - see MapLink. Stored rather than derived on
+    // every read so the public map never waits on Google, and null when the link carried no
+    // position, in which case the course simply has no pin.
+    public double? latitude { get; set; }
+    public double? longitude { get; set; }
     [MaxLength(100)]
     public string? phone { get; set; }
 

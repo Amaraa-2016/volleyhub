@@ -315,6 +315,11 @@ export default function CoursesPage() {
                         name="map_url"
                         label="Google map холбоос"
                         tooltip="Google Maps дээрээс Share → Copy link хийж энд буулгана"
+                        extra={editing
+                            ? (editing.latitude != null
+                                ? "Байршил уншигдсан — сайтын газрын зураг дээр цэгээр харагдана."
+                                : "Холбоосоос байршил уншигдаагүй тул газрын зураг дээр харагдахгүй. Google Maps дээрээс Share → Copy link хийж дахин буулгаж үзнэ үү.")
+                            : "Хадгалахад холбоосоос байршлыг нь уншиж, газрын зураг дээр цэгээр тэмдэглэнэ."}
                     >
                         <Input placeholder="https://maps.app.goo.gl/..." />
                     </Form.Item>
