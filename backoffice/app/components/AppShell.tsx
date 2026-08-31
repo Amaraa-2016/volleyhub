@@ -4,7 +4,8 @@ import { Layout, Menu, Dropdown, Avatar, Button } from "antd";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
-    LayoutDashboard, User, Users, GraduationCap, ShieldCheck, LogOut, Repeat, Volleyball, Store,
+    LayoutDashboard, User, Users, GraduationCap, Building2, ShieldCheck, LogOut, Repeat,
+    Volleyball, Store,
 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -17,9 +18,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { data: session } = useSession();
 
+    const role = session?.selectedRole ?? "";
+    const isManager = role === "owner" || role === "admin";
+
     // Kept deliberately short. The other consoles (schedule, attendance, fees, venues,
-    // announcements, members, public profile) still exist and their routes still work - they are
-    // just not in the sidebar while the product focuses on courses and students.
+    // announcements, members) still exist and their routes still work - they are just not in the
+    // sidebar while the product focuses on courses and students.
     const items = useMemo(() => {
         const base = [
             { key: "/manage/dashboard", icon: <LayoutDashboard size={16} />, label: "Хяналтын самбар" },
@@ -27,11 +31,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             { key: "/manage/coaches", icon: <Users size={16} />, label: "Багш" },
             { key: "/manage/students", icon: <User size={16} />, label: "Суралцагчид" },
         ];
+        // Only owner/admin may save it, so a coach is not shown a page they cannot use.
+        if (isManager) {
+            base.push({ key: "/manage/profile", icon: <Building2 size={16} />, label: "Сургалтын төв" });
+        }
         if (session?.isPlatformAdmin) {
             base.push({ key: "/admin", icon: <ShieldCheck size={16} />, label: "Платформ" });
         }
         return base;
-    }, [session?.isPlatformAdmin]);
+    }, [isManager, session?.isPlatformAdmin]);
 
     // /manage/groups/12 has to light up /manage/groups, so match on the first two segments.
     const segments = pathname?.split("/").filter(Boolean) ?? [];
