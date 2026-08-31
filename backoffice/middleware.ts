@@ -53,7 +53,7 @@ export async function middleware(req: NextRequest) {
     if (pathname.startsWith(ADMIN_PREFIX)) {
         if (!token.isPlatformAdmin) {
             const url = req.nextUrl.clone();
-            url.pathname = token.selectedTenantId ? "/manage/dashboard" : CLUB_SELECT_PATH;
+            url.pathname = token.selectedTenantId ? "/manage/dashboard" : "/";
             url.search = "";
             return NextResponse.redirect(url);
         }
@@ -62,8 +62,11 @@ export async function middleware(req: NextRequest) {
 
     // Logged in but no centre selected yet. /club stays exempt so it can do the selecting.
     if (pathname.startsWith(MANAGE_PREFIX) && !token.selectedTenantId) {
+        // Someone who runs a centre gets the picker; everyone else goes back to the site rather
+        // than being shown a console they have no centre for.
+        const runsACentre = (token.tenants ?? []).some((t) => t.status === "active");
         const url = req.nextUrl.clone();
-        url.pathname = token.isPlatformAdmin ? ADMIN_PREFIX : CLUB_SELECT_PATH;
+        url.pathname = runsACentre ? CLUB_SELECT_PATH : token.isPlatformAdmin ? ADMIN_PREFIX : "/";
         url.search = "";
         return NextResponse.redirect(url);
     }

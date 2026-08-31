@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Form, Input, Typography, App } from "antd";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Volleyball } from "lucide-react";
@@ -22,8 +22,19 @@ function LoginForm() {
             message.error("Утасны дугаар эсвэл нууц үг буруу байна");
             return;
         }
-        // Where the user actually lands is the middleware's call: a club is selected or it is not.
-        router.push(params.get("callbackUrl") ?? "/manage/dashboard");
+
+        const callbackUrl = params.get("callbackUrl");
+        if (callbackUrl) {
+            router.push(callbackUrl);
+            router.refresh();
+            return;
+        }
+
+        // Most people signing in are here to browse, not to manage: land them on the site. Only
+        // someone whose single centre was auto-selected at login goes straight to the console -
+        // anyone else would just be bounced back out of it for having nothing selected.
+        const current = await getSession();
+        router.push(current?.selectedTenantId ? "/manage/dashboard" : "/");
         router.refresh();
     };
 
