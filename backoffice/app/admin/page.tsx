@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import { LogOut, Plus, Volleyball } from "lucide-react";
 import { AccountAPI, AccountAPIWithError, errorText } from "@/app/utils/API";
+import Wordmark from "@/app/components/Wordmark";
 import { ImageUpload, MultiImageUpload } from "@/app/components/ImageUpload";
 import {
     NEWS_CATEGORIES, ORDER_STATUS, money,
@@ -30,7 +31,7 @@ export default function AdminPage() {
             >
                 <div style={{ color: "#fff", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
                     <Volleyball size={20} color="#F26522" />
-                    Volleyhub — Платформ
+                    <Wordmark /> — Платформ
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                     <Button type="text" style={{ color: "#fff" }} onClick={() => router.push("/")}>Сайт</Button>

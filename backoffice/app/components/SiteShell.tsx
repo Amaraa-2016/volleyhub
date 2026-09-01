@@ -6,6 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import { Avatar, Button, Drawer, Dropdown, Grid } from "antd";
 import { LayoutGrid, LogOut, Menu as MenuIcon, User, Volleyball } from "lucide-react";
 import { useState } from "react";
+import Wordmark from "@/app/components/Wordmark";
 
 const NAV = [
     { href: "/", label: "Нүүр" },
@@ -90,7 +91,7 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
                 <div className="site-container site-header__inner">
                     <Link href="/" className="site-brand">
                         <Volleyball size={22} color="#F26522" />
-                        Volleyhub
+                        <Wordmark />
                     </Link>
 
                     {screens.md ? (
@@ -112,7 +113,7 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
                 </div>
             </header>
 
-            <Drawer open={open} onClose={() => setOpen(false)} placement="right" width={260} title="Volleyhub">
+            <Drawer open={open} onClose={() => setOpen(false)} placement="right" width={260} title={<Wordmark />}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     {links}
                     {status === "authenticated" ? (
@@ -152,7 +153,7 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
                     <div>
                         <div className="site-brand site-brand--footer">
                             <Volleyball size={20} color="#F26522" />
-                            Volleyhub
+                            <Wordmark />
                         </div>
                         <p className="site-footer__text">
                             Волейболын сургалтуудыг нэг дороос. Сургалт эрхлэгчид бүртгэл, ирц, төлбөрөө
@@ -167,7 +168,7 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
                     </div>
                 </div>
                 <div className="site-container site-footer__bottom">
-                    © {new Date().getFullYear()} Volleyhub
+                    © {new Date().getFullYear()} <Wordmark />
                 </div>
             </footer>
         </div>

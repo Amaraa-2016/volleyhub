@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Volleyball } from "lucide-react";
 import Link from "next/link";
 import { AccountAPIWithError, errorText } from "@/app/utils/API";
+import Wordmark from "@/app/components/Wordmark";
 
 interface RegisterValues {
     lastname?: string;
@@ -54,7 +55,7 @@ export default function RegisterPage() {
             <div className="auth-card">
                 <div className="auth-brand">
                     <Volleyball size={24} color="#F26522" />
-                    Volleyhub
+                    <Wordmark />
                 </div>
                 <Typography.Title level={4} style={{ marginTop: 0 }}>Бүртгүүлэх</Typography.Title>
                 <Form layout="vertical" onFinish={onFinish} requiredMark={false}>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Skeleton, Tag } from "antd";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
+import Wordmark from "@/app/components/Wordmark";
 import { PublicAPI } from "@/app/utils/API";
 import { NEWS_CATEGORIES, type News } from "@/app/types/api";
 
@@ -55,11 +56,11 @@ export default function NewsPage() {
                     ) : rows.length === 0 ? (
                         <div className="site-empty">Мэдээ алга байна.</div>
                     ) : (
-                        <div className="site-grid">
+                        <div className="site-grid site-grid--wide">
                             {rows.map((n) => (
                                 <Link key={n.newsid} href={`/news/${n.newsid}`} className="site-card">
                                     <div className="site-card__media">
-                                        {n.cover ? <img src={n.cover} alt={n.title} /> : <span>Volleyhub</span>}
+                                        {n.cover ? <img src={n.cover} alt={n.title} /> : <span><Wordmark /></span>}
                                     </div>
                                     <div className="site-card__body">
                                         <div className="site-card__meta">
@@ -67,15 +68,10 @@ export default function NewsPage() {
                                             {n.published_at ? ` · ${dayjs(n.published_at).format("YYYY/MM/DD")}` : ""}
                                         </div>
                                         <div className="site-card__title">{n.title}</div>
+                                        {/* The source belongs to the article itself and is shown,
+                                            as a link, on the detail page - in a list it is one
+                                            line of noise per card. */}
                                         {!!n.summary && <div className="site-card__meta">{n.summary}</div>}
-                                        {/* Plain text, not a link: the whole card is already an
-                                            anchor, and an anchor inside an anchor is invalid. The
-                                            detail page carries the clickable source. */}
-                                        {!!n.source && (
-                                            <div className="site-card__meta" style={{ marginTop: "auto", paddingTop: 8 }}>
-                                                Эх сурвалж: {n.source}
-                                            </div>
-                                        )}
                                     </div>
                                 </Link>
                             ))}

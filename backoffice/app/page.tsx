@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button, Skeleton } from "antd";
 import {
     ArrowRight, CalendarCheck, MapPin, Newspaper, ShoppingBag, Users, Wallet,
 } from "lucide-react";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
-import CenterStrip from "@/app/components/CenterStrip";
+import CenterCards from "@/app/components/CenterCards";
+import Wordmark from "@/app/components/Wordmark";
 import ApplyForm from "@/app/components/ApplyForm";
 import ApplyModal from "@/app/components/ApplyModal";
 import { PublicAPI } from "@/app/utils/API";
@@ -18,7 +18,6 @@ import {
 } from "@/app/types/api";
 
 export default function HomePage() {
-    const router = useRouter();
     const [trainings, setTrainings] = useState<CourseCard[]>();
     const [centers, setCenters] = useState<CenterCard[]>([]);
     const [news, setNews] = useState<News[]>();
@@ -62,34 +61,58 @@ export default function HomePage() {
                 </div>
             </section>
 
+            {/* Above the centres: what the platform is for, before the list of who is on it. */}
+            <section className="site-section site-section--muted">
+                <div className="site-container">
+                    <div className="site-section__head">
+                        <div>
+                            <h2>Яагаад <Wordmark /> вэ</h2>
+                            <p className="site-section__sub">Сурагч, эцэг эх, дасгалжуулагч гурвуулаа нэг дор</p>
+                        </div>
+                    </div>
+                    <div className="site-grid">
+                        <Feature icon={<MapPin size={20} />} title="Ойрхон сургалт">
+                            Дүүрэг, насны ангилал, түвшингээр шүүж өөрт тохирохоо олно.
+                        </Feature>
+                        <Feature icon={<CalendarCheck size={20} />} title="Хуваарь ил тод">
+                            Ямар өдөр, хэдэн цагт, хаана хичээллэдэг нь сургалтын хуудсанд бий.
+                        </Feature>
+                        <Feature icon={<Users size={20} />} title="Ирц бүртгэл">
+                            Дасгалжуулагч ирцээ утаснаасаа бүртгэж, эцэг эх нь шууд хардаг.
+                        </Feature>
+                        <Feature icon={<Wallet size={20} />} title="Төлбөрийн хяналт">
+                            Сар бүрийн төлбөр, төлөлтийн түүх, үлдэгдэл нэг дор.
+                        </Feature>
+                    </div>
+                </div>
+            </section>
+
             {centers.length > 0 && (
                 <section className="site-section">
                     <div className="site-container">
                         <div className="site-section__head">
                             <div>
                                 <h2>Сургалтын төвүүд</h2>
-                                <p className="site-section__sub">Логон дээр дарж тухайн төвийн сургалтуудыг үзнэ</p>
+                                <p className="site-section__sub">
+                                    Төв дээр дарж тухайн төвийн сургалтуудыг үзнэ
+                                </p>
                             </div>
                             <Link href="/trainings">
                                 Бүгдийг харах <ArrowRight size={14} style={{ verticalAlign: "-2px" }} />
                             </Link>
                         </div>
-                        <CenterStrip
-                            centers={centers}
-                            onSelect={(tenantid) =>
-                                router.push(tenantid ? `/trainings?center=${tenantid}` : "/trainings")}
-                        />
+                        <CenterCards centers={centers} />
                     </div>
                 </section>
             )}
 
             {/* The courses themselves live one click away under Сургалтууд, so the space here goes
                 to the one thing only this page can start: a centre signing up. */}
-            <section className="site-section site-section--muted" id="apply">
+            <section className="site-section apply-section" id="apply">
                 <div className="site-container apply-layout">
                     <div className="apply-copy">
                         <span className="site-hero__eyebrow">Сургалт эрхлэгчдэд</span>
-                        <h2>Сургалтаа Volleyhub дээр бүртгүүлээрэй</h2>
+                        <h2>Сургалтаа <Wordmark /> дээр бүртгүүлээрэй</h2>
                         <p>
                             Хүсэлтээ илгээгээд баталгаажмагц сургалтаа сайтад гаргаж, суралцагч,
                             ирц, төлбөрөө нэг системээс удирдаж эхэлнэ.
@@ -121,31 +144,6 @@ export default function HomePage() {
                 <div className="site-container">
                     <div className="site-section__head">
                         <div>
-                            <h2>Яагаад Volleyhub вэ</h2>
-                            <p className="site-section__sub">Сурагч, эцэг эх, дасгалжуулагч гурвуулаа нэг дор</p>
-                        </div>
-                    </div>
-                    <div className="site-grid">
-                        <Feature icon={<MapPin size={20} />} title="Ойрхон сургалт">
-                            Дүүрэг, насны ангилал, түвшингээр шүүж өөрт тохирохоо олно.
-                        </Feature>
-                        <Feature icon={<CalendarCheck size={20} />} title="Хуваарь ил тод">
-                            Ямар өдөр, хэдэн цагт, хаана хичээллэдэг нь сургалтын хуудсанд бий.
-                        </Feature>
-                        <Feature icon={<Users size={20} />} title="Ирц бүртгэл">
-                            Дасгалжуулагч ирцээ утаснаасаа бүртгэж, эцэг эх нь шууд хардаг.
-                        </Feature>
-                        <Feature icon={<Wallet size={20} />} title="Төлбөрийн хяналт">
-                            Сар бүрийн төлбөр, төлөлтийн түүх, үлдэгдэл нэг дор.
-                        </Feature>
-                    </div>
-                </div>
-            </section>
-
-            <section className="site-section site-section--muted">
-                <div className="site-container">
-                    <div className="site-section__head">
-                        <div>
                             <h2>Мэдээ</h2>
                             <p className="site-section__sub">Дэлхий болон Монголын волейболын мэдээ</p>
                         </div>
@@ -159,7 +157,7 @@ export default function HomePage() {
                     ) : news.length === 0 ? (
                         <div className="site-empty">Одоогоор мэдээ алга байна.</div>
                     ) : (
-                        <div className="site-grid">
+                        <div className="site-grid site-grid--wide">
                             {news.map((n) => (
                                 <Link key={n.newsid} href={`/news/${n.newsid}`} className="site-card">
                                     <div className="site-card__media">
@@ -171,11 +169,6 @@ export default function HomePage() {
                                         </div>
                                         <div className="site-card__title">{n.title}</div>
                                         {!!n.summary && <div className="site-card__meta">{n.summary}</div>}
-                                        {!!n.source && (
-                                            <div className="site-card__meta" style={{ marginTop: "auto", paddingTop: 8 }}>
-                                                Эх сурвалж: {n.source}
-                                            </div>
-                                        )}
                                     </div>
                                 </Link>
                             ))}
@@ -185,7 +178,7 @@ export default function HomePage() {
             </section>
 
             {!!products?.length && (
-                <section className="site-section">
+                <section className="site-section site-section--muted">
                     <div className="site-container">
                         <div className="site-section__head">
                             <div>
@@ -213,23 +206,6 @@ export default function HomePage() {
                     </div>
                 </section>
             )}
-
-            {/* Someone who read to the bottom is sent back up to the form rather than handed a
-                second copy of it. */}
-            <section className="site-cta">
-                <div className="site-container site-cta__inner">
-                    <div>
-                        <h2>Сургалт эрхэлдэг үү?</h2>
-                        <p>
-                            Хүсэлтээ илгээгээд баталгаажмагц сургалтаа сайтад гаргаж, суралцагчдаа
-                            бүртгэж эхэлнэ.
-                        </p>
-                    </div>
-                    <a href="#apply">
-                        <Button type="primary" size="large">Хүсэлт илгээх</Button>
-                    </a>
-                </div>
-            </section>
 
             <ApplyModal open={applyOpen} onClose={() => setApplyOpen(false)} />
         </SiteShell>

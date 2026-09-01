@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
 import CenterStrip from "@/app/components/CenterStrip";
 import CourseMap from "@/app/components/CourseMap";
+import Wordmark from "@/app/components/Wordmark";
 import { PublicAPI } from "@/app/utils/API";
 import { WEEKDAYS, minuteToTime, money, type CenterCard, type CourseCard } from "@/app/types/api";
 
@@ -72,7 +73,7 @@ function TrainingsList() {
                 <div className="site-container">
                     <h1>Сургалтууд</h1>
                     <p style={{ margin: 0, color: "#9AA3B0" }}>
-                        Volleyhub дээр бүртгэлтэй волейболын сургалтууд
+                        <Wordmark /> дээр бүртгэлтэй волейболын сургалтууд
                     </p>
                 </div>
             </section>

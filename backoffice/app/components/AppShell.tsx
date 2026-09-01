@@ -8,6 +8,7 @@ import {
     Volleyball, Store,
 } from "lucide-react";
 import { useMemo } from "react";
+import Wordmark from "@/app/components/Wordmark";
 
 const { Header, Sider, Content } = Layout;
 
@@ -55,7 +56,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     }}
                 >
                     <Volleyball size={20} color="#F26522" />
-                    Volleyhub
+                    <Wordmark />
                 </div>
                 <Menu
                     theme="dark"

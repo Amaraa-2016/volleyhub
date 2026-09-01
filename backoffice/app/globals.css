@@ -342,39 +342,26 @@ a {
     margin-bottom: 14px;
 }
 
-/* ---- closing call to action ---- */
-
-.site-cta {
-    padding: 44px 0;
-    background: linear-gradient(120deg, #141922 0%, #24304a 100%);
-    color: #fff;
+/* The name, and the half of it that carries the brand colour. */
+.wordmark {
+    white-space: nowrap;
 }
 
-.site-cta__inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    flex-wrap: wrap;
-}
-
-.site-cta h2 {
-    margin: 0 0 6px;
-    font-size: 24px;
-    letter-spacing: -0.4px;
-}
-
-.site-cta p {
-    margin: 0;
-    color: #b8bfca;
-    max-width: 520px;
-    line-height: 1.6;
+.wordmark__hub {
+    color: var(--vh-accent);
 }
 
 .site-grid {
     display: grid;
     gap: 20px;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+/* News: a headline and a summary need more room per card than a course does, so they get fewer,
+   wider columns than the default grid. */
+.site-grid--wide {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
 }
 
 .site-card {
@@ -504,6 +491,68 @@ a {
 
 /* ---- registering a training centre, on the home page ---- */
 
+/* A dark band between two light sections, so the one thing this page asks of a centre owner is the
+   part that stands out. The backdrop is drawn rather than photographed: two coloured light sources
+   over a gradient, a net-like mesh and one large ring - it costs no image request, stays sharp at
+   any width, and cannot clash with a logo the way a stock photo would. */
+.apply-section {
+    position: relative;
+    overflow: hidden;
+    color: #fff;
+    background:
+        radial-gradient(circle at 12% 18%, rgba(242, 101, 34, 0.32), transparent 46%),
+        radial-gradient(circle at 82% 88%, rgba(90, 140, 255, 0.22), transparent 52%),
+        linear-gradient(135deg, #10141c 0%, #1d2942 58%, #4a2410 100%);
+}
+
+/* The mesh, as a tiling diagonal cross-hatch. */
+.apply-section::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 34 34'%3E%3Cpath d='M0 0L34 34M34 0L0 34' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");
+    opacity: 0.05;
+    pointer-events: none;
+}
+
+.apply-section::after {
+    content: "";
+    position: absolute;
+    width: 560px;
+    height: 560px;
+    right: -180px;
+    top: -180px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    pointer-events: none;
+}
+
+/* Above both decorative layers. */
+.apply-section .site-container {
+    position: relative;
+}
+
+.apply-section .apply-copy h2 {
+    color: #fff;
+}
+
+.apply-section .apply-copy > p {
+    color: #c3c9d3;
+}
+
+.apply-section .apply-steps li {
+    color: #b8bfca;
+}
+
+.apply-section .apply-steps b {
+    color: #fff;
+}
+
+.apply-section .apply-card {
+    border-color: transparent;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.38);
+}
+
 /* The pitch on one side, the form itself on the other - a centre owner can read why and start
    typing without a click in between. */
 .apply-layout {
@@ -583,6 +632,55 @@ a {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0 16px;
+}
+
+/* Where the form would be, when there is nothing to fill in yet. */
+.apply-state {
+    text-align: center;
+    padding: 20px 4px 8px;
+}
+
+.apply-state__icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    margin: 0 auto 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff1e9;
+    color: var(--vh-accent);
+}
+
+.apply-state--success .apply-state__icon {
+    background: #e8f6ee;
+    color: #1f9254;
+}
+
+.apply-state--wait .apply-state__icon {
+    background: #eef1f6;
+    color: #5b626d;
+}
+
+.apply-state__title {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+}
+
+.apply-state__text {
+    color: #79808a;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 8px auto 22px;
+    max-width: 36ch;
+}
+
+.apply-state__actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 .apply-rejected {
@@ -831,6 +929,88 @@ a {
     margin-top: 2px;
 }
 
+/* ---- training centres, as cards on the home page ---- */
+
+.center-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(264px, 1fr));
+    gap: 16px;
+}
+
+.center-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #eceef1;
+    border-radius: 16px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.center-card:hover {
+    border-color: var(--vh-accent);
+    box-shadow: 0 10px 26px rgba(20, 25, 34, 0.08);
+    transform: translateY(-2px);
+}
+
+.center-card:hover .center-card__name {
+    color: var(--vh-accent);
+}
+
+.center-card:hover .center-card__arrow {
+    color: var(--vh-accent);
+    transform: translate(2px, -2px);
+}
+
+/* A fixed round window, so a wide banner logo and a square badge sit the same way. */
+.center-card__logo {
+    flex: 0 0 auto;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #f0f2f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9aa3b0;
+}
+
+.center-card__logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.center-card__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.center-card__name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #1f2329;
+    transition: color 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.center-card__count {
+    color: #79808a;
+    font-size: 13px;
+    margin-top: 3px;
+}
+
+.center-card__arrow {
+    flex: 0 0 auto;
+    color: #c3c9d3;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
 .site-empty {
     padding: 48px 0;
     text-align: center;
@@ -898,9 +1078,5 @@ a {
     .site-stat {
         flex: 1;
         min-width: 0;
-    }
-
-    .site-cta__inner {
-        align-items: flex-start;
     }
 }

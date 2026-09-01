@@ -1,11 +1,11 @@
 "use client";
 
-import { App, Button, Form, Input, Result, Skeleton } from "antd";
+import { App, Button, Form, Input, Skeleton } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
-import { LayoutGrid } from "lucide-react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { CheckCircle2, Clock, LayoutGrid, UserPlus } from "lucide-react";
 import { ImageUpload } from "@/app/components/ImageUpload";
 import { AccountAPI, AccountAPIWithError, errorText } from "@/app/utils/API";
 import type { TenantRequest } from "@/app/types/api";
@@ -75,45 +75,46 @@ export default function ApplyForm({
 
     if (status !== "authenticated") {
         return (
-            <Result
-                status="info"
+            <State
+                icon={<UserPlus size={26} />}
                 title="Эхлээд бүртгэлээ үүсгэнэ үү"
-                subTitle="Овог, нэр, утасны дугаар, нууц үг л хангалттай. Хүсэлт таны бүртгэлд холбогдоно."
-                extra={[
-                    <Link key="register" href="/register">
-                        <Button type="primary" size="large">Бүртгүүлэх</Button>
-                    </Link>,
-                    <Link key="login" href="/login">
-                        <Button size="large">Нэвтрэх</Button>
-                    </Link>,
-                ]}
-            />
+                text="Овог, нэр, утасны дугаар, нууц үг л хангалттай. Хүсэлт таны бүртгэлд холбогдоно."
+            >
+                <Link href="/register">
+                    <Button type="primary" size="large">Бүртгүүлэх</Button>
+                </Link>
+                <Link href="/login">
+                    <Button size="large">Нэвтрэх</Button>
+                </Link>
+            </State>
         );
     }
 
     if (managed.length > 0) {
         return (
-            <Result
-                status="success"
+            <State
+                tone="success"
+                icon={<CheckCircle2 size={26} />}
                 title="Таны сургалт баталгаажсан"
-                subTitle="Удирдлага хэсгээс сургалт, багш, суралцагчаа бүртгэнэ."
-                extra={
-                    <Button type="primary" icon={<LayoutGrid size={15} />} onClick={goToConsole}>
-                        Удирдлага руу орох
-                    </Button>
-                }
-            />
+                text="Удирдлага хэсгээс сургалт, багш, суралцагчаа бүртгэнэ."
+            >
+                <Button type="primary" size="large" icon={<LayoutGrid size={15} />} onClick={goToConsole}>
+                    Удирдлага руу орох
+                </Button>
+            </State>
         );
     }
 
     if (pending) {
         return (
-            <Result
-                status="info"
+            <State
+                tone="wait"
+                icon={<Clock size={26} />}
                 title="Хүсэлт хүлээгдэж байна"
-                subTitle={`${pending.tenantname} — платформын админ шалгаж байна. Баталгаажмагц Удирдлага хэсэг нээгдэнэ.`}
-                extra={onDone ? <Button onClick={onDone}>Хаах</Button> : undefined}
-            />
+                text={`${pending.tenantname} — платформын админ шалгаж байна. Баталгаажмагц Удирдлага хэсэг нээгдэнэ.`}
+            >
+                {onDone ? <Button size="large" onClick={onDone}>Хаах</Button> : null}
+            </State>
         );
     }
 
@@ -161,5 +162,31 @@ export default function ApplyForm({
                 </Button>
             </Form>
         </>
+    );
+}
+
+// The three states this form can be in besides the form itself. Ant Design's Result is built
+// around its own status colours - a blue exclamation mark for "info" - which reads as a warning
+// next to the orange the rest of the site uses.
+function State({
+    tone = "info",
+    icon,
+    title,
+    text,
+    children,
+}: {
+    tone?: "info" | "success" | "wait";
+    icon: ReactNode;
+    title: string;
+    text: string;
+    children?: ReactNode;
+}) {
+    return (
+        <div className={`apply-state apply-state--${tone}`}>
+            <div className="apply-state__icon">{icon}</div>
+            <div className="apply-state__title">{title}</div>
+            <p className="apply-state__text">{text}</p>
+            {!!children && <div className="apply-state__actions">{children}</div>}
+        </div>
     );
 }

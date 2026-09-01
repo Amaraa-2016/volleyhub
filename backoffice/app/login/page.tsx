@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Volleyball } from "lucide-react";
 import Link from "next/link";
+import Wordmark from "@/app/components/Wordmark";
 
 function LoginForm() {
     const router = useRouter();
@@ -43,7 +44,7 @@ function LoginForm() {
             <div className="auth-card">
                 <div className="auth-brand">
                     <Volleyball size={24} color="#F26522" />
-                    Volleyhub
+                    <Wordmark />
                 </div>
                 <Typography.Title level={4} style={{ marginTop: 0 }}>Нэвтрэх</Typography.Title>
                 <Form layout="vertical" onFinish={onFinish} requiredMark={false}>
