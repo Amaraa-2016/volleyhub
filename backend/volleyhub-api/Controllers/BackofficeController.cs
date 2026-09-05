@@ -130,6 +130,20 @@ public class BackofficeController : ApiControllerBase
     public Task<IActionResult> Unenroll(long id, long studentId) =>
         Run(async () => { AssertStaff(); return await _training.Unenroll(id, studentId); });
 
+    // ---- requests to join a course, sent from the public site ---------------
+
+    [HttpGet("enrollment-requests")]
+    public Task<IActionResult> EnrollmentRequests([FromQuery] short? status) =>
+        Run(async () => { AssertStaff(); return await _training.EnrollmentRequests(status); });
+
+    [HttpPost("enrollment-requests/{id:long}/approve")]
+    public Task<IActionResult> ApproveEnrollmentRequest(long id) =>
+        Run(async () => { AssertStaff(); return await _training.ApproveEnrollmentRequest(id); });
+
+    [HttpPost("enrollment-requests/{id:long}/reject")]
+    public Task<IActionResult> RejectEnrollmentRequest(long id, [FromBody] RejectRequestBT data) =>
+        Run(async () => { AssertStaff(); return await _training.RejectEnrollmentRequest(id, data.note); });
+
     // ---- students ---------------------------------------------------------
 
     [HttpGet("students")]

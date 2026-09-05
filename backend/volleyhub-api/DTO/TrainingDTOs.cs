@@ -368,3 +368,26 @@ public class DashboardRT
     public int unpaid_students { get; set; }
     public List<SessionRT> next_sessions { get; set; } = new();
 }
+
+// A request from the public site to join one course, as the centre's console sees it.
+public class EnrollmentRequestRT
+{
+    public long requestid { get; set; }
+    public long groupid { get; set; }
+    public string groupname { get; set; } = string.Empty;
+    public int accountid { get; set; }
+    public string last_name { get; set; } = string.Empty;
+    public string first_name { get; set; } = string.Empty;
+    public string? phone { get; set; }
+    public string? note { get; set; }
+    // 1=Pending, 2=Approved, 3=Rejected
+    public short status { get; set; }
+    public string? decision_note { get; set; }
+    public long? studentid { get; set; }
+    public DateTime created { get; set; }
+}
+
+public class RejectRequestBT
+{
+    public string? note { get; set; }
+}

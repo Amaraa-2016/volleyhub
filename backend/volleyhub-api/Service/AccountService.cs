@@ -6,6 +6,7 @@ using volleyhub_api.DTO;
 using volleyhub_api.Model;
 using volleyhub_api.Tenancy;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.IdentityModel.Tokens;
 
 namespace volleyhub_api.Service;
@@ -35,6 +36,17 @@ public class AccountService
     // ---- helpers ----------------------------------------------------------
 
     private static string Norm(string? s) => (s ?? string.Empty).Trim();
+
+    // A context bound to one centre's schema. Account endpoints carry no tenantid header, so the
+    // request-scoped context cannot be used - the public site opens centres the same way.
+    private VolleyDbContext OpenTenant(int tenantId)
+    {
+        var options = new DbContextOptionsBuilder<VolleyDbContext>()
+            .UseNpgsql(_config["ConnectionStrings:dbCon"])
+            .ReplaceService<IModelCacheKeyFactory, SchemaAwareModelCacheKeyFactory>()
+            .Options;
+        return new VolleyDbContext(options, new FixedTenantProvider("tenant_" + tenantId));
+    }
 
     // owner/admin manage the club, coach runs a squad. Maps onto the roles seeded per tenant
     // (1=Admin, 2=Manager, 3=Coach, 4=Staff).
@@ -360,6 +372,82 @@ public class AccountService
         await _db.SaveChangesAsync();
         return new { status = "pending", role };
     }
+
+    // ---- joining a course --------------------------------------------------
+
+    // The request itself lives in the centre's schema, so this reaches across from the public one -
+    // the same way the public site reads courses. A request carries the applicant's name and phone
+    // because the centre cannot see the account table.
+    public async Task<MyCourseRequestRT> RequestCourse(int accountId, CourseRequestBT data)
+    {
+        var tenant = await _db.tenant.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.tenantid == data.tenantid && t.isactive)
+            ?? throw new InvalidOperationException("invalid_tenant");
+
+        var account = await _db.account.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.accountid == accountId)
+            ?? throw new InvalidOperationException("account_not_found");
+
+        await using var db = OpenTenant(tenant.tenantid);
+
+        var group = await db.training_group.AsNoTracking()
+            .FirstOrDefaultAsync(g => g.groupid == data.groupid && !g.is_deleted && g.isactive)
+            ?? throw new InvalidOperationException("invalid_group");
+
+        // Asking twice changes nothing: the standing request is what comes back, so a double click
+        // or a second visit cannot queue two of them for the centre to sort out.
+        var existing = await db.enrollment_request
+            .Where(r => r.groupid == group.groupid && r.accountid == accountId && r.status != 3)
+            .OrderByDescending(r => r.created)
+            .FirstOrDefaultAsync();
+
+        if (existing == null)
+        {
+            var now = DateTime.UtcNow;
+            existing = new EnrollmentRequest
+            {
+                groupid = group.groupid,
+                accountid = accountId,
+                last_name = account.lastname ?? "",
+                first_name = account.firstname ?? account.name ?? account.phone,
+                phone = account.phone,
+                note = Norm(data.note) is { Length: > 0 } n ? n : null,
+                status = 1,
+                created = now,
+                updated = now,
+            };
+            db.enrollment_request.Add(existing);
+            await db.SaveChangesAsync();
+        }
+
+        return ToMyRequest(existing, tenant.tenantid);
+    }
+
+    // One course's request for the signed-in account, for the course page to show its own state.
+    public async Task<MyCourseRequestRT?> MyCourseRequest(int accountId, int tenantId, long groupId)
+    {
+        if (!await _db.tenant.AsNoTracking().AnyAsync(t => t.tenantid == tenantId && t.isactive))
+            return null;
+
+        await using var db = OpenTenant(tenantId);
+
+        var row = await db.enrollment_request.AsNoTracking()
+            .Where(r => r.groupid == groupId && r.accountid == accountId)
+            .OrderByDescending(r => r.created)
+            .FirstOrDefaultAsync();
+
+        return row == null ? null : ToMyRequest(row, tenantId);
+    }
+
+    private static MyCourseRequestRT ToMyRequest(EnrollmentRequest r, int tenantId) => new()
+    {
+        requestid = r.requestid,
+        tenantid = tenantId,
+        groupid = r.groupid,
+        status = r.status,
+        decision_note = r.decision_note,
+        created = r.created,
+    };
 
     // ---- club members (public schema, used by the backoffice) -------------
 

@@ -290,6 +290,96 @@ public class TrainingService
         return new { existing.enrollmentid };
     }
 
+    // ---- requests to join a course, from the public site --------------------
+
+    public async Task<List<EnrollmentRequestRT>> EnrollmentRequests(short? status)
+    {
+        return await (from r in _db.enrollment_request.AsNoTracking()
+                      join g in _db.training_group.AsNoTracking() on r.groupid equals g.groupid
+                      where status == null || r.status == status
+                      orderby r.created descending
+                      select new EnrollmentRequestRT
+                      {
+                          requestid = r.requestid,
+                          groupid = r.groupid,
+                          groupname = g.name,
+                          accountid = r.accountid,
+                          last_name = r.last_name,
+                          first_name = r.first_name,
+                          phone = r.phone,
+                          note = r.note,
+                          status = r.status,
+                          decision_note = r.decision_note,
+                          studentid = r.studentid,
+                          created = r.created,
+                      }).ToListAsync();
+    }
+
+    // Approving is what turns an applicant into a student: it reuses the student row already on
+    // file when the phone matches - a returning applicant must not become a second person - and
+    // enrolls them at the course's standard price.
+    public async Task<object> ApproveEnrollmentRequest(long requestId)
+    {
+        var request = await _db.enrollment_request
+            .FirstOrDefaultAsync(r => r.requestid == requestId)
+            ?? throw new InvalidOperationException("request_not_found");
+
+        if (request.status == 2) return new { request.studentid };
+
+        var now = DateTime.UtcNow;
+        var phone = NullIfEmpty(request.phone);
+
+        var student = phone == null
+            ? null
+            : await _db.student.FirstOrDefaultAsync(s => s.phone == phone && !s.is_deleted);
+
+        if (student == null)
+        {
+            student = new Student
+            {
+                last_name = request.last_name,
+                first_name = request.first_name,
+                phone = phone,
+                accountid = request.accountid,
+                status = 1,
+                created = now,
+                updated = now,
+            };
+            _db.student.Add(student);
+        }
+        else if (student.accountid == 0)
+        {
+            // An existing student the centre typed in by hand, now claimed by a real login.
+            student.accountid = request.accountid;
+            student.updated = now;
+        }
+
+        await _db.SaveChangesAsync();
+
+        await Enroll(request.groupid, new EnrollBT { studentid = student.studentid });
+
+        request.status = 2;
+        request.studentid = student.studentid;
+        request.updated = now;
+        await _db.SaveChangesAsync();
+
+        return new { studentid = student.studentid };
+    }
+
+    public async Task<object> RejectEnrollmentRequest(long requestId, string? note)
+    {
+        var request = await _db.enrollment_request
+            .FirstOrDefaultAsync(r => r.requestid == requestId)
+            ?? throw new InvalidOperationException("request_not_found");
+
+        request.status = 3;
+        request.decision_note = NullIfEmpty(note);
+        request.updated = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return new { request.requestid };
+    }
+
     public async Task<object> Unenroll(long groupId, long studentId)
     {
         var entry = await _db.enrollment

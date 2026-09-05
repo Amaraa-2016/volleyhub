@@ -76,4 +76,13 @@ public class AccountController : ApiControllerBase
     [HttpPost("join")]
     public Task<IActionResult> Join([FromBody] JoinRequestBT data) =>
         Run(async () => await _service.RequestJoin(AccountId(), data));
+
+    // Asking to join one course, from its page on the public site.
+    [HttpPost("course/request")]
+    public Task<IActionResult> RequestCourse([FromBody] CourseRequestBT data) =>
+        Run(async () => await _service.RequestCourse(AccountId(), data));
+
+    [HttpGet("course/request")]
+    public Task<IActionResult> MyCourseRequest([FromQuery] int tenantid, [FromQuery] long groupid) =>
+        Run(async () => await _service.MyCourseRequest(AccountId(), tenantid, groupid));
 }

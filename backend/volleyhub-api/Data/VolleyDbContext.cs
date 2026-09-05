@@ -28,6 +28,8 @@ public class VolleyDbContext : DbContext, ITenantDbContext
     public DbSet<Group> training_group { get; set; }
     public DbSet<Student> student { get; set; }
     public DbSet<Enrollment> enrollment { get; set; }
+    // Asked for from the public site; becomes a student and an enrollment once the centre approves.
+    public DbSet<EnrollmentRequest> enrollment_request { get; set; }
 
     // Where and when training happens.
     public DbSet<Venue> venue { get; set; }

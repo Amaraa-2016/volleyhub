@@ -152,3 +152,25 @@ public class MemberActionBT
     // owner | admin | coach | player | fan
     public string? role { get; set; }
 }
+
+// ---- joining a course from the public site --------------------------------
+
+public class CourseRequestBT
+{
+    public int tenantid { get; set; }
+    public long groupid { get; set; }
+    // Free text from the applicant - which child, what experience, when they can attend.
+    public string? note { get; set; }
+}
+
+// What the course page shows back to the person who asked: their own request, or nothing.
+public class MyCourseRequestRT
+{
+    public long requestid { get; set; }
+    public int tenantid { get; set; }
+    public long groupid { get; set; }
+    // 1=Pending, 2=Approved, 3=Rejected
+    public short status { get; set; }
+    public string? decision_note { get; set; }
+    public DateTime created { get; set; }
+}

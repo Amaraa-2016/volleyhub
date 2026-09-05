@@ -149,6 +149,8 @@ public class CourseCardRT
     public double? latitude { get; set; }
     public double? longitude { get; set; }
     public List<PublicScheduleRT> schedule { get; set; } = new();
+    // When the course was first published, so the site can show the newest ones first.
+    public DateTime created { get; set; }
 }
 
 // The detail page adds what does not belong on a card.

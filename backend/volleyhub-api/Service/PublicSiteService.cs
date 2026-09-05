@@ -114,6 +114,7 @@ public class PublicSiteService
                         latitude = g.latitude,
                         longitude = g.longitude,
                         schedule = schedule.TryGetValue(g.groupid, out var sch) ? sch : [],
+                        created = g.created,
                     });
                 }
             }
@@ -234,6 +235,7 @@ public class PublicSiteService
             venuename = venue,
             coaches = coaches,
             schedule = schedule,
+            created = g.created,
         };
     }
 
