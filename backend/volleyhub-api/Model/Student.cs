@@ -16,15 +16,16 @@ public class Student
     public DateTime? date_of_birth { get; set; }
     // 1=Male, 2=Female
     public short? gender { get; set; }
-    [MaxLength(20)]
-    public string? reg_no { get; set; }
     [MaxLength(100)]
     public string? phone { get; set; }
-    // Guardian contact, for under-age students.
+    // Who to call if something happens at training - a parent for a child, anyone the adult names.
     [MaxLength(100)]
-    public string? parent_name { get; set; }
+    public string? emergency_name { get; set; }
+    // How they are related: аав, ээж, ах, эгч, нөхөр...
+    [MaxLength(50)]
+    public string? emergency_relation { get; set; }
     [MaxLength(100)]
-    public string? parent_phone { get; set; }
+    public string? emergency_phone { get; set; }
     public int? height_cm { get; set; }
     public string? photo { get; set; }
     // 1=Active, 2=Paused, 3=Left

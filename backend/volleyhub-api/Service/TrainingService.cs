@@ -239,7 +239,7 @@ public class TrainingService
                           last_name = s.last_name,
                           first_name = s.first_name,
                           phone = s.phone,
-                          parent_phone = s.parent_phone,
+                          emergency_phone = s.emergency_phone,
                           date_of_birth = s.date_of_birth,
                           status = s.status,
                           fee_amount = e.fee_amount,
@@ -413,10 +413,10 @@ public class TrainingService
                         first_name = s.first_name,
                         date_of_birth = s.date_of_birth,
                         gender = s.gender,
-                        reg_no = s.reg_no,
                         phone = s.phone,
-                        parent_name = s.parent_name,
-                        parent_phone = s.parent_phone,
+                        emergency_name = s.emergency_name,
+                        emergency_relation = s.emergency_relation,
+                        emergency_phone = s.emergency_phone,
                         height_cm = s.height_cm,
                         photo = s.photo,
                         status = s.status,
@@ -476,10 +476,10 @@ public class TrainingService
         student.first_name = Norm(data.first_name);
         student.date_of_birth = data.date_of_birth;
         student.gender = data.gender;
-        student.reg_no = NullIfEmpty(data.reg_no);
         student.phone = NullIfEmpty(data.phone);
-        student.parent_name = NullIfEmpty(data.parent_name);
-        student.parent_phone = NullIfEmpty(data.parent_phone);
+        student.emergency_name = NullIfEmpty(data.emergency_name);
+        student.emergency_relation = NullIfEmpty(data.emergency_relation);
+        student.emergency_phone = NullIfEmpty(data.emergency_phone);
         student.height_cm = data.height_cm;
         student.photo = data.photo;
         student.status = data.status;

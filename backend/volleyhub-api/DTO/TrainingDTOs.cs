@@ -95,10 +95,10 @@ public class StudentBT
     public string first_name { get; set; } = string.Empty;
     public DateTime? date_of_birth { get; set; }
     public short? gender { get; set; }
-    public string? reg_no { get; set; }
     public string? phone { get; set; }
-    public string? parent_name { get; set; }
-    public string? parent_phone { get; set; }
+    public string? emergency_name { get; set; }
+    public string? emergency_relation { get; set; }
+    public string? emergency_phone { get; set; }
     public int? height_cm { get; set; }
     public string? photo { get; set; }
     public short status { get; set; } = 1;
@@ -113,10 +113,10 @@ public class StudentRT
     public string first_name { get; set; } = string.Empty;
     public DateTime? date_of_birth { get; set; }
     public short? gender { get; set; }
-    public string? reg_no { get; set; }
     public string? phone { get; set; }
-    public string? parent_name { get; set; }
-    public string? parent_phone { get; set; }
+    public string? emergency_name { get; set; }
+    public string? emergency_relation { get; set; }
+    public string? emergency_phone { get; set; }
     public int? height_cm { get; set; }
     public string? photo { get; set; }
     public short status { get; set; }
@@ -143,7 +143,7 @@ public class EnrollmentRT
     public string last_name { get; set; } = string.Empty;
     public string first_name { get; set; } = string.Empty;
     public string? phone { get; set; }
-    public string? parent_phone { get; set; }
+    public string? emergency_phone { get; set; }
     public DateTime? date_of_birth { get; set; }
     public short status { get; set; }
     public decimal fee_amount { get; set; }
