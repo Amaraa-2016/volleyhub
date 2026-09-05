@@ -1,62 +1,73 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Button, Skeleton } from "antd";
+import { Skeleton } from "antd";
 import {
-    ArrowRight, CalendarCheck, MapPin, Newspaper, ShoppingBag, Users, Wallet,
+    ArrowRight, CalendarCheck, GraduationCap, MapPin, Newspaper, ShoppingBag, Users, Wallet,
 } from "lucide-react";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
 import CenterCards from "@/app/components/CenterCards";
 import Wordmark from "@/app/components/Wordmark";
 import ApplyForm from "@/app/components/ApplyForm";
-import ApplyModal from "@/app/components/ApplyModal";
 import { PublicAPI } from "@/app/utils/API";
-import {
-    money, type CenterCard, type CourseCard, type News, type Product,
-} from "@/app/types/api";
+import { money, type CenterCard, type CourseCard, type News, type Product } from "@/app/types/api";
 
 export default function HomePage() {
-    const [trainings, setTrainings] = useState<CourseCard[]>();
     const [centers, setCenters] = useState<CenterCard[]>([]);
+    const [courses, setCourses] = useState<CourseCard[]>([]);
     const [news, setNews] = useState<News[]>();
     const [products, setProducts] = useState<Product[]>();
-    const [applyOpen, setApplyOpen] = useState(false);
 
     useEffect(() => {
-        PublicAPI<CourseCard[]>("/api/vh/public/trainings").then((rows) => setTrainings(rows ?? []));
         PublicAPI<CenterCard[]>("/api/vh/public/centers").then((rows) => setCenters(rows ?? []));
+        PublicAPI<CourseCard[]>("/api/vh/public/trainings").then((rows) => setCourses(rows ?? []));
         PublicAPI<News[]>("/api/vh/public/news?take=3").then((rows) => setNews(rows ?? []));
         PublicAPI<Product[]>("/api/vh/public/products").then((rows) => setProducts(rows ?? []));
     }, []);
 
+    // The directory returns every course, grouped by centre; newest first is this page's ordering,
+    // not the directory's, so it is done here.
+    const latest = useMemo(
+        () => [...courses]
+            .sort((a, b) => (a.created < b.created ? 1 : a.created > b.created ? -1 : 0))
+            .slice(0, 3),
+        [courses],
+    );
+
     return (
         <SiteShell>
-            <section className="site-hero">
-                <div className="site-container site-hero__inner">
-                    <div className="site-hero__copy">
-                        <span className="site-hero__eyebrow">Волейболын сургалтын нэгдсэн платформ</span>
-                        <h1>Өөрт тохирох волейболын сургалтаа олоорой</h1>
+            {/* The page opens on the one thing only it can start: a centre signing up. Browsing
+                courses has its own page behind Сургалтууд in the header. */}
+            <section className="site-section apply-section" id="apply">
+                <div className="site-container apply-layout">
+                    <div className="apply-copy">
+                        <span className="site-eyebrow">Сургалт эрхлэгчдэд</span>
+                        <h2>Сургалтаа <Wordmark /> дээр бүртгүүлээрэй</h2>
                         <p>
-                            Хуваарь, үнэ, байршил, багш нарыг нь нэг дороос харьцуулаад шууд холбогдоно.
-                            Сургалт эрхлэгчид бүртгэл, ирц, төлбөрөө нэг системээс удирдана.
+                            Хүсэлтээ илгээгээд баталгаажмагц сургалтаа сайтад гаргаж, суралцагч,
+                            ирц, төлбөрөө нэг системээс удирдаж эхэлнэ.
                         </p>
-                        <div className="site-hero__actions">
-                            <Link href="/trainings">
-                                <Button type="primary" size="large">Сургалт хайх</Button>
-                            </Link>
-                            {/* The primary reason a centre owner is here, so it sits in the hero
-                                rather than in a section they would have to scroll to find. */}
-                            <Button size="large" ghost onClick={() => setApplyOpen(true)}>
-                                Сургалтаа бүртгүүлэх
-                            </Button>
-                        </div>
+
+                        <ol className="apply-steps">
+                            <li>
+                                <b>Бүртгэлээ үүсгэнэ</b>
+                                Овог, нэр, утасны дугаар, нууц үг л хангалттай.
+                            </li>
+                            <li>
+                                <b>Хүсэлтээ илгээнэ</b>
+                                Төвийн нэр, лого, холбоо барих мэдээллээ бөглөнө.
+                            </li>
+                            <li>
+                                <b>Баталгаажсаны дараа</b>
+                                Удирдлага хэсэг нээгдэж, сургалт, багш, суралцагчаа бүртгэнэ.
+                            </li>
+                        </ol>
                     </div>
 
-                    <div className="site-hero__stats">
-                        <Stat value={trainings?.length} label="Нээлттэй сургалт" />
-                        <Stat value={centers.length} label="Сургалтын төв" />
+                    <div className="apply-card">
+                        <ApplyForm />
                     </div>
                 </div>
             </section>
@@ -106,39 +117,48 @@ export default function HomePage() {
                 </section>
             )}
 
-            {/* The courses themselves live one click away under Сургалтууд, so the space here goes
-                to the one thing only this page can start: a centre signing up. */}
-            <section className="site-section apply-section" id="apply">
-                <div className="site-container apply-layout">
-                    <div className="apply-copy">
-                        <span className="site-hero__eyebrow">Сургалт эрхлэгчдэд</span>
-                        <h2>Сургалтаа <Wordmark /> дээр бүртгүүлээрэй</h2>
-                        <p>
-                            Хүсэлтээ илгээгээд баталгаажмагц сургалтаа сайтад гаргаж, суралцагч,
-                            ирц, төлбөрөө нэг системээс удирдаж эхэлнэ.
-                        </p>
-
-                        <ol className="apply-steps">
-                            <li>
-                                <b>Бүртгэлээ үүсгэнэ</b>
-                                Овог, нэр, утасны дугаар, нууц үг л хангалттай.
-                            </li>
-                            <li>
-                                <b>Хүсэлтээ илгээнэ</b>
-                                Төвийн нэр, лого, холбоо барих мэдээллээ бөглөнө.
-                            </li>
-                            <li>
-                                <b>Баталгаажсаны дараа</b>
-                                Удирдлага хэсэг нээгдэж, сургалт, багш, суралцагчаа бүртгэнэ.
-                            </li>
-                        </ol>
+            {!!latest.length && (
+                <section className="site-section site-section--muted">
+                    <div className="site-container">
+                        <div className="site-section__head">
+                            <div>
+                                <h2>Шинэ сургалтууд</h2>
+                                <p className="site-section__sub">Хамгийн сүүлд зарлагдсан сургалтууд</p>
+                            </div>
+                            <Link href="/trainings">
+                                Бүгдийг харах <ArrowRight size={14} style={{ verticalAlign: "-2px" }} />
+                            </Link>
+                        </div>
+                        <div className="site-grid site-grid--wide">
+                            {latest.map((c) => (
+                                <Link
+                                    key={`${c.tenantid}-${c.groupid}`}
+                                    href={`/trainings/${c.tenantid}/${c.groupid}`}
+                                    className="site-card"
+                                >
+                                    <div className="site-card__media">
+                                        {c.cover ? <img src={c.cover} alt={c.name} /> : <GraduationCap size={26} />}
+                                    </div>
+                                    <div className="site-card__body">
+                                        <div className="site-card__meta">{c.tenantname}</div>
+                                        <div className="site-card__title">{c.name}</div>
+                                        {!!(c.level || c.agegroup) && (
+                                            <div className="site-card__meta">
+                                                {[c.level, c.agegroup && `Нас: ${c.agegroup}`]
+                                                    .filter(Boolean).join(" · ")}
+                                            </div>
+                                        )}
+                                        {!!c.address && <div className="site-card__meta">{c.address}</div>}
+                                        <div className="site-card__price">
+                                            {c.fee_amount > 0 ? `${money(c.fee_amount)} / сар` : "Үнэ тодорхойгүй"}
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
                     </div>
-
-                    <div className="apply-card">
-                        <ApplyForm />
-                    </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             <section className="site-section">
                 <div className="site-container">
@@ -207,17 +227,7 @@ export default function HomePage() {
                 </section>
             )}
 
-            <ApplyModal open={applyOpen} onClose={() => setApplyOpen(false)} />
         </SiteShell>
-    );
-}
-
-function Stat({ value, label }: { value?: number; label: string }) {
-    return (
-        <div className="site-stat">
-            <div className="site-stat__value">{value ?? "—"}</div>
-            <div className="site-stat__label">{label}</div>
-        </div>
     );
 }
 

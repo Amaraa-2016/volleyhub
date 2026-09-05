@@ -174,7 +174,7 @@ export default function GroupDetailPage() {
                                 s.date_of_birth ? dayjs().diff(dayjs(s.date_of_birth), "year") : "-",
                         },
                         { title: "Утас", dataIndex: "phone", width: 120 },
-                        { title: "Эцэг эхийн утас", dataIndex: "parent_phone", width: 140 },
+                        { title: "Яаралтай үед", dataIndex: "emergency_phone", width: 140 },
                         {
                             title: "Төлбөр",
                             width: 120,

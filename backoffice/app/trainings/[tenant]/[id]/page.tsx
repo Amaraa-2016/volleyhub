@@ -7,6 +7,7 @@ import { Button, Card, Descriptions, Skeleton, Tag } from "antd";
 import { ArrowLeft, CalendarDays, MapPin, Phone, UserRound, Users } from "lucide-react";
 import dayjs from "dayjs";
 import SiteShell from "@/app/components/SiteShell";
+import EnrollButton from "@/app/components/EnrollButton";
 import { PublicAPI } from "@/app/utils/API";
 import { GENDERS, WEEKDAYS, minuteToTime, money, type CourseDetail } from "@/app/types/api";
 
@@ -147,6 +148,12 @@ export default function CourseDetailPage() {
                                     {course.fee_amount > 0 ? money(course.fee_amount) : "—"}
                                 </div>
                                 <div style={{ color: "#79808A", marginBottom: 16 }}>сарын төлбөр</div>
+
+                                <EnrollButton
+                                    tenantid={course.tenantid}
+                                    groupid={course.groupid}
+                                    full={spotsLeft === 0}
+                                />
 
                                 <Descriptions size="small" column={1} styles={{ label: { width: 110 } }}>
                                     {!!course.agegroup && (

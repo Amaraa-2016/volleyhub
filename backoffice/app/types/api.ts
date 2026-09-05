@@ -60,10 +60,11 @@ export interface Student {
     first_name: string;
     date_of_birth?: string | null;
     gender?: number | null;
-    reg_no?: string | null;
     phone?: string | null;
-    parent_name?: string | null;
-    parent_phone?: string | null;
+    // Who to call if something happens at training, and how they are related.
+    emergency_name?: string | null;
+    emergency_relation?: string | null;
+    emergency_phone?: string | null;
     height_cm?: number | null;
     photo?: string | null;
     status: number;
@@ -80,7 +81,7 @@ export interface RosterEntry {
     last_name: string;
     first_name: string;
     phone?: string | null;
-    parent_phone?: string | null;
+    emergency_phone?: string | null;
     date_of_birth?: string | null;
     status: number;
     fee_amount: number;
@@ -266,6 +267,8 @@ export interface CourseCard {
     latitude?: number | null;
     longitude?: number | null;
     schedule: PublicSchedule[];
+    // When the course was published; the home page shows the newest first.
+    created: string;
 }
 
 export interface PublicCoach {
@@ -422,3 +425,30 @@ export const timeToMinute = (value: string): number => {
 
 export const money = (value?: number | null): string =>
     value == null ? "-" : `${Math.round(value).toLocaleString("mn-MN")}₮`;
+
+// One person's request to join one course, as their own course page shows it back to them.
+export interface MyCourseRequest {
+    requestid: number;
+    tenantid: number;
+    groupid: number;
+    // 1=Pending, 2=Approved, 3=Rejected
+    status: number;
+    decision_note?: string | null;
+    created: string;
+}
+
+// The same request as the centre's console sees it, with who is asking.
+export interface EnrollmentRequest {
+    requestid: number;
+    groupid: number;
+    groupname: string;
+    accountid: number;
+    last_name: string;
+    first_name: string;
+    phone?: string | null;
+    note?: string | null;
+    status: number;
+    decision_note?: string | null;
+    studentid?: number | null;
+    created: string;
+}

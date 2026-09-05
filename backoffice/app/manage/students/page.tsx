@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import dayjs from "dayjs";
 import { Plus, Search } from "lucide-react";
 import AppShell from "@/app/components/AppShell";
+import EnrollmentRequests from "@/app/manage/students/EnrollmentRequests";
 import { API, APIWithError, errorText } from "@/app/utils/API";
 import { GENDERS, STUDENT_STATUS, money, type Group, type Student } from "@/app/types/api";
 
@@ -101,6 +102,8 @@ export default function StudentsPage() {
                 </div>
             </div>
 
+            <EnrollmentRequests onApproved={load} />
+
             <Table
                 rowKey="studentid"
                 loading={loading}
@@ -119,7 +122,20 @@ export default function StudentsPage() {
                     },
                     { title: "Групп", dataIndex: "groupname", width: 160, render: (v?: string) => v ?? "-" },
                     { title: "Утас", dataIndex: "phone", width: 120 },
-                    { title: "Эцэг эх", dataIndex: "parent_phone", width: 130 },
+                    {
+                        title: "Яаралтай үед",
+                        width: 170,
+                        render: (_: unknown, s: Student) => {
+                            if (!s.emergency_phone && !s.emergency_name) return "-";
+                            const who = [s.emergency_name, s.emergency_relation].filter(Boolean).join(", ");
+                            return (
+                                <>
+                                    <div>{s.emergency_phone ?? "-"}</div>
+                                    {!!who && <div style={{ color: "#79808A", fontSize: 12 }}>{who}</div>}
+                                </>
+                            );
+                        },
+                    },
                     {
                         title: "Үлдэгдэл",
                         width: 120,
@@ -178,17 +194,17 @@ export default function StudentsPage() {
                     >
                         <Input />
                     </Form.Item>
-                    <Form.Item name="parent_name" label="Эцэг/эхийн нэр">
-                        <Input />
+                    <Form.Item name="emergency_name" label="Яаралтай үед холбогдох хүн">
+                        <Input placeholder="Овог нэр" />
                     </Form.Item>
-                    <Form.Item name="parent_phone" label="Эцэг/эхийн утас">
-                        <Input />
+                    <Form.Item name="emergency_relation" label="Хэн болох">
+                        <Input placeholder="Аав, ээж, ах..." />
+                    </Form.Item>
+                    <Form.Item name="emergency_phone" label="Түүний утас">
+                        <Input placeholder="99001122" />
                     </Form.Item>
                     <Form.Item name="height_cm" label="Өндөр (см)">
                         <InputNumber min={80} max={250} style={{ width: "100%" }} />
-                    </Form.Item>
-                    <Form.Item name="reg_no" label="Регистрийн дугаар">
-                        <Input />
                     </Form.Item>
                     <Form.Item name="status" label="Төлөв">
                         <Select options={Object.entries(STUDENT_STATUS).map(([v, l]) => ({ value: Number(v), label: l }))} />

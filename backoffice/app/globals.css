@@ -57,6 +57,46 @@ a {
     letter-spacing: -0.4px;
 }
 
+/* ---- sign in / sign up dialog ------------------------------------------- */
+
+.auth-modal__brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.4px;
+}
+
+.auth-modal__title {
+    margin: 4px 0 18px;
+    font-size: 20px;
+    letter-spacing: -0.3px;
+}
+
+.auth-modal__switch {
+    margin-top: 16px;
+    text-align: center;
+    color: #79808a;
+    font-size: 14px;
+}
+
+/* The switch between the two forms changes what the dialog shows, so it is a button - styled as
+   the link it reads as. */
+.auth-modal__switch button {
+    border: 0;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: var(--vh-accent);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.auth-modal__switch button:hover {
+    text-decoration: underline;
+}
+
 /* ---- console pages ------------------------------------------------------ */
 
 .page-header {
@@ -169,54 +209,8 @@ a {
     flex: 1;
 }
 
-.site-hero {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(135deg, #10141c 0%, #1d2942 55%, #4a2410 100%);
-    color: #fff;
-    padding: 84px 0 92px;
-}
-
-/* Two soft light sources rather than a flat gradient - it keeps the dark panel from reading as a
-   solid block behind the text. */
-.site-hero::before,
-.site-hero::after {
-    content: "";
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.site-hero::before {
-    width: 520px;
-    height: 520px;
-    top: -220px;
-    right: -120px;
-    background: radial-gradient(circle, rgba(242, 101, 34, 0.35), transparent 68%);
-}
-
-.site-hero::after {
-    width: 420px;
-    height: 420px;
-    bottom: -240px;
-    left: -100px;
-    background: radial-gradient(circle, rgba(90, 140, 255, 0.22), transparent 70%);
-}
-
-.site-hero__inner {
-    position: relative;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 40px;
-    flex-wrap: wrap;
-}
-
-.site-hero__copy {
-    max-width: 640px;
-}
-
-.site-hero__eyebrow {
+/* The small pill above a heading on a dark band. */
+.site-eyebrow {
     display: inline-block;
     padding: 5px 12px;
     border-radius: 999px;
@@ -225,54 +219,6 @@ a {
     font-size: 12px;
     letter-spacing: 0.2px;
     margin-bottom: 18px;
-}
-
-.site-hero h1 {
-    margin: 0 0 16px;
-    font-size: 46px;
-    line-height: 1.1;
-    letter-spacing: -1.4px;
-    font-weight: 800;
-}
-
-.site-hero p {
-    margin: 0 0 28px;
-    font-size: 17px;
-    color: #c3c9d3;
-    max-width: 560px;
-    line-height: 1.65;
-}
-
-.site-hero__actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.site-hero__stats {
-    display: flex;
-    gap: 14px;
-}
-
-.site-stat {
-    min-width: 132px;
-    padding: 16px 18px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(6px);
-}
-
-.site-stat__value {
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -0.6px;
-}
-
-.site-stat__label {
-    font-size: 12px;
-    color: #b8bfca;
-    margin-top: 2px;
 }
 
 .site-section {
@@ -499,6 +445,8 @@ a {
     position: relative;
     overflow: hidden;
     color: #fff;
+    /* It opens the page, directly under the header, so it carries more air than a mid-page band. */
+    padding: 72px 0 84px;
     background:
         radial-gradient(circle at 12% 18%, rgba(242, 101, 34, 0.32), transparent 46%),
         radial-gradient(circle at 82% 88%, rgba(90, 140, 255, 0.22), transparent 52%),
@@ -692,6 +640,10 @@ a {
 }
 
 @media (max-width: 860px) {
+    .apply-section {
+        padding: 44px 0 52px;
+    }
+
     .apply-layout {
         grid-template-columns: 1fr;
         gap: 28px;
@@ -1058,25 +1010,30 @@ a {
     font-size: 13px;
 }
 
-@media (max-width: 768px) {
-    .site-hero {
-        padding: 48px 0 56px;
-    }
 
-    .site-hero h1 {
-        font-size: 30px;
-    }
+/* ---- asking to join a course ---- */
 
-    .site-hero__inner {
-        align-items: flex-start;
-    }
+.enroll-state {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    border-radius: 10px;
+    background: #eef1f6;
+    color: #5b626d;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
+}
 
-    .site-hero__stats {
-        width: 100%;
-    }
+.enroll-state--done {
+    background: #e8f6ee;
+    color: #1f9254;
+}
 
-    .site-stat {
-        flex: 1;
-        min-width: 0;
-    }
+.enroll-state--no {
+    background: #fdecea;
+    color: #a8342a;
+    font-weight: 500;
 }

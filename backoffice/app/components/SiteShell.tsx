@@ -7,6 +7,7 @@ import { Avatar, Button, Drawer, Dropdown, Grid } from "antd";
 import { LayoutGrid, LogOut, Menu as MenuIcon, User, Volleyball } from "lucide-react";
 import { useState } from "react";
 import Wordmark from "@/app/components/Wordmark";
+import { AuthDialogProvider, useAuthDialog } from "@/app/components/AuthDialog";
 
 const NAV = [
     { href: "/", label: "Нүүр" },
@@ -17,12 +18,24 @@ const NAV = [
 
 // Chrome for the public site. Separate from AppShell on purpose: these pages must render for a
 // visitor with no session, so nothing here may read tenant state.
+//
+// The auth dialog is provided from out here rather than inside, so the header's own buttons and
+// anything on the page below - the application form, say - open the same one.
 export default function SiteShell({ children }: { children: React.ReactNode }) {
+    return (
+        <AuthDialogProvider>
+            <Shell>{children}</Shell>
+        </AuthDialogProvider>
+    );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const { data: session, status } = useSession();
     const [open, setOpen] = useState(false);
     const screens = Grid.useBreakpoint();
+    const openAuth = useAuthDialog();
 
     // The console link appears only once an application has been approved - membership of a centre
     // is exactly what "approved" means, so there is nothing else to check.
@@ -104,8 +117,8 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
                         <div className="site-actions">
                             {status === "authenticated" ? account : (
                                 <>
-                                    <Link href="/login"><Button type="text">Нэвтрэх</Button></Link>
-                                    <Link href="/register"><Button type="primary">Бүртгүүлэх</Button></Link>
+                                    <Button type="text" onClick={() => openAuth("login")}>Нэвтрэх</Button>
+                                    <Button type="primary" onClick={() => openAuth("register")}>Бүртгүүлэх</Button>
                                 </>
                             )}
                         </div>
@@ -135,12 +148,12 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
                         </>
                     ) : (
                         <>
-                            <Link href="/login" onClick={() => setOpen(false)}>
-                                <Button block>Нэвтрэх</Button>
-                            </Link>
-                            <Link href="/register" onClick={() => setOpen(false)}>
-                                <Button block type="primary">Бүртгүүлэх</Button>
-                            </Link>
+                            <Button block onClick={() => { setOpen(false); openAuth("login"); }}>
+                                Нэвтрэх
+                            </Button>
+                            <Button block type="primary" onClick={() => { setOpen(false); openAuth("register"); }}>
+                                Бүртгүүлэх
+                            </Button>
                         </>
                     )}
                 </div>

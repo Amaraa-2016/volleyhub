@@ -1,12 +1,12 @@
 "use client";
 
 import { App, Button, Form, Input, Skeleton } from "antd";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { CheckCircle2, Clock, LayoutGrid, UserPlus } from "lucide-react";
+import { CheckCircle2, Clock, LayoutGrid } from "lucide-react";
 import { ImageUpload } from "@/app/components/ImageUpload";
+import { useAuthDialog } from "@/app/components/AuthDialog";
 import { AccountAPI, AccountAPIWithError, errorText } from "@/app/utils/API";
 import type { TenantRequest } from "@/app/types/api";
 
@@ -19,9 +19,10 @@ interface ApplyValues {
     tagline?: string;
 }
 
-// Applying to run a training centre. What it shows depends on where the person already is - no
-// account, an application in flight, or an approved centre - so nobody is handed a form that cannot
-// be submitted or would duplicate what they already sent.
+// Applying to run a training centre. Anyone can fill it in, signed in or not - the account is only
+// needed to send it, and that is asked for at the end. What it shows past that depends on where the
+// person already is - an application in flight, or an approved centre - so nobody is handed a form
+// that would duplicate what they already sent.
 //
 // It lives apart from the page and the dialog that show it, because it appears in both: as a
 // section on the home page and inside [ApplyModal] for the buttons in the header and the hero.
@@ -40,6 +41,7 @@ export default function ApplyForm({
     const [requests, setRequests] = useState<TenantRequest[]>();
     const [busy, setBusy] = useState(false);
     const [form] = Form.useForm<ApplyValues>();
+    const openAuth = useAuthDialog();
 
     const loadRequests = useCallback(async () => {
         if (status !== "authenticated") return;
@@ -52,7 +54,7 @@ export default function ApplyForm({
     const pending = (requests ?? []).find((r) => r.status === "pending");
     const rejected = (requests ?? []).find((r) => r.status === "rejected");
 
-    const submit = async (values: ApplyValues) => {
+    const send = async (values: ApplyValues) => {
         setBusy(true);
         const res = await AccountAPIWithError("/api/vh/account/tenant/request", { data: values });
         setBusy(false);
@@ -66,29 +68,23 @@ export default function ApplyForm({
         loadRequests();
     };
 
+    const submit = async (values: ApplyValues) => {
+        // A visitor with no account fills the form first and is asked to sign in only at the end:
+        // what they typed stays on screen behind the dialog and is sent the moment they are in,
+        // rather than being thrown away at a sign-in wall they hit before writing anything.
+        if (status !== "authenticated") {
+            openAuth("login", () => send(values));
+            return;
+        }
+        send(values);
+    };
+
     const goToConsole = () => {
         onDone?.();
         router.push(session?.selectedTenantId ? "/manage/dashboard" : "/club");
     };
 
     if (status === "loading") return <Skeleton active />;
-
-    if (status !== "authenticated") {
-        return (
-            <State
-                icon={<UserPlus size={26} />}
-                title="Эхлээд бүртгэлээ үүсгэнэ үү"
-                text="Овог, нэр, утасны дугаар, нууц үг л хангалттай. Хүсэлт таны бүртгэлд холбогдоно."
-            >
-                <Link href="/register">
-                    <Button type="primary" size="large">Бүртгүүлэх</Button>
-                </Link>
-                <Link href="/login">
-                    <Button size="large">Нэвтрэх</Button>
-                </Link>
-            </State>
-        );
-    }
 
     if (managed.length > 0) {
         return (
@@ -135,11 +131,16 @@ export default function ApplyForm({
                 >
                     <Input size="large" placeholder="Volley Zone" />
                 </Form.Item>
-                <Form.Item name="logo" label="Лого">
-                    {/* No centre exists yet, so this goes to the account-scoped upload and is
-                        copied over when the application is approved. */}
-                    <ImageUpload scope="account" height={100} />
-                </Form.Item>
+                {/* Uploading needs an account, and the request is sent the moment the visitor signs
+                    in - so a signed-out visitor is not shown a field that would fail or be skipped
+                    past. The logo is added from the centre's own page once approved. */}
+                {status === "authenticated" && (
+                    <Form.Item name="logo" label="Лого">
+                        {/* No centre exists yet, so this goes to the account-scoped upload and is
+                            copied over when the application is approved. */}
+                        <ImageUpload scope="account" height={100} />
+                    </Form.Item>
+                )}
                 <div className="apply-row">
                     <Form.Item name="contactphone" label="Холбоо барих утас">
                         <Input size="large" placeholder="99001122" />
