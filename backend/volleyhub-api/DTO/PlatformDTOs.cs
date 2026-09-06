@@ -119,7 +119,15 @@ public class CenterCardRT
     public int tenantid { get; set; }
     public string tenantname { get; set; } = string.Empty;
     public string? logo { get; set; }
+    // The photo behind the name on a card; the logo is the fallback when a centre has not set one.
+    public string? cover { get; set; }
+    public string? tagline { get; set; }
+    public string? address { get; set; }
     public int coursecount { get; set; }
+    // How many are training there now - what a card shows to say how busy a centre is.
+    public int studentcount { get; set; }
+    // The cheapest course on offer, shown as "from" on the card.
+    public decimal min_fee { get; set; }
 }
 
 // One course as the public site lists it. The listing is of COURSES, not of organisations: a

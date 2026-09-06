@@ -144,16 +144,34 @@ public class PublicSiteService
             try
             {
                 await using var db = OpenTenant(tenant.tenantid);
-                var count = await db.training_group.AsNoTracking()
-                    .CountAsync(g => !g.is_deleted && g.isactive);
-                if (count == 0) continue;
+                var groups = await db.training_group.AsNoTracking()
+                    .Where(g => !g.is_deleted && g.isactive)
+                    .Select(g => new { g.groupid, g.fee_amount })
+                    .ToListAsync();
+                if (groups.Count == 0) continue;
+
+                var ids = groups.Select(g => g.groupid).ToList();
+                var students = await db.enrollment.AsNoTracking()
+                    .Where(e => ids.Contains(e.groupid) && e.isactive)
+                    .Select(e => e.studentid)
+                    .Distinct()
+                    .CountAsync();
 
                 cards.Add(new CenterCardRT
                 {
                     tenantid = tenant.tenantid,
                     tenantname = tenant.tenantname,
                     logo = tenant.logo,
-                    coursecount = count,
+                    cover = tenant.cover,
+                    tagline = tenant.tagline,
+                    address = tenant.address,
+                    coursecount = groups.Count,
+                    studentcount = students,
+                    // Courses with no price set would otherwise make every centre start "from 0".
+                    min_fee = groups.Where(g => g.fee_amount > 0)
+                        .Select(g => g.fee_amount)
+                        .DefaultIfEmpty(0)
+                        .Min(),
                 });
             }
             catch (Exception ex)
