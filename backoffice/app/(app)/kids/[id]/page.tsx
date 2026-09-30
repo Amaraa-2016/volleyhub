@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Phone, Pencil, Trash2, StickyNote, UserX, UserCheck, Check, HeartPulse, Ruler, TriangleAlert } from "lucide-react";
+import { Printer, Phone, Pencil, Trash2, StickyNote, UserX, UserCheck, Check, HeartPulse, Ruler, TriangleAlert } from "lucide-react";
 import { HealthTab, MeasureTab } from "@/app/components/KidHealth";
 import { TopBar, useData, Loading, ErrorBox, Sheet, Empty, useToast } from "@/app/components/ui";
 import StudentForm from "@/app/components/StudentForm";
@@ -53,7 +53,10 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
     return (
         <>
             <TopBar back title={s ? `${s.last_name} ${s.first_name}`.trim() : ""} sub={s?.groupname ?? undefined} right={s && (
-                <button className="icon-btn" aria-label="Мэдээлэл засах" onClick={() => setSheet("edit")}><Pencil size={20} /></button>
+                <>
+                    <Link href={`/print/kid/${id}`} className="icon-btn" aria-label="Тайлан хэвлэх / PDF"><Printer size={20} /></Link>
+                    <button className="icon-btn" aria-label="Мэдээлэл засах" onClick={() => setSheet("edit")}><Pencil size={20} /></button>
+                </>
             )} />
             <main className="page">
                 {kid.loading && !s ? <Loading rows={4} /> : kid.error ? <ErrorBox code={kid.error} retry={kid.reload} /> : s && (
@@ -115,9 +118,9 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
                                 <span className={`ico ${isLeft ? "tone-present" : "tone-muted"}`}>{isLeft ? <UserCheck size={20} /> : <UserX size={20} />}</span>
                                 {isLeft ? "Идэвхжүүлэх" : "Гарсан болгох"}
                             </button>
-                            <button className="action-tile" onClick={() => setSheet("edit")}>
-                                <span className="ico tone-court"><Pencil size={20} /></span>Засах
-                            </button>
+                            <Link className="action-tile" href={`/print/kid/${id}`}>
+                                <span className="ico tone-court"><Printer size={20} /></span>Тайлан / PDF
+                            </Link>
                         </div>
 
                         <div className="tabs" role="tablist">
