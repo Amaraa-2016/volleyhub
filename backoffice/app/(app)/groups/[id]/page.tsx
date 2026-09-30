@@ -25,7 +25,7 @@ export default function GroupPage({ params }: { params: Promise<{ id: string }> 
     const flags = useData<HealthFlag[]>("/api/vh/backoffice/health-flags");
     const roster = useData<RosterEntry[]>(`/api/vh/backoffice/groups/${id}/students?includeLeft=true`);
     const [tab, setTab] = useState<Tab>("active");
-    const [sheet, setSheet] = useState<null | "edit" | "slot" | "existing" | "new" | "invoice">(null);
+    const [sheet, setSheet] = useState<null | "edit" | "slot" | "existing" | "new" | "invoice" | "delete">(null);
     const [busy, setBusy] = useState(false);
     const [q, setQ] = useState("");
 
@@ -64,10 +64,11 @@ export default function GroupPage({ params }: { params: Promise<{ id: string }> 
     };
 
     const archive = async () => {
-        if (!g || !confirm(`"${g.name}" ангийг устгах уу? Өмнөх ирц, төлбөр хадгалагдана.`)) return;
-        const res = await API(`/api/vh/backoffice/groups/${id}`, { method: "DELETE" });
+        setBusy(true);
+        const res = await API<{ children: number }>(`/api/vh/backoffice/groups/${id}`, { method: "DELETE" });
+        setBusy(false);
         if (res.error) return toast.fail(res.error);
-        toast.ok("Анги устлаа");
+        toast.ok(`"${g?.name ?? ""}" анги устлаа`);
         router.replace("/groups");
     };
 
@@ -134,7 +135,6 @@ export default function GroupPage({ params }: { params: Promise<{ id: string }> 
                                         <button className="btn" disabled={busy} onClick={generate}><CalendarPlus size={18} /> 5 долоо хоногийн хичээл үүсгэх</button>
                                     )}
                                 </div>
-                                <button className="btn ghost block danger section" onClick={archive}><Trash2 size={16} /> Ангийг устгах</button>
                             </>
                         ) : (
                             <>
@@ -187,12 +187,34 @@ export default function GroupPage({ params }: { params: Promise<{ id: string }> 
                                 )}
                             </>
                         )}
+
+                        <button className="btn ghost block danger section" onClick={() => setSheet("delete")}><Trash2 size={16} /> Ангийг устгах</button>
                     </>
                 )}
             </main>
 
             <Sheet open={sheet === "edit"} onClose={() => setSheet(null)} title="Анги засах">
-                {g && <GroupForm group={g} onSaved={() => { setSheet(null); group.reload(); }} />}
+                {g && <GroupForm group={g} onSaved={() => { setSheet(null); group.reload(); }} onDelete={() => setSheet("delete")} />}
+            </Sheet>
+            <Sheet open={sheet === "delete"} onClose={() => setSheet(null)} title="Ангийг устгах уу?">
+                {g && (
+                    <div>
+                        <div className="alert tone-absent" style={{ marginBottom: 16 }}>
+                            <strong>{g.name}</strong> анги жагсаалтаас хасагдана.
+                        </div>
+                        <ul style={{ margin: "0 0 16px", paddingLeft: 20, fontSize: 14, lineHeight: "22px", fontWeight: 600 }}>
+                            <li>{active.length > 0 ? `${active.length} хүүхэд энэ ангиас гарна. Хүүхдүүд өөрсдөө устахгүй, "Ангигүй" болж, өөр ангид шилжүүлж болно.` : "Ангид идэвхтэй хүүхэд алга."}</li>
+                            <li>Долоо хоногийн хуваарь болон ирц аваагүй ирээдүйн хичээлүүд устана.</li>
+                            <li>Өмнөх ирц, төлбөрийн түүх хэвээр хадгалагдана. Төлөгдөөгүй төлбөр ч хэвээр үлдэнэ.</li>
+                        </ul>
+                        <div className="actions">
+                            <button className="btn" onClick={() => setSheet(null)}>Болих</button>
+                            <button className="btn primary" style={{ background: "var(--absent)", borderColor: "var(--absent)", color: "#fff" }} disabled={busy} onClick={archive}>
+                                <Trash2 size={16} /> Устгах
+                            </button>
+                        </div>
+                    </div>
+                )}
             </Sheet>
             <Sheet open={sheet === "slot"} onClose={() => setSheet(null)} title="Хичээлийн цаг нэмэх">
                 <SlotForm groupId={Number(id)} onSaved={() => { setSheet(null); group.reload(); }} />

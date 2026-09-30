@@ -5,7 +5,11 @@ import { Field, useToast } from "@/app/components/ui";
 import type { Group } from "@/app/types/api";
 import { API } from "@/app/utils/API";
 
-export default function GroupForm({ group, onSaved }: { group?: Group | null; onSaved: (groupid: number) => void }) {
+export default function GroupForm({ group, onSaved, onDelete }: {
+    group?: Group | null;
+    onSaved: (groupid: number) => void;
+    onDelete?: () => void;
+}) {
     const toast = useToast();
     const [busy, setBusy] = useState(false);
     const [f, setF] = useState({
@@ -65,6 +69,9 @@ export default function GroupForm({ group, onSaved }: { group?: Group | null; on
             </div>
             <Field label="Тэмдэглэл"><textarea className="input" rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></Field>
             <button className="btn primary block" disabled={busy}>{group ? "Хадгалах" : "Анги нэмэх"}</button>
+            {group && onDelete && (
+                <button type="button" className="btn ghost block danger" style={{ marginTop: 8 }} onClick={onDelete}>Ангийг устгах</button>
+            )}
         </form>
     );
 }
