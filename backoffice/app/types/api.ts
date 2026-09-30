@@ -34,12 +34,20 @@ export interface RosterEntry {
     studentid: number;
     last_name: string;
     first_name: string;
+    gender?: number | null;
+    birth_year?: number | null;
     phone?: string | null;
+    emergency_name?: string | null;
+    emergency_relation?: string | null;
     emergency_phone?: string | null;
     date_of_birth?: string | null;
+    // The child's status: 1=Active, 3=Left
     status: number;
     fee_amount: number;
     joined: string;
+    left_at?: string | null;
+    active: boolean;
+    balance: number;
 }
 
 export interface Student {
@@ -47,6 +55,7 @@ export interface Student {
     last_name: string;
     first_name: string;
     date_of_birth?: string | null;
+    birth_year?: number | null;
     gender?: number | null;
     phone?: string | null;
     emergency_name?: string | null;
@@ -56,6 +65,8 @@ export interface Student {
     photo?: string | null;
     // 1=Active, 2=Paused, 3=Left
     status: number;
+    start_date?: string | null;
+    left_date?: string | null;
     notes?: string | null;
     pay_ref?: string | null;
     groupid?: number | null;
@@ -129,6 +140,8 @@ export interface Fee {
     status: number;
     note?: string | null;
     pay_ref?: string | null;
+    phone?: string | null;
+    notified_at?: string | null;
     payments: Payment[];
 }
 
@@ -167,4 +180,38 @@ export interface RatingMonth {
     // skill id (as a string key) -> 1..5
     scores: Record<string, number>;
     note?: string | null;
+}
+
+export interface Note {
+    noteid: number;
+    body: string;
+    author?: string | null;
+    created: string;
+}
+
+export interface NotifyItem {
+    feeid: number;
+    studentid: number;
+    name: string;
+    phone?: string | null;
+    message: string;
+    status: "sent" | "failed" | "logged" | "no_phone" | "preview";
+    error?: string | null;
+}
+
+export interface NotifyResult {
+    sent: number;
+    failed: number;
+    skipped: number;
+    gateway: boolean;
+    items: NotifyItem[];
+}
+
+export interface Settings {
+    tenantname: string;
+    contactphone?: string | null;
+    bank_name?: string | null;
+    bank_account?: string | null;
+    bank_holder?: string | null;
+    sms_enabled: boolean;
 }

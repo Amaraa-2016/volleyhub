@@ -4,7 +4,7 @@ import Providers from "./Providers";
 
 export const metadata: Metadata = {
     title: "Volleyhub",
-    description: "Хүүхдийн волейболын дасгалжуулагчийн туслах: ирц, төлбөр, бүлэг, ахиц",
+    description: "Хүүхдийн волейболын дасгалжуулагчийн туслах: ирц, төлбөр, анги, ахиц",
     manifest: "/manifest.webmanifest",
     appleWebApp: { capable: true, title: "Volleyhub", statusBarStyle: "default" },
     icons: { icon: "/icon.svg", apple: "/icon.svg" },

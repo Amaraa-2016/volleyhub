@@ -83,6 +83,15 @@ export const shortName = (last?: string | null, first?: string | null) => {
 export const initials = (last?: string | null, first?: string | null) =>
     ((first ?? "").charAt(0) + (last ?? "").charAt(0)).toUpperCase() || "?";
 
+// Age from the year of birth - what the coach enters. Falls back to a full date for children
+// entered before the field existed.
+export const ageOf = (s: { birth_year?: number | null; date_of_birth?: string | null }) =>
+    s.birth_year ? new Date().getFullYear() - s.birth_year : age(s.date_of_birth);
+
+export const GENDER: Record<number, string> = { 1: "Хүү", 2: "Охин" };
+
+export const RELATIONS = ["Ээж", "Аав", "Эмээ", "Өвөө", "Эгч", "Ах", "Асран хамгаалагч"];
+
 export const age = (dob?: string | null) => {
     if (!dob) return null;
     const b = new Date(dob);

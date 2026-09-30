@@ -93,7 +93,7 @@ export default function RegisterPage({ params }: { params: Promise<{ id: string 
                                     </Empty>
                                 </div>
                             ) : rows.length === 0 ? (
-                                <div className="card"><Empty title="Бүлэгт хүүхэд алга" text="Бүлгийн хуудсаас хүүхэд нэмнэ үү." /></div>
+                                <div className="card"><Empty title="Ангид хүүхэд алга" text="Ангийн хуудсаас хүүхэд нэмнэ үү." /></div>
                             ) : (
                                 <>
                                     <div className="chips" style={{ marginBottom: 12 }}>

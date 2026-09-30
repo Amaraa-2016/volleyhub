@@ -22,12 +22,12 @@ function GroupsInner() {
 
     return (
         <>
-            <TopBar title="Бүлгүүд" />
+            <TopBar title="Ангиуд" />
             <main className="page">
                 {loading && !data ? <Loading /> : error && !data ? <ErrorBox code={error} retry={reload} /> : !data?.length ? (
                     <div className="card">
-                        <Empty title="Бүлэг алга" text="Сургалтын бүлгээ нэмээд хуваарь, хүүхдүүдээ оруулна.">
-                            <button className="btn primary" onClick={() => setAdding(true)}><Plus size={18} /> Бүлэг нэмэх</button>
+                        <Empty title="Анги алга" text="Сургалтын ангиа нэмээд хуваарь, хүүхдүүдээ оруулна.">
+                            <button className="btn primary" onClick={() => setAdding(true)}><Plus size={18} /> Анги нэмэх</button>
                         </Empty>
                     </div>
                 ) : (
@@ -55,9 +55,9 @@ function GroupsInner() {
                 )}
             </main>
 
-            <button className="fab" onClick={() => setAdding(true)}><Plus size={20} /> Бүлэг</button>
+            <button className="fab" onClick={() => setAdding(true)}><Plus size={20} /> Анги</button>
 
-            <Sheet open={adding} onClose={() => setAdding(false)} title="Шинэ бүлэг">
+            <Sheet open={adding} onClose={() => setAdding(false)} title="Шинэ анги">
                 <GroupForm onSaved={(id) => { setAdding(false); reload(); router.push(`/groups/${id}`); }} />
             </Sheet>
         </>

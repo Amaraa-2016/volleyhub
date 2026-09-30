@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Check, Search, Download, Undo2, Receipt } from "lucide-react";
-import { TopBar, useData, Loading, ErrorBox, Empty, Sheet, Field, useToast } from "@/app/components/ui";
+import { ChevronLeft, ChevronRight, Check, Search, Download, Receipt, Send } from "lucide-react";
+import { TopBar, useData, Loading, ErrorBox, Empty, useToast } from "@/app/components/ui";
+import FeeSheet from "@/app/components/FeeSheet";
+import InvoiceSheet from "@/app/components/InvoiceSheet";
 import type { Fee, Group, Month } from "@/app/types/api";
 import { API } from "@/app/utils/API";
-import { currentPeriod, FEE_STATUS, initials, METHODS, money, periodLabel, shiftPeriod, shortDate, shortName, today } from "@/app/utils/format";
+import { currentPeriod, FEE_STATUS, initials, money, periodLabel, shiftPeriod, shortDate, shortName } from "@/app/utils/format";
 
 type Filter = "unpaid" | "paid" | "all";
 
@@ -19,6 +21,7 @@ export default function FeesPage() {
     const [q, setQ] = useState("");
     const [open, setOpen] = useState<Fee | null>(null);
     const [busy, setBusy] = useState(false);
+    const [invoice, setInvoice] = useState(false);
 
     const month = useData<Month>(`/api/vh/backoffice/month?period=${period}`);
     const groups = useData<Group[]>("/api/vh/backoffice/groups");
@@ -64,7 +67,7 @@ export default function FeesPage() {
     };
 
     const exportCsv = () => {
-        const rows = [["Овог", "Нэр", "Бүлэг", "Гүйлгээний утга", "Төлбөр", "Төлсөн", "Үлдэгдэл", "Төлөв", "Төлсөн огноо", "Шилжүүлсэн"]];
+        const rows = [["Овог", "Нэр", "Анги", "Гүйлгээний утга", "Төлбөр", "Төлсөн", "Үлдэгдэл", "Төлөв", "Төлсөн огноо", "Шилжүүлсэн"]];
         for (const f of month.data?.fees ?? []) {
             const last = f.payments[0];
             rows.push([
@@ -87,7 +90,10 @@ export default function FeesPage() {
     return (
         <>
             <TopBar title="Төлбөр" right={
-                m && m.fees.length > 0 ? <button className="icon-btn" aria-label="Excel (CSV) татах" onClick={exportCsv}><Download size={22} /></button> : undefined
+                <>
+                    <button className="icon-btn" aria-label="Нэхэмжлэх илгээх" onClick={() => setInvoice(true)}><Send size={21} /></button>
+                    {m && m.fees.length > 0 && <button className="icon-btn" aria-label="Excel (CSV) татах" onClick={exportCsv}><Download size={22} /></button>}
+                </>
             } />
             <main className="page">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -122,7 +128,7 @@ export default function FeesPage() {
                         {m.fees.length === 0 ? (
                             m.missing_count === 0 && (
                                 <div className="card" style={{ marginTop: 12 }}>
-                                    <Empty title="Энэ сард төлбөр алга" text="Бүлэгт хүүхэд нэмж, бүлгийн сарын төлбөрийг оруулсны дараа энд гарна." />
+                                    <Empty title="Энэ сард төлбөр алга" text="Ангид хүүхэд нэмж, ангийн сарын төлбөрийг оруулсны дараа энд гарна." />
                                 </div>
                             )
                         ) : (
@@ -138,7 +144,7 @@ export default function FeesPage() {
                                 </div>
                                 {(groups.data?.length ?? 0) > 1 && (
                                     <div className="chips" style={{ marginBottom: 12 }}>
-                                        <button className={`chip${groupId === null ? " on" : ""}`} onClick={() => setGroupId(null)}>Бүх бүлэг</button>
+                                        <button className={`chip${groupId === null ? " on" : ""}`} onClick={() => setGroupId(null)}>Бүх анги</button>
                                         {groups.data!.map((g) => (
                                             <button key={g.groupid} className={`chip${groupId === g.groupid ? " on" : ""}`} onClick={() => setGroupId(g.groupid)}>{g.name}</button>
                                         ))}
@@ -159,7 +165,7 @@ export default function FeesPage() {
                                                         <div className="grow">
                                                             <div className="title">{shortName(f.last_name, f.first_name)}</div>
                                                             <div className="meta">
-                                                                {f.pay_ref ? `Утга: ${f.pay_ref}` : f.groupname}
+                                                                {f.groupname}{f.notified_at && owes ? " · нэхэмжилсэн" : ""}
                                                             </div>
                                                         </div>
                                                         <div className="end">
@@ -183,114 +189,8 @@ export default function FeesPage() {
                 )}
             </main>
 
+            <InvoiceSheet open={invoice} onClose={() => { setInvoice(false); month.reload(); }} />
             <FeeSheet fee={open} onClose={() => setOpen(null)} onChanged={() => { month.reload(); setOpen(null); }} />
         </>
-    );
-}
-
-function FeeSheet({ fee, onClose, onChanged }: { fee: Fee | null; onClose: () => void; onChanged: () => void }) {
-    const toast = useToast();
-    const [form, setForm] = useState({ amount: "", paid_at: today(), payer: "", method: 2, note: "" });
-    const [busy, setBusy] = useState(false);
-    const [lastFee, setLastFee] = useState<number | null>(null);
-
-    // Reset the form each time a different fee opens.
-    if (fee && fee.feeid !== lastFee) {
-        setLastFee(fee.feeid);
-        setForm({ amount: String(fee.balance), paid_at: today(), payer: "", method: 2, note: "" });
-    }
-
-    if (!fee) return null;
-    const owes = fee.status === 1 || fee.status === 2;
-
-    const markPaid = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setBusy(true);
-        const res = await API(`/api/vh/backoffice/fees/${fee.feeid}/paid`, {
-            data: {
-                amount: Number(form.amount) || undefined,
-                method: form.method,
-                // Noon local time, so the day never slips across midnight in UTC.
-                paid_at: new Date(`${form.paid_at}T12:00:00`).toISOString(),
-                payer: form.payer,
-                note: form.note,
-            },
-        });
-        setBusy(false);
-        if (res.error) return toast.fail(res.error);
-        toast.ok("Төлсөн гэж тэмдэглэлээ");
-        onChanged();
-    };
-
-    const undo = async (paymentid: number) => {
-        setBusy(true);
-        const res = await API(`/api/vh/backoffice/payments/${paymentid}`, { method: "DELETE" });
-        setBusy(false);
-        if (res.error) return toast.fail(res.error);
-        toast.ok("Буцаалаа");
-        onChanged();
-    };
-
-    const waive = async () => {
-        setBusy(true);
-        const res = await API(`/api/vh/backoffice/fees/${fee.feeid}/waive`, { data: { note: "Чөлөөлсөн" } });
-        setBusy(false);
-        if (res.error) return toast.fail(res.error);
-        toast.ok("Энэ сарын төлбөрөөс чөлөөллөө");
-        onChanged();
-    };
-
-    return (
-        <Sheet open onClose={onClose} title={shortName(fee.last_name, fee.first_name)}>
-            <div className="card pad" style={{ marginBottom: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span className="muted">{fee.groupname} · {periodLabel(fee.period)}</span>
-                    <span className={`badge tone-${FEE_STATUS[fee.status].tone}`}>{FEE_STATUS[fee.status].label}</span>
-                </div>
-                <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }} className="num">
-                    {money(fee.paid_amount)} <span className="muted" style={{ fontSize: 16 }}>/ {money(fee.amount)}</span>
-                </div>
-                {fee.pay_ref && <div className="caption" style={{ marginTop: 4 }}>Гүйлгээний утга: <b>{fee.pay_ref}</b></div>}
-            </div>
-
-            {fee.payments.length > 0 && (
-                <div className="list" style={{ marginBottom: 16 }}>
-                    {fee.payments.map((p) => (
-                        <div key={p.paymentid} className="row">
-                            <div className="grow">
-                                <div className="title num">{money(p.amount)}</div>
-                                <div className="meta">{shortDate(p.paid_at)} · {METHODS[p.method] ?? ""}{p.payer ? ` · ${p.payer}` : ""}</div>
-                            </div>
-                            <button className="btn sm" disabled={busy} onClick={() => undo(p.paymentid)}><Undo2 size={16} /> Буцаах</button>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {owes && (
-                <form onSubmit={markPaid}>
-                    <div className="grid-2">
-                        <Field label="Дүн">
-                            <input className="input num" inputMode="numeric" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value.replace(/[^\d]/g, "") })} />
-                        </Field>
-                        <Field label="Огноо">
-                            <input className="input" type="date" value={form.paid_at} onChange={(e) => setForm({ ...form, paid_at: e.target.value })} />
-                        </Field>
-                    </div>
-                    <Field label="Хуулгад байгаа нэр" hint="Дараа нь хуулгаас хайхад хэрэгтэй">
-                        <input className="input" placeholder="Жишээ: Д.Сараа" value={form.payer} onChange={(e) => setForm({ ...form, payer: e.target.value })} />
-                    </Field>
-                    <div className="seg" style={{ marginBottom: 16 }}>
-                        {[2, 1, 4].map((m) => (
-                            <button type="button" key={m} className={form.method === m ? "on" : ""} onClick={() => setForm({ ...form, method: m })}>{METHODS[m]}</button>
-                        ))}
-                    </div>
-                    <button className="btn primary block" disabled={busy}><Check size={18} /> Төлсөн гэж тэмдэглэх</button>
-                    {fee.payments.length === 0 && (
-                        <button type="button" className="btn ghost block" style={{ marginTop: 8 }} disabled={busy} onClick={waive}>Энэ сард чөлөөлөх</button>
-                    )}
-                </form>
-            )}
-        </Sheet>
     );
 }

@@ -3,37 +3,51 @@
 import Link from "next/link";
 import { use, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, Trash2, UserPlus, UserMinus, CalendarPlus, Search } from "lucide-react";
+import { Pencil, Plus, Trash2, UserPlus, CalendarPlus, Search, ClipboardCheck, Send, Phone } from "lucide-react";
 import { TopBar, useData, Loading, ErrorBox, Empty, Sheet, Field, useToast } from "@/app/components/ui";
 import GroupForm from "@/app/components/GroupForm";
 import StudentForm from "@/app/components/StudentForm";
+import InvoiceSheet from "@/app/components/InvoiceSheet";
 import type { Group, RosterEntry, Student } from "@/app/types/api";
 import { API } from "@/app/utils/API";
-import { addDays, age, hhmm, initials, money, shortName, toMinutes, today, WEEKDAYS, WEEKDAYS_SHORT, WEEK_ORDER } from "@/app/utils/format";
+import { addDays, ageOf, hhmm, initials, money, shortDate, shortName, toMinutes, today, WEEKDAYS, WEEKDAYS_SHORT, WEEK_ORDER } from "@/app/utils/format";
 
+type Tab = "active" | "left" | "schedule";
+
+// A class is where the coach works: its children, and the three things done to them - take the
+// register, send the month's invoices, add a child.
 export default function GroupPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
     const toast = useToast();
     const group = useData<Group>(`/api/vh/backoffice/groups/${id}`);
-    const roster = useData<RosterEntry[]>(`/api/vh/backoffice/groups/${id}/students`);
-    const [sheet, setSheet] = useState<null | "edit" | "slot" | "add" | "new">(null);
+    const roster = useData<RosterEntry[]>(`/api/vh/backoffice/groups/${id}/students?includeLeft=true`);
+    const [tab, setTab] = useState<Tab>("active");
+    const [sheet, setSheet] = useState<null | "edit" | "slot" | "existing" | "new" | "invoice">(null);
     const [busy, setBusy] = useState(false);
+    const [q, setQ] = useState("");
 
     const g = group.data;
+    const active = useMemo(() => (roster.data ?? []).filter((r) => r.active), [roster.data]);
+    const left = useMemo(() => (roster.data ?? []).filter((r) => !r.active), [roster.data]);
+    const owed = active.reduce((sum, r) => sum + r.balance, 0);
+
+    const shown = (tab === "left" ? left : active).filter((r) => {
+        const term = q.trim().toLowerCase();
+        return !term || `${r.last_name} ${r.first_name} ${r.emergency_phone ?? ""}`.toLowerCase().includes(term);
+    });
+
+    const takeAttendance = async () => {
+        setBusy(true);
+        const res = await API<{ sessionid: number }>(`/api/vh/backoffice/groups/${id}/sessions/today`, { data: { date: today() } });
+        setBusy(false);
+        if (res.error || !res.data) return toast.fail(res.error);
+        router.push(`/attendance/${res.data.sessionid}`);
+    };
 
     const removeSlot = async (scheduleid: number) => {
         const res = await API(`/api/vh/backoffice/schedule/${scheduleid}`, { method: "DELETE" });
         if (res.error) return toast.fail(res.error);
-        group.reload();
-    };
-
-    const unenroll = async (r: RosterEntry) => {
-        if (!confirm(`${r.first_name}-г бүлгээс хасах уу?`)) return;
-        const res = await API(`/api/vh/backoffice/groups/${id}/students/${r.studentid}`, { method: "DELETE" });
-        if (res.error) return toast.fail(res.error);
-        toast.ok("Бүлгээс хаслаа");
-        roster.reload();
         group.reload();
     };
 
@@ -48,10 +62,10 @@ export default function GroupPage({ params }: { params: Promise<{ id: string }> 
     };
 
     const archive = async () => {
-        if (!g || !confirm(`"${g.name}" бүлгийг устгах уу? Өмнөх ирц, төлбөр хадгалагдана.`)) return;
+        if (!g || !confirm(`"${g.name}" ангийг устгах уу? Өмнөх ирц, төлбөр хадгалагдана.`)) return;
         const res = await API(`/api/vh/backoffice/groups/${id}`, { method: "DELETE" });
         if (res.error) return toast.fail(res.error);
-        toast.ok("Бүлэг устлаа");
+        toast.ok("Анги устлаа");
         router.replace("/groups");
     };
 
@@ -59,31 +73,46 @@ export default function GroupPage({ params }: { params: Promise<{ id: string }> 
 
     return (
         <>
-            <TopBar back="/groups" title={g?.name ?? ""} sub={g ? [g.agegroup && `${g.agegroup} нас`, g.level].filter(Boolean).join(" · ") || undefined : undefined}
-                right={g && <button className="icon-btn" aria-label="Засах" onClick={() => setSheet("edit")}><Pencil size={20} /></button>} />
+            <TopBar back="/groups" title={g?.name ?? ""}
+                sub={g ? [g.agegroup && `${g.agegroup} нас`, g.level].filter(Boolean).join(" · ") || "Анги" : undefined}
+                right={g && <button className="icon-btn" aria-label="Анги засах" onClick={() => setSheet("edit")}><Pencil size={20} /></button>} />
             <main className="page">
                 {group.loading && !g ? <Loading rows={4} /> : group.error ? <ErrorBox code={group.error} retry={group.reload} /> : g && (
                     <>
                         <div className="stats">
                             <div className="card stat">
-                                <div className="label">Хүүхэд</div>
-                                <div className="value">{g.studentcount}{g.capacity ? <small> / {g.capacity}</small> : null}</div>
+                                <div className="label">Идэвхтэй хүүхэд</div>
+                                <div className="value">{active.length}{g.capacity ? <small> / {g.capacity}</small> : null}</div>
                             </div>
                             <div className="card stat">
-                                <div className="label">Сарын төлбөр</div>
-                                <div className="value" style={{ fontSize: 20 }}>{money(g.fee_amount)}</div>
+                                <div className="label">Төлөгдөөгүй</div>
+                                <div className="value" style={{ fontSize: 20, color: owed > 0 ? "var(--absent)" : undefined }}>{money(owed)}</div>
                             </div>
                         </div>
 
-                        <section className="section">
-                            <div className="section-head">
-                                <h2>Долоо хоногийн хуваарь</h2>
-                                <button onClick={() => setSheet("slot")}>+ Нэмэх</button>
-                            </div>
-                            {g.schedule.length === 0 ? (
-                                <div className="card"><Empty title="Хуваарь алга" text="Аль гарагт хэдэн цагт хичээллэдгээ оруулбал ирцийн хуудас автоматаар гарна." /></div>
-                            ) : (
-                                <>
+                        <div className="action-grid" style={{ marginTop: 12 }}>
+                            <button className="action-tile primary" disabled={busy} onClick={takeAttendance}>
+                                <span className="ico"><ClipboardCheck size={22} /></span>Ирц бүртгэх
+                            </button>
+                            <button className="action-tile" onClick={() => setSheet("invoice")}>
+                                <span className="ico tone-brand"><Send size={20} /></span>Нэхэмжлэх илгээх
+                            </button>
+                            <button className="action-tile" onClick={() => setSheet("new")}>
+                                <span className="ico tone-court"><UserPlus size={20} /></span>Хүүхэд бүртгэх
+                            </button>
+                        </div>
+
+                        <div className="tabs" role="tablist">
+                            <button className={tab === "active" ? "on" : ""} onClick={() => setTab("active")}>Хүүхдүүд<span className="count">{active.length}</span></button>
+                            <button className={tab === "left" ? "on" : ""} onClick={() => setTab("left")}>Гарсан<span className="count">{left.length}</span></button>
+                            <button className={tab === "schedule" ? "on" : ""} onClick={() => setTab("schedule")}>Хуваарь</button>
+                        </div>
+
+                        {tab === "schedule" ? (
+                            <>
+                                {g.schedule.length === 0 ? (
+                                    <div className="card"><Empty title="Хуваарь алга" text="Аль гарагт хэдэн цагт хичээллэдгээ оруулбал ирцийн хуудас автоматаар гарна." /></div>
+                                ) : (
                                     <div className="list">
                                         {[...g.schedule].sort((a, b) => WEEK_ORDER.indexOf(a.weekday) - WEEK_ORDER.indexOf(b.weekday) || a.start_minute - b.start_minute).map((s) => (
                                             <div key={s.scheduleid} className="row">
@@ -96,62 +125,81 @@ export default function GroupPage({ params }: { params: Promise<{ id: string }> 
                                             </div>
                                         ))}
                                     </div>
-                                    <button className="btn block" style={{ marginTop: 12 }} disabled={busy} onClick={generate}>
-                                        <CalendarPlus size={18} /> Ирэх 5 долоо хоногийн хичээл үүсгэх
-                                    </button>
-                                </>
-                            )}
-                        </section>
-
-                        <section className="section">
-                            <div className="section-head">
-                                <h2>Хүүхдүүд</h2>
-                                <button onClick={() => setSheet("add")}>+ Нэмэх</button>
-                            </div>
-                            {roster.loading && !roster.data ? <Loading /> : !roster.data?.length ? (
-                                <div className="card">
-                                    <Empty title="Хүүхэд алга">
-                                        <button className="btn primary" onClick={() => setSheet("new")}><UserPlus size={18} /> Хүүхэд нэмэх</button>
-                                    </Empty>
+                                )}
+                                <div className="actions" style={{ marginTop: 12 }}>
+                                    <button className="btn" onClick={() => setSheet("slot")}><Plus size={18} /> Цаг нэмэх</button>
+                                    {g.schedule.length > 0 && (
+                                        <button className="btn" disabled={busy} onClick={generate}><CalendarPlus size={18} /> 5 долоо хоногийн хичээл үүсгэх</button>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="list">
-                                    {roster.data.map((r) => {
-                                        const a = age(r.date_of_birth);
-                                        return (
-                                            <div key={r.enrollmentid} className="row">
-                                                <Link href={`/kids/${r.studentid}`} style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
-                                                    <div className="avatar">{initials(r.last_name, r.first_name)}</div>
-                                                    <div className="grow">
-                                                        <div className="title">{shortName(r.last_name, r.first_name)}</div>
-                                                        <div className="meta">{[a !== null ? `${a} настай` : null, r.fee_amount !== g.fee_amount ? `${money(r.fee_amount)}/сар` : null].filter(Boolean).join(" · ") || " "}</div>
-                                                    </div>
-                                                </Link>
-                                                <button className="icon-btn" aria-label="Бүлгээс хасах" onClick={() => unenroll(r)}><UserMinus size={18} /></button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </section>
-
-                        <button className="btn ghost block danger section" onClick={archive}><Trash2 size={16} /> Бүлгийг устгах</button>
+                                <button className="btn ghost block danger section" onClick={archive}><Trash2 size={16} /> Ангийг устгах</button>
+                            </>
+                        ) : (
+                            <>
+                                {(roster.data?.length ?? 0) > 8 && (
+                                    <div className="search">
+                                        <Search size={18} />
+                                        <input className="input" placeholder="Хүүхэд хайх" value={q} onChange={(e) => setQ(e.target.value)} />
+                                    </div>
+                                )}
+                                {roster.loading && !roster.data ? <Loading /> : shown.length === 0 ? (
+                                    <div className="card">
+                                        {tab === "left" ? <Empty title="Гарсан хүүхэд алга" /> : q ? <Empty title="Илэрц алга" /> : (
+                                            <Empty title="Хүүхэд бүртгээгүй байна" text="Энэ ангид хамрагдаж буй хүүхдүүдээ бүртгэнэ үү.">
+                                                <button className="btn primary" onClick={() => setSheet("new")}><UserPlus size={18} /> Хүүхэд бүртгэх</button>
+                                            </Empty>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="list">
+                                        {shown.map((r) => {
+                                            const a = ageOf(r);
+                                            return (
+                                                <div key={r.enrollmentid} className={`row${r.active ? "" : " left"}`}>
+                                                    <Link href={`/kids/${r.studentid}`} style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                                                        <div className="avatar">{initials(r.last_name, r.first_name)}</div>
+                                                        <div className="grow">
+                                                            <div className="title">{shortName(r.last_name, r.first_name)}</div>
+                                                            <div className="meta">
+                                                                {[a !== null ? `${a} нас` : null,
+                                                                  r.emergency_relation && r.emergency_phone ? `${r.emergency_relation} ${r.emergency_phone}` : r.emergency_phone,
+                                                                  !r.active && r.left_at ? `Гарсан ${shortDate(r.left_at)}` : null,
+                                                                ].filter(Boolean).join(" · ") || " "}
+                                                            </div>
+                                                        </div>
+                                                        {r.active && r.balance > 0 && <span className="badge tone-absent">{money(r.balance)}</span>}
+                                                        {!r.active && <span className="badge tone-muted">Гарсан</span>}
+                                                    </Link>
+                                                    {r.active && r.emergency_phone && (
+                                                        <a className="icon-btn" href={`tel:${r.emergency_phone}`} aria-label={`${r.first_name}-ийн эцэг эх рүү залгах`}><Phone size={18} /></a>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {tab === "active" && (
+                                    <button className="btn ghost block" style={{ marginTop: 8 }} onClick={() => setSheet("existing")}>Өөр ангиас / бүртгэлтэй хүүхэд нэмэх</button>
+                                )}
+                            </>
+                        )}
                     </>
                 )}
             </main>
 
-            <Sheet open={sheet === "edit"} onClose={() => setSheet(null)} title="Бүлэг засах">
+            <Sheet open={sheet === "edit"} onClose={() => setSheet(null)} title="Анги засах">
                 {g && <GroupForm group={g} onSaved={() => { setSheet(null); group.reload(); }} />}
             </Sheet>
             <Sheet open={sheet === "slot"} onClose={() => setSheet(null)} title="Хичээлийн цаг нэмэх">
                 <SlotForm groupId={Number(id)} onSaved={() => { setSheet(null); group.reload(); }} />
             </Sheet>
-            <Sheet open={sheet === "add"} onClose={() => setSheet(null)} title="Бүлэгт хүүхэд нэмэх">
-                <AddExisting groupId={id} inGroup={(roster.data ?? []).map((r) => r.studentid)} onNew={() => setSheet("new")} onAdded={reloadAll} />
+            <Sheet open={sheet === "existing"} onClose={() => setSheet(null)} title="Ангид хүүхэд нэмэх">
+                <AddExisting groupId={id} inGroup={active.map((r) => r.studentid)} onAdded={reloadAll} />
             </Sheet>
-            <Sheet open={sheet === "new"} onClose={() => setSheet(null)} title="Шинэ хүүхэд">
-                <StudentForm groupId={Number(id)} onSaved={() => { setSheet(null); reloadAll(); }} />
+            <Sheet open={sheet === "new"} onClose={() => setSheet(null)} title={`Шинэ хүүхэд · ${g?.name ?? ""}`}>
+                {g && <StudentForm groupId={g.groupid} groups={[g]} onSaved={() => { setSheet(null); setTab("active"); reloadAll(); }} />}
             </Sheet>
+            <InvoiceSheet open={sheet === "invoice"} onClose={() => { setSheet(null); roster.reload(); }} groupId={Number(id)} title={`Нэхэмжлэх · ${g?.name ?? ""}`} />
         </>
     );
 }
@@ -163,7 +211,7 @@ function SlotForm({ groupId, onSaved }: { groupId: number; onSaved: () => void }
     const [end, setEnd] = useState("19:30");
     const [busy, setBusy] = useState(false);
 
-    // Several days at once: most groups train the same hour on two or three days.
+    // Several days at once: most classes train the same hour on two or three days.
     const save = async () => {
         setBusy(true);
         for (const weekday of days) {
@@ -203,20 +251,17 @@ function SlotForm({ groupId, onSaved }: { groupId: number; onSaved: () => void }
     );
 }
 
-function AddExisting({ groupId, inGroup, onNew, onAdded }: { groupId: string; inGroup: number[]; onNew: () => void; onAdded: () => void }) {
+function AddExisting({ groupId, inGroup, onAdded }: { groupId: string; inGroup: number[]; onAdded: () => void }) {
     const toast = useToast();
     const all = useData<Student[]>("/api/vh/backoffice/students");
     const [q, setQ] = useState("");
     const [added, setAdded] = useState<number[]>([]);
 
     const candidates = useMemo(() => {
-        const seen = new Set<number>();
         const term = q.trim().toLowerCase();
-        return (all.data ?? []).filter((s) => {
-            if (seen.has(s.studentid) || inGroup.includes(s.studentid)) return false;
-            seen.add(s.studentid);
-            return !term || `${s.last_name} ${s.first_name}`.toLowerCase().includes(term);
-        });
+        return (all.data ?? []).filter((s) =>
+            s.status !== 3 && !inGroup.includes(s.studentid)
+            && (!term || `${s.last_name} ${s.first_name}`.toLowerCase().includes(term)));
     }, [all.data, inGroup, q]);
 
     const add = async (s: Student) => {
@@ -228,29 +273,27 @@ function AddExisting({ groupId, inGroup, onNew, onAdded }: { groupId: string; in
 
     return (
         <div>
-            <button className="btn primary block" onClick={onNew}><UserPlus size={18} /> Шинэ хүүхэд бүртгэх</button>
-            {candidates.length > 0 && (
-                <>
-                    <p className="caption" style={{ margin: "16px 0 4px" }}>Эсвэл бүртгэлтэй хүүхдээс сонгох</p>
-                    <div className="search">
-                        <Search size={18} />
-                        <input className="input" placeholder="Нэрээр хайх" value={q} onChange={(e) => setQ(e.target.value)} />
-                    </div>
-                    <div className="list">
-                        {candidates.slice(0, 30).map((s) => (
-                            <div key={s.studentid} className="row">
-                                <div className="avatar">{initials(s.last_name, s.first_name)}</div>
-                                <div className="grow">
-                                    <div className="title">{shortName(s.last_name, s.first_name)}</div>
-                                    <div className="meta">{s.groupname ?? "Бүлэггүй"}</div>
-                                </div>
-                                {added.includes(s.studentid)
-                                    ? <span className="badge tone-present">Нэмсэн</span>
-                                    : <button className="btn sm" onClick={() => add(s)}>Нэмэх</button>}
+            <div className="search">
+                <Search size={18} />
+                <input className="input" placeholder="Нэрээр хайх" value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+            {all.loading && !all.data ? <Loading /> : candidates.length === 0 ? (
+                <Empty title="Нэмэх хүүхэд алга" text="Бусад ангийн идэвхтэй хүүхдүүд энд харагдана." />
+            ) : (
+                <div className="list">
+                    {candidates.slice(0, 40).map((s) => (
+                        <div key={s.studentid} className="row">
+                            <div className="avatar">{initials(s.last_name, s.first_name)}</div>
+                            <div className="grow">
+                                <div className="title">{shortName(s.last_name, s.first_name)}</div>
+                                <div className="meta">{s.groupname ?? "Ангигүй"}</div>
                             </div>
-                        ))}
-                    </div>
-                </>
+                            {added.includes(s.studentid)
+                                ? <span className="badge tone-present">Нэмсэн</span>
+                                : <button className="btn sm" onClick={() => add(s)}>Нэмэх</button>}
+                        </div>
+                    ))}
+                </div>
             )}
         </div>
     );

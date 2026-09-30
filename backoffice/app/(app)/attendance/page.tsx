@@ -80,12 +80,12 @@ export default function AttendancePage() {
                 {loading && !data ? <Loading /> : error && !data ? <ErrorBox code={error} retry={reload} /> : onDay.length === 0 ? (
                     <div className="card">
                         {(data ?? []).length === 0 && hasTimetable ? (
-                            <Empty title="Энэ долоо хоногт хичээл үүсээгүй" text="Бүлгүүдийн долоо хоногийн хуваариас хичээлүүдийг үүсгэнэ.">
+                            <Empty title="Энэ долоо хоногт хичээл үүсээгүй" text="Ангиудын долоо хоногийн хуваариас хичээлүүдийг үүсгэнэ.">
                                 <button className="btn primary" onClick={generate} disabled={busy}><CalendarPlus size={18} /> Хуваариас үүсгэх</button>
                             </Empty>
                         ) : !hasTimetable ? (
-                            <Empty title="Хуваарь алга" text="Бүлгийн хуудсанд орж долоо хоногийн хуваарийг оруулна уу.">
-                                <Link href="/groups" className="btn">Бүлгүүд рүү</Link>
+                            <Empty title="Хуваарь алга" text="Ангийн хуудсанд орж долоо хоногийн хуваарийг оруулна уу.">
+                                <Link href="/groups" className="btn">Ангиуд рүү</Link>
                             </Empty>
                         ) : (
                             <Empty title="Энэ өдөр хичээлгүй" />

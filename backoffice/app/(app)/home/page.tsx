@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useMemo } from "react";
-import { ChevronRight, TriangleAlert, UserRound } from "lucide-react";
+import { ChevronRight, TriangleAlert, Settings } from "lucide-react";
 import { TopBar, useData, Loading, ErrorBox, Empty } from "@/app/components/ui";
 import type { Dashboard, Session } from "@/app/types/api";
 import { dayLabel, hhmm, money, periodLabel, shortName, today } from "@/app/utils/format";
@@ -43,15 +43,15 @@ export default function HomePage() {
             <TopBar
                 sub={dayLabel(day)}
                 title={hello ? `Сайн уу, ${hello}` : "Сайн уу"}
-                right={<Link href="/me" className="icon-btn" aria-label="Миний бүртгэл"><UserRound size={22} /></Link>}
+                right={<Link href="/me" className="icon-btn" aria-label="Тохиргоо"><Settings size={22} /></Link>}
             />
             <main className="page">
                 {loading && !data ? <Loading rows={4} /> : error && !data ? <ErrorBox code={error} retry={reload} /> : data && (
                     <>
                         {data.groups === 0 ? (
                             <div className="card pad">
-                                <Empty title="Эхний бүлгээ үүсгэе" text="Бүлэг нэмээд хуваарь, хүүхдүүдээ оруулбал ирц, төлбөр энд харагдана.">
-                                    <Link href="/groups?new=1" className="btn primary">Бүлэг нэмэх</Link>
+                                <Empty title="Эхний ангиа үүсгэе" text="Анги нэмээд хуваарь, хүүхдүүдээ оруулбал ирц, төлбөр энд харагдана.">
+                                    <Link href="/groups?new=1" className="btn primary">Анги нэмэх</Link>
                                 </Empty>
                             </div>
                         ) : (
@@ -121,7 +121,7 @@ export default function HomePage() {
                                         <div className="value">{data.students}</div>
                                     </Link>
                                     <Link href="/groups" className="card stat">
-                                        <div className="label">Бүлэг</div>
+                                        <div className="label">Анги</div>
                                         <div className="value">{data.groups}</div>
                                     </Link>
                                 </section>

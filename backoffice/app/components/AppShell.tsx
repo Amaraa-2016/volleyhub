@@ -2,25 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, ClipboardCheck, Wallet, Users, LayoutGrid } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { House, ClipboardCheck, Wallet, Users, LayoutGrid, Volleyball } from "lucide-react";
 
-// Five destinations, thumb-reachable at the bottom of the screen: what a coach does every day,
-// in the order they do it - look at today, take the register, check who paid.
+// Five destinations. On a phone they sit in a bar at the bottom, where the thumb is; on a wide
+// screen the same list becomes a sidebar (see the min-width: 960px block in globals.css).
 const TABS = [
     { href: "/home", label: "Нүүр", icon: House },
+    { href: "/groups", label: "Ангиуд", icon: LayoutGrid },
     { href: "/attendance", label: "Ирц", icon: ClipboardCheck },
     { href: "/fees", label: "Төлбөр", icon: Wallet },
     { href: "/kids", label: "Хүүхдүүд", icon: Users },
-    { href: "/groups", label: "Бүлэг", icon: LayoutGrid },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname() ?? "";
+    const { data: session } = useSession();
 
     return (
         <div className="app">
             {children}
             <div className="tabbar">
+                <Link href="/me" className="side-brand">
+                    <span className="logo"><Volleyball size={20} /></span>
+                    <span>
+                        <b>Volleyhub</b>
+                        <small>{session?.selectedTenantName ?? ""}</small>
+                    </span>
+                </Link>
                 <nav aria-label="Үндсэн цэс">
                     {TABS.map(({ href, label, icon: Icon }) => {
                         const active = pathname === href || pathname.startsWith(href + "/");

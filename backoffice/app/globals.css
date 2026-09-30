@@ -315,3 +315,80 @@ textarea.input { min-height: 88px; resize: vertical; }
 .brandmark .logo { width: 48px; height: 48px; border-radius: 50%; background: var(--brand); display: grid; place-items: center; color: var(--on-brand); }
 .brandmark b { font-size: 26px; line-height: 30px; font-weight: 800; letter-spacing: -.3px; }
 .brandmark small { display: block; font-size: 13px; color: var(--ink-muted); font-weight: 600; }
+
+/* ---- form sections ------------------------------------------------------ */
+
+.form-section { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-4) var(--space-1); margin-bottom: var(--space-3); }
+.form-section > h4 { margin: 0 0 var(--space-3); font-size: 14px; line-height: 20px; font-weight: 800; color: var(--ink-muted); text-transform: uppercase; letter-spacing: .4px; }
+.req { color: var(--absent); margin-left: 2px; }
+.input.invalid { border-color: var(--absent); box-shadow: 0 0 0 3px var(--absent-soft); }
+.field-error { display: block; font-size: 13px; font-weight: 700; color: var(--absent); margin-top: 4px; }
+.sheet .form-section { background: var(--card); }
+
+/* ---- action tiles ------------------------------------------------------ */
+
+.action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.action-tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    min-height: 84px; padding: var(--space-3) var(--space-2); border-radius: var(--radius-lg);
+    border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow);
+    font-weight: 800; font-size: 13px; line-height: 16px; text-align: center; cursor: pointer; color: var(--ink);
+}
+.action-tile:active { transform: scale(.98); }
+.action-tile .ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; }
+.action-tile.primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.action-tile.primary .ico { background: rgba(255, 255, 255, .18); }
+
+/* ---- tabs inside a page --------------------------------------------------- */
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: var(--space-6) 0 var(--space-3); overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button {
+    border: 0; background: none; padding: 10px 14px; font-weight: 800; font-size: 15px; color: var(--ink-muted);
+    border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; white-space: nowrap;
+}
+.tabs button.on { color: var(--brand); border-bottom-color: var(--brand); }
+.tabs button .count { font-size: 12px; margin-left: 4px; opacity: .8; }
+
+.row.left { opacity: .62; }
+.check { width: 22px; height: 22px; accent-color: var(--brand); flex-shrink: 0; }
+.timeline { position: relative; }
+.note { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
+.note:last-child { border-bottom: 0; }
+.note .when { font-size: 12px; font-weight: 700; color: var(--ink-muted); display: flex; justify-content: space-between; align-items: center; }
+.note p { margin: 4px 0 0; white-space: pre-wrap; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 14px; }
+.kv dt { color: var(--ink-muted); font-weight: 700; }
+.kv dd { margin: 0; font-weight: 700; text-align: right; }
+.message-preview { background: var(--surface-200); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; line-height: 20px; }
+.side-brand { display: none; }
+
+/* ---- wide screens: sidebar instead of the bottom bar ---------------------- */
+
+@media (min-width: 960px) {
+    .app { max-width: none; padding-left: 248px; }
+    .app > .topbar, .app > .page { max-width: 880px; margin-left: auto; margin-right: auto; }
+    .topbar { padding-left: var(--space-6); padding-right: var(--space-6); }
+    .page { padding: 0 var(--space-6) 48px; }
+    .tabbar {
+        left: 0; right: auto; top: 0; bottom: 0; width: 248px;
+        border-top: 0; border-right: 1px solid var(--line); padding: var(--space-6) var(--space-3);
+        display: flex; flex-direction: column;
+    }
+    .tabbar nav { display: flex; flex-direction: column; gap: 4px; height: auto; max-width: none; margin: 0; }
+    .tab { flex-direction: row; justify-content: flex-start; gap: 12px; font-size: 15px; line-height: 20px; padding: 6px 8px; border-radius: 12px; }
+    .tab:hover { background: var(--surface-200); }
+    .tab.active { background: var(--brand-soft); }
+    .tab.active .pip { background: transparent; }
+    .side-brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 20px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+    .side-brand .logo { width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: var(--on-brand); display: grid; place-items: center; flex-shrink: 0; }
+    .side-brand b { display: block; font-size: 16px; line-height: 20px; }
+    .side-brand small { display: block; font-size: 12px; color: var(--ink-muted); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+    .fab { right: max(24px, calc(50% - 440px + 24px - 124px)); bottom: 32px; }
+    .toast { bottom: 32px; left: calc(50% + 124px); }
+    .scrim { align-items: center; }
+    .sheet { max-width: 560px; border-radius: 20px; max-height: 88dvh; }
+    .sheet .grab { display: none; }
+    .stats { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .action-grid { grid-template-columns: repeat(3, minmax(0, 200px)); }
+}

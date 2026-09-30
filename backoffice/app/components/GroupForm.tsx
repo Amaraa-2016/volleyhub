@@ -37,13 +37,13 @@ export default function GroupForm({ group, onSaved }: { group?: Group | null; on
         });
         setBusy(false);
         if (res.error || !res.data) return toast.fail(res.error);
-        toast.ok(group ? "Хадгаллаа" : "Бүлэг нэмэгдлээ");
+        toast.ok(group ? "Хадгаллаа" : "Анги нэмэгдлээ");
         onSaved(res.data.groupid);
     };
 
     return (
         <form onSubmit={submit}>
-            <Field label="Бүлгийн нэр">
+            <Field label="Ангийн нэр">
                 <input className="input" placeholder="Жишээ: 10-12 насны охид" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required autoFocus={!group} />
             </Field>
             <div className="grid-2">
@@ -64,7 +64,7 @@ export default function GroupForm({ group, onSaved }: { group?: Group | null; on
                 </Field>
             </div>
             <Field label="Тэмдэглэл"><textarea className="input" rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></Field>
-            <button className="btn primary block" disabled={busy}>{group ? "Хадгалах" : "Бүлэг нэмэх"}</button>
+            <button className="btn primary block" disabled={busy}>{group ? "Хадгалах" : "Анги нэмэх"}</button>
         </form>
     );
 }

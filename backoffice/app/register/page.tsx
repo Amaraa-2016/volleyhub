@@ -8,11 +8,11 @@ import Brand from "@/app/components/Brand";
 import { Field } from "@/app/components/ui";
 import { AccountAPI, errorText } from "@/app/utils/API";
 
-// Registering is all it takes: the backend creates the coach's workspace on the spot, and signing
-// in straight after lands them on an empty home screen ready for their first group.
+// Registering is all it takes: the backend creates the training's workspace on the spot, and
+// signing in straight after lands the coach on an empty home screen ready for their first class.
 export default function RegisterPage() {
     const router = useRouter();
-    const [form, setForm] = useState({ lastname: "", firstname: "", phone: "", password: "" });
+    const [form, setForm] = useState({ tenantname: "", lastname: "", firstname: "", phone: "", password: "" });
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
 
@@ -45,9 +45,12 @@ export default function RegisterPage() {
         <main className="auth">
             <Brand sub="Шинэ бүртгэл" />
             <form onSubmit={submit}>
+                <Field label="Сургалтын нэр" hint="Жишээ: Од волейболын сургалт">
+                    <input className="input" autoComplete="organization" value={form.tenantname} onChange={set("tenantname")} required autoFocus />
+                </Field>
                 <div className="grid-2">
                     <Field label="Овог">
-                        <input className="input" autoComplete="family-name" value={form.lastname} onChange={set("lastname")} />
+                        <input className="input" autoComplete="family-name" value={form.lastname} onChange={set("lastname")} required />
                     </Field>
                     <Field label="Нэр">
                         <input className="input" autoComplete="given-name" value={form.firstname} onChange={set("firstname")} required />
