@@ -110,6 +110,21 @@ const ERRORS: Record<string, string> = {
     note_not_found: "Тэмдэглэл олдсонгүй",
     // invoices
     nothing_to_notify: "Нэхэмжлэх илгээх төлөөгүй төлбөр алга",
+    // planning, discounts, health, reports
+    minutes_out_of_range: "Минут буруу байна",
+    drill_not_found: "Дасгал олдсонгүй",
+    plan_not_found: "Төлөвлөгөө олдсонгүй",
+    discount_not_found: "Хөнгөлөлт олдсонгүй",
+    discount_kind_invalid: "Хөнгөлөлтийн төрөл буруу байна",
+    discount_value_invalid: "Хөнгөлөлтийн хэмжээ буруу байна (хувь бол 1–100)",
+    measure_type_not_found: "Хэмжилтийн төрөл олдсонгүй",
+    measurement_not_found: "Хэмжилт олдсонгүй",
+    no_values: "Дор хаяж нэг утга оруулна уу",
+    date_in_future: "Ирээдүйн огноо байж болохгүй",
+    description_required: "Тайлбар оруулна уу",
+    recovered_before_injury: "Эдгэрсэн огноо гэмтсэн огнооноос өмнө байж болохгүй",
+    injury_not_found: "Бүртгэл олдсонгүй",
+    year_out_of_range: "Он буруу байна",
     // progress
     no_scores: "Дор хаяж нэг ур чадварыг үнэлнэ үү",
     score_out_of_range: "Үнэлгээ 1-5 байна",

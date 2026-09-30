@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useMemo } from "react";
-import { ChevronRight, TriangleAlert, Settings } from "lucide-react";
+import { ChevronRight, TriangleAlert, Settings, ClipboardList, ChartColumn } from "lucide-react";
 import { ThemeToggle } from "@/app/components/Theme";
 import { TopBar, useData, Loading, ErrorBox, Empty } from "@/app/components/ui";
 import type { Dashboard, Session } from "@/app/types/api";
@@ -115,6 +115,12 @@ export default function HomePage() {
                                         </div>
                                     </section>
                                 )}
+
+                                <section className="section quick mobile-only">
+                                    <Link href="/plans" className="action-tile"><span className="ico tone-court"><ClipboardList size={20} /></span>Төлөвлөгөө</Link>
+                                    <Link href="/reports" className="action-tile"><span className="ico tone-brand"><ChartColumn size={20} /></span>Тайлан</Link>
+                                    <Link href="/me" className="action-tile"><span className="ico tone-muted"><Settings size={20} /></span>Тохиргоо</Link>
+                                </section>
 
                                 <section className="section stats">
                                     <Link href="/kids" className="card stat">

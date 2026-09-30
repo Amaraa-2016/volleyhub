@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, TriangleAlert } from "lucide-react";
 import { TopBar, useData, Loading, ErrorBox, Empty, Sheet } from "@/app/components/ui";
 import StudentForm from "@/app/components/StudentForm";
 import type { Group, Student } from "@/app/types/api";
+import type { HealthFlag } from "@/app/types/api";
 import { ageOf, initials, money, shortDate, shortName } from "@/app/utils/format";
 
 type StatusFilter = "active" | "left" | "all";
@@ -14,6 +15,7 @@ type StatusFilter = "active" | "left" | "all";
 export default function KidsPage() {
     const router = useRouter();
     const { data, error, loading, reload } = useData<Student[]>("/api/vh/backoffice/students");
+    const flags = useData<HealthFlag[]>("/api/vh/backoffice/health-flags");
     const groups = useData<Group[]>("/api/vh/backoffice/groups");
     const [q, setQ] = useState("");
     const [status, setStatus] = useState<StatusFilter>("active");
@@ -75,7 +77,9 @@ export default function KidsPage() {
                                 <Link key={s.studentid} href={`/kids/${s.studentid}`} className={`row${left ? " left" : ""}`}>
                                     <div className="avatar">{initials(s.last_name, s.first_name)}</div>
                                     <div className="grow">
-                                        <div className="title">{shortName(s.last_name, s.first_name)}</div>
+                                        <div className="title">{shortName(s.last_name, s.first_name)}{flags.data?.some((x) => x.studentid === s.studentid) && (
+                                                            <TriangleAlert size={14} color="var(--absent)" style={{ marginLeft: 6, verticalAlign: -2 }} aria-label="Эрүүл мэндийн анхааруулга" />
+                                                        )}</div>
                                         <div className="meta">
                                             {[s.groupname ?? "Ангигүй", a !== null ? `${a} нас` : null, left && s.left_date ? `Гарсан ${shortDate(s.left_date)}` : null].filter(Boolean).join(" · ")}
                                         </div>

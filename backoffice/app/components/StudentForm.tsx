@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useData } from "@/app/components/ui";
 import { useToast } from "@/app/components/ui";
-import type { Group, Student } from "@/app/types/api";
+import type { Discount, Group, Student } from "@/app/types/api";
 import { API } from "@/app/utils/API";
 import { money, RELATIONS, today } from "@/app/utils/format";
 
@@ -35,8 +36,14 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
         status: student?.status === 3 ? 3 : 1,
         left_date: student?.left_date?.slice(0, 10) ?? "",
         pay_ref: student?.pay_ref ?? "",
+        discountid: student?.discountid ?? null as number | null,
+        allergies: student?.allergies ?? "",
+        medical_notes: student?.medical_notes ?? "",
+        blood_type: student?.blood_type ?? "",
     });
 
+    const discounts = useData<Discount[]>("/api/vh/backoffice/discounts");
+    const discount = discounts.data?.find((d) => d.discountid === f.discountid);
     const group = useMemo(() => groups?.find((g) => g.groupid === f.groupid), [groups, f.groupid]);
     const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
         setF({ ...f, [k]: e.target.value });
@@ -73,6 +80,10 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                 status: f.status,
                 left_date: f.status === 3 ? f.left_date : null,
                 pay_ref: f.pay_ref,
+                discountid: f.discountid,
+                allergies: f.allergies,
+                medical_notes: f.medical_notes,
+                blood_type: f.blood_type,
                 notes: student?.notes ?? null,
                 height_cm: student?.height_cm ?? null,
                 photo: student?.photo ?? null,
@@ -128,7 +139,7 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
             </div>
 
             <div className="form-section">
-                <h4>Анги</h4>
+                <h4>Анги ба төлбөр</h4>
                 {!groupId && groups && groups.length > 0 && (
                     <label className="field">
                         <span>Анги</span>
@@ -141,8 +152,24 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                 <label className="field">
                     <span>Эхэлсэн огноо</span>
                     <input className="input" type="date" value={f.start_date} onChange={set("start_date")} />
-                    {group && <small className="caption">Сарын төлбөр ангийнхаараа: {money(group.fee_amount)}</small>}
+                    {group && (
+                        <small className="caption">
+                            Сарын төлбөр ангийнхаараа: {money(group.fee_amount)}
+                            {discount && ` → хөнгөлөлттэй ${money(Math.max(0, discount.kind === 1 ? group.fee_amount - Math.round(group.fee_amount * discount.value / 100) : group.fee_amount - discount.value))}`}
+                        </small>
+                    )}
                 </label>
+                {(discounts.data?.length ?? 0) > 0 && (
+                    <label className="field">
+                        <span>Хөнгөлөлт</span>
+                        <select className="input" value={f.discountid ?? ""} onChange={(e) => setF({ ...f, discountid: e.target.value ? Number(e.target.value) : null })}>
+                            <option value="">Хөнгөлөлтгүй</option>
+                            {discounts.data!.map((d) => (
+                                <option key={d.discountid} value={d.discountid}>{d.name} (−{d.kind === 1 ? `${d.value}%` : money(d.value)})</option>
+                            ))}
+                        </select>
+                    </label>
+                )}
                 <label className="field">
                     <span>Гүйлгээний утга</span>
                     <input className="input" value={f.pay_ref} onChange={set("pay_ref")} placeholder={f.first_name ? `${f.first_name} төлбөр` : "Жишээ: Бат төлбөр"} />
@@ -171,6 +198,28 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                         <input className="input" inputMode="tel" value={f.emergency_phone} onChange={set("emergency_phone")} />
                     </label>
                 </div>
+            </div>
+
+            <div className="form-section">
+                <h4>Эрүүл мэнд</h4>
+                <div className="grid-2">
+                    <label className="field">
+                        <span>Харшил</span>
+                        <input className="input" placeholder="Жишээ: самар, пенициллин" value={f.allergies} onChange={set("allergies")} />
+                    </label>
+                    <label className="field">
+                        <span>Цусны бүлэг</span>
+                        <select className="input" value={f.blood_type} onChange={set("blood_type")}>
+                            <option value="">—</option>
+                            {["O(I)", "A(II)", "B(III)", "AB(IV)"].flatMap((b) => [`${b}+`, `${b}−`]).map((b) => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                    </label>
+                </div>
+                <label className="field">
+                    <span>Өвчин, эм</span>
+                    <textarea className="input" rows={2} placeholder="Жишээ: астма, ингалятор цүнхэнд байдаг" value={f.medical_notes}
+                        onChange={(e) => setF({ ...f, medical_notes: e.target.value })} />
+                </label>
             </div>
 
             <div className="form-section">

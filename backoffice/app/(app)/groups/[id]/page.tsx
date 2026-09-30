@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { use, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, Trash2, UserPlus, CalendarPlus, Search, ClipboardCheck, Send, Phone } from "lucide-react";
+import { Pencil, Plus, Trash2, UserPlus, CalendarPlus, Search, ClipboardCheck, Send, Phone, TriangleAlert } from "lucide-react";
 import { TopBar, useData, Loading, ErrorBox, Empty, Sheet, Field, useToast } from "@/app/components/ui";
 import GroupForm from "@/app/components/GroupForm";
 import StudentForm from "@/app/components/StudentForm";
 import InvoiceSheet from "@/app/components/InvoiceSheet";
 import type { Group, RosterEntry, Student } from "@/app/types/api";
+import type { HealthFlag } from "@/app/types/api";
 import { API } from "@/app/utils/API";
 import { addDays, ageOf, hhmm, initials, money, shortDate, shortName, toMinutes, today, WEEKDAYS, WEEKDAYS_SHORT, WEEK_ORDER } from "@/app/utils/format";
 
@@ -21,6 +22,7 @@ export default function GroupPage({ params }: { params: Promise<{ id: string }> 
     const router = useRouter();
     const toast = useToast();
     const group = useData<Group>(`/api/vh/backoffice/groups/${id}`);
+    const flags = useData<HealthFlag[]>("/api/vh/backoffice/health-flags");
     const roster = useData<RosterEntry[]>(`/api/vh/backoffice/groups/${id}/students?includeLeft=true`);
     const [tab, setTab] = useState<Tab>("active");
     const [sheet, setSheet] = useState<null | "edit" | "slot" | "existing" | "new" | "invoice">(null);
@@ -159,7 +161,9 @@ export default function GroupPage({ params }: { params: Promise<{ id: string }> 
                                                     <Link href={`/kids/${r.studentid}`} style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
                                                         <div className="avatar">{initials(r.last_name, r.first_name)}</div>
                                                         <div className="grow">
-                                                            <div className="title">{shortName(r.last_name, r.first_name)}</div>
+                                                            <div className="title">{shortName(r.last_name, r.first_name)}{flags.data?.some((x) => x.studentid === r.studentid) && (
+                                                            <TriangleAlert size={14} color="var(--absent)" style={{ marginLeft: 6, verticalAlign: -2 }} aria-label="Эрүүл мэндийн анхааруулга" />
+                                                        )}</div>
                                                             <div className="meta">
                                                                 {[a !== null ? `${a} нас` : null,
                                                                   r.emergency_relation && r.emergency_phone ? `${r.emergency_relation} ${r.emergency_phone}` : r.emergency_phone,

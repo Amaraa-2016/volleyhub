@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Check, Search, Download, Receipt, Send } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Check, Search, Download, Receipt, Send, ChartColumn } from "lucide-react";
 import { TopBar, useData, Loading, ErrorBox, Empty, useToast } from "@/app/components/ui";
 import FeeSheet from "@/app/components/FeeSheet";
 import InvoiceSheet from "@/app/components/InvoiceSheet";
@@ -91,6 +92,7 @@ export default function FeesPage() {
         <>
             <TopBar title="Төлбөр" right={
                 <>
+                    <Link className="icon-btn" href="/reports" aria-label="Орлогын тайлан"><ChartColumn size={21} /></Link>
                     <button className="icon-btn" aria-label="Нэхэмжлэх илгээх" onClick={() => setInvoice(true)}><Send size={21} /></button>
                     {m && m.fees.length > 0 && <button className="icon-btn" aria-label="Excel (CSV) татах" onClick={exportCsv}><Download size={22} /></button>}
                 </>
@@ -165,7 +167,7 @@ export default function FeesPage() {
                                                         <div className="grow">
                                                             <div className="title">{shortName(f.last_name, f.first_name)}</div>
                                                             <div className="meta">
-                                                                {f.groupname}{f.notified_at && owes ? " · нэхэмжилсэн" : ""}
+                                                                {f.groupname}{f.discount_name ? ` · ${f.discount_name}` : ""}{f.notified_at && owes ? " · нэхэмжилсэн" : ""}
                                                             </div>
                                                         </div>
                                                         <div className="end">

@@ -1,9 +1,10 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { Check, X, Clock, Minus, Ban, Undo2 } from "lucide-react";
+import Link from "next/link";
+import { Check, X, Clock, Minus, Ban, Undo2, TriangleAlert, ClipboardList } from "lucide-react";
 import { TopBar, useData, Loading, ErrorBox, Empty, Sheet, Field, useToast } from "@/app/components/ui";
-import type { AttendanceRow, Session } from "@/app/types/api";
+import type { AttendanceRow, Plan, Session } from "@/app/types/api";
 import { API } from "@/app/utils/API";
 import { ATTENDANCE, dayLabel, hhmm, initials, shortName } from "@/app/utils/format";
 
@@ -21,6 +22,8 @@ export default function RegisterPage({ params }: { params: Promise<{ id: string 
     const [dirty, setDirty] = useState(false);
     const [busy, setBusy] = useState(false);
     const [planOpen, setPlanOpen] = useState(false);
+    const plans = useData<Plan[]>(planOpen ? "/api/vh/backoffice/plans" : null);
+    const current = useData<Plan>(session.data?.planid ? `/api/vh/backoffice/plans/${session.data.planid}` : null);
     const [plan, setPlan] = useState("");
 
     useEffect(() => {
@@ -82,8 +85,16 @@ export default function RegisterPage({ params }: { params: Promise<{ id: string 
                     : s && (
                         <>
                             <button className="card pad" style={{ width: "100%", textAlign: "left", cursor: "pointer", marginBottom: 12 }} onClick={() => setPlanOpen(true)}>
-                                <div className="caption">Хичээлийн төлөвлөгөө</div>
-                                <div style={{ fontWeight: 600, whiteSpace: "pre-wrap" }}>{s.notes || <span className="muted">Юу хийхээ тэмдэглэх…</span>}</div>
+                                <div className="caption" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    <ClipboardList size={14} /> Хичээлийн төлөвлөгөө{s.planname ? ` · ${s.planname}` : ""}
+                                </div>
+                                {s.planid && current.data ? (
+                                    <ol style={{ margin: "6px 0 0", paddingLeft: 20, fontWeight: 600, fontSize: 14, lineHeight: "22px" }}>
+                                        {current.data.items.map((i) => <li key={i.itemid}>{i.title} <span className="muted">{i.minutes}′</span></li>)}
+                                    </ol>
+                                ) : null}
+                                {s.notes && <div style={{ fontWeight: 600, whiteSpace: "pre-wrap", marginTop: 4 }}>{s.notes}</div>}
+                                {!s.planid && !s.notes && <div className="muted" style={{ fontWeight: 600 }}>Төлөвлөгөө сонгох эсвэл тэмдэглэх…</div>}
                             </button>
 
                             {cancelled ? (
@@ -108,7 +119,15 @@ export default function RegisterPage({ params }: { params: Promise<{ id: string 
                                             return (
                                                 <div key={r.studentid} className="row">
                                                     <div className="avatar">{initials(r.last_name, r.first_name)}</div>
-                                                    <div className="grow"><div className="title">{shortName(r.last_name, r.first_name)}</div></div>
+                                                    <div className="grow">
+                                                        <div className="title">{shortName(r.last_name, r.first_name)}</div>
+                                                        {(r.injury || r.allergies) && (
+                                                            <div className="meta" style={{ color: "var(--absent)", display: "flex", alignItems: "center", gap: 4 }}>
+                                                                <TriangleAlert size={13} />
+                                                                {[r.injury && `Гэмтэл: ${r.injury}`, r.allergies && `Харшил: ${r.allergies}`].filter(Boolean).join(" · ")}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                     <button className={`mark tone-${meta.tone}`} onClick={() => cycle(r.studentid)} aria-label={`${r.first_name}: ${meta.label}. Солихын тулд дарна уу`}>
                                                         <Icon size={16} strokeWidth={3} /> {meta.label}
                                                     </button>
@@ -137,8 +156,30 @@ export default function RegisterPage({ params }: { params: Promise<{ id: string 
             </main>
 
             <Sheet open={planOpen} onClose={() => setPlanOpen(false)} title="Хичээлийн төлөвлөгөө">
-                <Field label="Юу хийх вэ" hint="Жишээ: халаалт 10', дамжуулалт хосоор 15', давшилт 15', тоглолт 20'">
-                    <textarea className="input" rows={6} value={plan} onChange={(e) => setPlan(e.target.value)} />
+                <div className="field">
+                    <span>Бэлэн төлөвлөгөө</span>
+                    {plans.loading && !plans.data ? <Loading rows={1} /> : !plans.data?.length ? (
+                        <p className="caption" style={{ margin: 0 }}>Төлөвлөгөө алга. <Link href="/plans/new" style={{ color: "var(--brand)", fontWeight: 800 }}>Үүсгэх</Link></p>
+                    ) : (
+                        <div className="list">
+                            {[{ planid: 0, name: "Төлөвлөгөөгүй", total_minutes: 0, items: [] } as Plan, ...plans.data].map((p) => (
+                                <button key={p.planid} className="row" style={{ minHeight: 52 }} onClick={async () => {
+                                    const res = await API(`/api/vh/backoffice/sessions/${id}/plan`, { data: { planid: p.planid || null } });
+                                    if (res.error) return toast.fail(res.error);
+                                    session.reload();
+                                }}>
+                                    <input type="radio" className="check" readOnly checked={(s?.planid ?? 0) === p.planid} />
+                                    <div className="grow">
+                                        <div className="title">{p.name}</div>
+                                        {p.planid > 0 && <div className="meta">{p.total_minutes} мин · {p.items.map((i) => i.title).join(" → ")}</div>}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <Field label="Нэмэлт тэмдэглэл" hint="Энэ хичээлд зориулсан тэмдэглэл">
+                    <textarea className="input" rows={3} value={plan} onChange={(e) => setPlan(e.target.value)} />
                 </Field>
                 <button className="btn primary block" disabled={busy} onClick={async () => {
                     if (await saveSession({ notes: plan })) {

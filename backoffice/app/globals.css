@@ -35,6 +35,9 @@
 
     --tabbar-h: 64px;
     --shadow: 0 1px 2px rgba(23, 35, 58, 0.06), 0 4px 16px rgba(23, 35, 58, 0.05);
+    /* Chart mark colour (validated: lightness band, chroma, contrast on both surfaces). */
+    --viz-1: #0d9488;
+    --viz-track: #ede3d1;
     color-scheme: light;
 }
 
@@ -62,6 +65,8 @@
         --absent-soft: #3a1d1d;
         --muted-soft: #262e3a;
         --shadow: none;
+        --viz-1: #11a89b;
+        --viz-track: #343f50;
         color-scheme: dark;
     }
 }
@@ -86,6 +91,8 @@
         --absent-soft: #3a1d1d;
         --muted-soft: #262e3a;
         --shadow: none;
+        --viz-1: #11a89b;
+        --viz-track: #343f50;
         color-scheme: dark;
 }
 
@@ -430,3 +437,11 @@ textarea.input { min-height: 88px; resize: vertical; }
     }
     .tabbar .theme-btn:hover { background: var(--surface-200); }
 }
+
+.desktop-only { display: none !important; }
+@media (min-width: 960px) {
+    .tab.desktop-only { display: flex !important; }
+    .tabbar nav .tab.desktop-only:first-of-type { margin-top: 12px; }
+    .mobile-only { display: none !important; }
+}
+.quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }

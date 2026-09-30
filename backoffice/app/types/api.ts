@@ -69,6 +69,11 @@ export interface Student {
     left_date?: string | null;
     notes?: string | null;
     pay_ref?: string | null;
+    discountid?: number | null;
+    discountname?: string | null;
+    allergies?: string | null;
+    medical_notes?: string | null;
+    blood_type?: string | null;
     groupid?: number | null;
     groupname?: string | null;
     fee_amount?: number | null;
@@ -87,12 +92,16 @@ export interface Session {
     status: number;
     attendance_taken: boolean;
     notes?: string | null;
+    planid?: number | null;
+    planname?: string | null;
     present_count: number;
     student_count: number;
 }
 
 export interface AttendanceRow {
     studentid: number;
+    allergies?: string | null;
+    injury?: string | null;
     last_name: string;
     first_name: string;
     // 1=Present, 2=Absent, 3=Excused, 4=Late
@@ -140,6 +149,8 @@ export interface Fee {
     status: number;
     note?: string | null;
     pay_ref?: string | null;
+    base_amount?: number | null;
+    discount_name?: string | null;
     phone?: string | null;
     notified_at?: string | null;
     payments: Payment[];
@@ -221,4 +232,88 @@ export interface Skill {
     name: string;
     hint?: string | null;
     sort_order: number;
+}
+
+export interface Drill {
+    drillid: number;
+    name: string;
+    description?: string | null;
+    minutes: number;
+    level?: string | null;
+    equipment?: string | null;
+    skillids: number[];
+    plan_count: number;
+}
+
+export interface PlanItem {
+    itemid: number;
+    drillid?: number | null;
+    title: string;
+    minutes: number;
+    description?: string | null;
+    skillids: number[];
+}
+
+export interface Plan {
+    planid: number;
+    name: string;
+    notes?: string | null;
+    total_minutes: number;
+    items: PlanItem[];
+}
+
+export interface Discount {
+    discountid: number;
+    name: string;
+    // 1=Percent, 2=Fixed ₮
+    kind: number;
+    value: number;
+    student_count: number;
+}
+
+export interface MeasureType {
+    typeid: number;
+    name: string;
+    unit: string;
+    higher_is_better: boolean;
+    sort_order: number;
+}
+
+export interface Measurement {
+    measureid: number;
+    typeid: number;
+    value: number;
+    measured_on: string;
+    note?: string | null;
+}
+
+export interface Injury {
+    injuryid: number;
+    occurred_on: string;
+    body_part?: string | null;
+    description: string;
+    // 1=Recovering, 2=Recovered
+    status: number;
+    recovered_on?: string | null;
+    created: string;
+}
+
+export interface HealthFlag {
+    studentid: number;
+    allergies?: string | null;
+    injured: boolean;
+    injury?: string | null;
+}
+
+export interface IncomeReport {
+    year: number;
+    billed: number;
+    paid: number;
+    collected: number;
+    discounts: number;
+    outstanding: number;
+    months: { period: string; billed: number; paid: number; discounts: number; collected: number; children: number }[];
+    groups: { groupid: number; name: string; billed: number; paid: number }[];
+    methods: Record<string, number>;
+    debtors: { studentid: number; name: string; groupname?: string | null; owed: number; months: number }[];
 }

@@ -71,6 +71,9 @@ export default function FeeSheet({ fee, onClose, onChanged }: { fee: Fee | null;
                 <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6 }} className="num">
                     {money(fee.paid_amount)} <span className="muted" style={{ fontSize: 16 }}>/ {money(fee.amount)}</span>
                 </div>
+                {fee.discount_name && fee.base_amount != null && (
+                    <div className="caption" style={{ marginTop: 4 }}>{fee.discount_name}: {money(fee.base_amount)} → {money(fee.amount)}</div>
+                )}
                 {fee.pay_ref && <div className="caption" style={{ marginTop: 4 }}>Гүйлгээний утга: <b>{fee.pay_ref}</b></div>}
             </div>
 

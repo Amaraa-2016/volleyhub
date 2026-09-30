@@ -6,6 +6,7 @@ import { LogOut } from "lucide-react";
 import { TopBar, Field, useToast, useData } from "@/app/components/ui";
 import type { Settings } from "@/app/types/api";
 import SkillsEditor from "@/app/components/SkillsEditor";
+import { DiscountsEditor, MeasureTypesEditor } from "@/app/components/SettingsEditors";
 import { ThemePicker } from "@/app/components/Theme";
 import { AccountAPI, API } from "@/app/utils/API";
 import { initials } from "@/app/utils/format";
@@ -102,6 +103,18 @@ export default function MePage() {
                     <div className="section-head"><h2>Үнэлгээний үзүүлэлт</h2></div>
                     <p className="caption" style={{ marginTop: 0 }}>Хүүхдийн ахицыг сар бүр эдгээрээр 1–5 оноогоор үнэлнэ.</p>
                     <SkillsEditor />
+                </section>
+
+                <section className="section" id="discounts">
+                    <div className="section-head"><h2>Хөнгөлөлтийн төрөл</h2></div>
+                    <p className="caption" style={{ marginTop: 0 }}>Хүүхдийн картанд оноож өгнө. Шинэ сарын төлбөр үүсэхэд автоматаар хасагдана.</p>
+                    <DiscountsEditor />
+                </section>
+
+                <section className="section" id="measures">
+                    <div className="section-head"><h2>Биеийн хөгжлийн хэмжилт</h2></div>
+                    <p className="caption" style={{ marginTop: 0 }}>Хүүхэд бүр дээр эдгээрийг хэмжиж, графикаар ахицыг нь харна.</p>
+                    <MeasureTypesEditor />
                 </section>
 
                 <form className="section" onSubmit={saveName}>

@@ -3,18 +3,19 @@
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Phone, Pencil, Trash2, StickyNote, UserX, UserCheck, Check } from "lucide-react";
+import { Phone, Pencil, Trash2, StickyNote, UserX, UserCheck, Check, HeartPulse, Ruler, TriangleAlert } from "lucide-react";
+import { HealthTab, MeasureTab } from "@/app/components/KidHealth";
 import { TopBar, useData, Loading, ErrorBox, Sheet, Empty, useToast } from "@/app/components/ui";
 import StudentForm from "@/app/components/StudentForm";
 import FeeSheet from "@/app/components/FeeSheet";
-import type { AttendanceSummary, Fee, Group, Note, RatingMonth, Skill, Student } from "@/app/types/api";
+import type { AttendanceSummary, Fee, Group, Injury, Note, RatingMonth, Skill, Student } from "@/app/types/api";
 import { API } from "@/app/utils/API";
 import {
     ageOf, ATTENDANCE, currentPeriod, dayLabel, FEE_STATUS, GENDER, initials, METHODS, money,
     periodLabel, shortDate, today,
 } from "@/app/utils/format";
 
-type Tab = "attendance" | "fees" | "notes" | "progress";
+type Tab = "attendance" | "fees" | "notes" | "progress" | "measure" | "health";
 
 // Everything about one child in one place: who to call, their status, and the three histories -
 // attendance, payments, the coach's notes.
@@ -29,6 +30,7 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
     const ratings = useData<RatingMonth[]>(`/api/vh/backoffice/students/${id}/ratings`);
     const groups = useData<Group[]>("/api/vh/backoffice/groups");
     const skills = useData<Skill[]>("/api/vh/backoffice/skills");
+    const injuries = useData<Injury[]>(`/api/vh/backoffice/students/${id}/injuries`);
     const [tab, setTab] = useState<Tab>("attendance");
     const [sheet, setSheet] = useState<null | "edit" | "note" | "status" | "rating">(null);
     const [openFee, setOpenFee] = useState<Fee | null>(null);
@@ -76,8 +78,23 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
                                 <dt>Сарын төлбөр</dt><dd className="num">{s.fee_amount != null ? money(s.fee_amount) : "—"}</dd>
                                 {s.phone && <><dt>Утас</dt><dd className="num">{s.phone}</dd></>}
                                 {s.pay_ref && <><dt>Гүйлгээний утга</dt><dd>{s.pay_ref}</dd></>}
+                                {s.discountname && <><dt>Хөнгөлөлт</dt><dd>{s.discountname}</dd></>}
                             </dl>
                         </div>
+
+                        {(s.allergies || s.medical_notes || (injuries.data ?? []).some((i) => i.status === 1)) && (
+                            <button className="alert tone-absent" style={{ display: "flex", gap: 10, marginTop: 12, width: "100%", textAlign: "left", border: 0, cursor: "pointer" }}
+                                onClick={() => setTab("health")}>
+                                <TriangleAlert size={20} style={{ flexShrink: 0 }} />
+                                <span>
+                                    {s.allergies && <div>Харшил: {s.allergies}</div>}
+                                    {s.medical_notes && <div>{s.medical_notes}</div>}
+                                    {(injuries.data ?? []).filter((i) => i.status === 1).map((i) => (
+                                        <div key={i.injuryid}>Гэмтэлтэй: {i.body_part ?? i.description}</div>
+                                    ))}
+                                </span>
+                            </button>
+                        )}
 
                         {s.emergency_phone && (
                             <a href={`tel:${s.emergency_phone}`} className="card pad" style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
@@ -108,6 +125,8 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
                             <button className={tab === "fees" ? "on" : ""} onClick={() => setTab("fees")}>Төлбөр</button>
                             <button className={tab === "notes" ? "on" : ""} onClick={() => setTab("notes")}>Тэмдэглэл<span className="count">{notes.data?.length || ""}</span></button>
                             <button className={tab === "progress" ? "on" : ""} onClick={() => setTab("progress")}>Ахиц</button>
+                            <button className={tab === "measure" ? "on" : ""} onClick={() => setTab("measure")}><Ruler size={14} style={{ verticalAlign: -2 }} /> Хэмжилт</button>
+                            <button className={tab === "health" ? "on" : ""} onClick={() => setTab("health")}><HeartPulse size={14} style={{ verticalAlign: -2 }} /> Эрүүл мэнд</button>
                         </div>
 
                         {tab === "attendance" && (
@@ -196,6 +215,9 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
                                 )}
                             </>
                         )}
+
+                        {tab === "measure" && <MeasureTab studentId={id} />}
+                        {tab === "health" && <HealthTab student={s} injuries={injuries} onEdit={() => setSheet("edit")} />}
 
                         {tab === "progress" && (
                             <div className="card pad">
