@@ -35,7 +35,6 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
         emergency_phone: student?.emergency_phone ?? "",
         status: student?.status === 3 ? 3 : 1,
         left_date: student?.left_date?.slice(0, 10) ?? "",
-        pay_ref: student?.pay_ref ?? "",
         discountid: student?.discountid ?? null as number | null,
         allergies: student?.allergies ?? "",
         medical_notes: student?.medical_notes ?? "",
@@ -79,7 +78,9 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                 emergency_phone: f.emergency_phone,
                 status: f.status,
                 left_date: f.status === 3 ? f.left_date : null,
-                pay_ref: f.pay_ref,
+                // Not asked on the form any more; an old value is kept, and invoices fall back to
+                // "<name> <month> сар" as the transfer reference.
+                pay_ref: student?.pay_ref ?? null,
                 discountid: f.discountid,
                 allergies: f.allergies,
                 medical_notes: f.medical_notes,
@@ -136,6 +137,11 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                     <span>Утасны дугаар</span>
                     <input className="input" inputMode="tel" value={f.phone} onChange={set("phone")} placeholder="Хүүхдийн өөрийн утас (байвал)" />
                 </label>
+                <label className="field">
+                    <span>Эхэлсэн огноо</span>
+                    <input className="input" type="date" value={f.start_date} max={today()} onChange={set("start_date")} />
+                    <small className="caption">Хүүхэд сургалтад анх ирж эхэлсэн өдөр</small>
+                </label>
             </div>
 
             <div className="form-section">
@@ -149,16 +155,12 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                         </select>
                     </label>
                 )}
-                <label className="field">
-                    <span>Эхэлсэн огноо</span>
-                    <input className="input" type="date" value={f.start_date} onChange={set("start_date")} />
-                    {group && (
-                        <small className="caption">
-                            Сарын төлбөр ангийнхаараа: {money(group.fee_amount)}
-                            {discount && ` → хөнгөлөлттэй ${money(Math.max(0, discount.kind === 1 ? group.fee_amount - Math.round(group.fee_amount * discount.value / 100) : group.fee_amount - discount.value))}`}
-                        </small>
-                    )}
-                </label>
+                {group && (
+                    <p className="caption" style={{ margin: "0 0 12px" }}>
+                        Сарын төлбөр ангийнхаараа: {money(group.fee_amount)}
+                        {discount && ` → хөнгөлөлттэй ${money(Math.max(0, discount.kind === 1 ? group.fee_amount - Math.round(group.fee_amount * discount.value / 100) : group.fee_amount - discount.value))}`}
+                    </p>
+                )}
                 {(discounts.data?.length ?? 0) > 0 && (
                     <label className="field">
                         <span>Хөнгөлөлт</span>
@@ -170,11 +172,6 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                         </select>
                     </label>
                 )}
-                <label className="field">
-                    <span>Гүйлгээний утга</span>
-                    <input className="input" value={f.pay_ref} onChange={set("pay_ref")} placeholder={f.first_name ? `${f.first_name} төлбөр` : "Жишээ: Бат төлбөр"} />
-                    <small className="caption">Эцэг эх шилжүүлэхдээ бичих үг. Нэхэмжлэхэд орно.</small>
-                </label>
             </div>
 
             <div className="form-section">

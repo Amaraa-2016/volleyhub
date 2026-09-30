@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Sparkles } from "lucide-react";
 import { TopBar, useData, Loading, ErrorBox, Empty, Sheet, useToast } from "@/app/components/ui";
 import DrillForm from "@/app/components/DrillForm";
 import type { Drill, Plan, Skill } from "@/app/types/api";
@@ -20,6 +20,23 @@ function PlansInner() {
     const [q, setQ] = useState("");
     const [skill, setSkill] = useState<number | null>(null);
     const [editing, setEditing] = useState<Drill | "new" | null>(null);
+
+    const [seeding, setSeeding] = useState(false);
+    const addSamples = async () => {
+        setSeeding(true);
+        const res = await API<{ drills: number; plans: number }>("/api/vh/backoffice/plans/samples", { method: "POST" });
+        setSeeding(false);
+        if (res.error || !res.data) return toast.fail(res.error);
+        const { drills: d, plans: p } = res.data;
+        toast.ok(d || p ? `${d} дасгал, ${p} төлөвлөгөө нэмэгдлээ` : "Жишээнүүд аль хэдийн нэмэгдсэн байна");
+        plans.reload();
+        drills.reload();
+    };
+    const sampleButton = (primary?: boolean) => (
+        <button className={`btn ${primary ? "" : "ghost block"}`} disabled={seeding} onClick={addSamples} style={primary ? undefined : { marginTop: 12 }}>
+            <Sparkles size={18} /> {seeding ? "Нэмж байна…" : "Жишээ дасгал, төлөвлөгөө нэмэх"}
+        </button>
+    );
 
     const skillName = (id: number) => skills.data?.find((k) => k.skillid === id)?.name;
 
@@ -51,7 +68,10 @@ function PlansInner() {
                     plans.loading && !plans.data ? <Loading /> : plans.error ? <ErrorBox code={plans.error} retry={plans.reload} /> : !plans.data?.length ? (
                         <div className="card">
                             <Empty title="Төлөвлөгөө алга" text="Дасгалын сангаас дасгал сонгож хичээлийн төлөвлөгөө угсарна. Нэг төлөвлөгөөг олон хичээлд ашиглана.">
-                                <Link href="/plans/new" className="btn primary"><Plus size={18} /> Төлөвлөгөө үүсгэх</Link>
+                                <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                                    <Link href="/plans/new" className="btn primary"><Plus size={18} /> Төлөвлөгөө үүсгэх</Link>
+                                    {sampleButton(true)}
+                                </div>
                             </Empty>
                         </div>
                     ) : (
@@ -84,7 +104,12 @@ function PlansInner() {
                         {drills.loading && !drills.data ? <Loading /> : shownDrills.length === 0 ? (
                             <div className="card">
                                 <Empty title={drills.data?.length ? "Илэрц алга" : "Дасгалын сан хоосон"} text={drills.data?.length ? undefined : "Өөрийн хэрэглэдэг дасгалуудаа нэмээрэй."}>
-                                    {!drills.data?.length && <button className="btn primary" onClick={() => setEditing("new")}><Plus size={18} /> Дасгал нэмэх</button>}
+                                    {!drills.data?.length && (
+                                        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                                            <button className="btn primary" onClick={() => setEditing("new")}><Plus size={18} /> Дасгал нэмэх</button>
+                                            {sampleButton(true)}
+                                        </div>
+                                    )}
                                 </Empty>
                             </div>
                         ) : (
@@ -108,6 +133,7 @@ function PlansInner() {
                         )}
                     </>
                 )}
+                {((tab === "plans" && (plans.data?.length ?? 0) > 0) || (tab === "drills" && (drills.data?.length ?? 0) > 0)) && sampleButton()}
             </main>
 
             <button className="fab" onClick={() => (tab === "plans" ? router.push("/plans/new") : setEditing("new"))}>

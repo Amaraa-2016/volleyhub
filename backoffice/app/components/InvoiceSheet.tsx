@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Send, TriangleAlert, Receipt } from "lucide-react";
+import { ChevronLeft, ChevronRight, Send, Receipt, MessageSquare, Copy, Check } from "lucide-react";
 import { Sheet, useData, Loading, useToast } from "@/app/components/ui";
 import type { Month, NotifyItem, NotifyResult, Settings } from "@/app/types/api";
 import { API } from "@/app/utils/API";
 import { currentPeriod, money, periodLabel, shiftPeriod, shortDate, shortName } from "@/app/utils/format";
+
+// Opens the phone's own messaging app with the number and text filled in. iPhones read the body
+// after "&", Android after "?"; "?&body=" is understood by both.
+const smsLink = (phone: string, text: string) =>
+    `sms:${phone.replace(/[^\d+]/g, "")}?&body=${encodeURIComponent(text)}`;
 
 const STATUS_TEXT: Record<NotifyItem["status"], { label: string; tone: string }> = {
     sent: { label: "Илгээсэн", tone: "present" },
@@ -33,6 +38,10 @@ export default function InvoiceSheet({ open, onClose, groupId, title }: {
     const [preview, setPreview] = useState<Record<number, string>>({});
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState<NotifyResult | null>(null);
+    // "phone": one tap per parent opens the coach's messaging app. "gateway": the server sends them
+    // all at once - only offered once an SMS gateway is configured.
+    const [mode, setMode] = useState<"phone" | "gateway">("phone");
+    const [opened, setOpened] = useState<number[]>([]);
 
     const unpaid = useMemo(() => (month.data?.fees ?? []).filter((f) => f.status === 1 || f.status === 2), [month.data]);
 
@@ -49,7 +58,30 @@ export default function InvoiceSheet({ open, onClose, groupId, title }: {
     // A fresh month or a fresh opening starts from the list, not from the last send's result.
     useEffect(() => {
         setResult(null);
+        setOpened([]);
     }, [period, open]);
+
+    useEffect(() => {
+        if (settings.data?.sms_enabled) setMode("gateway");
+    }, [settings.data?.sms_enabled]);
+
+    // Recorded when the messaging app is opened, so the list shows who has been sent one.
+    const openSms = (feeid: number, phone: string) => {
+        const text = preview[feeid];
+        if (!text) return;
+        setOpened((o) => (o.includes(feeid) ? o : [...o, feeid]));
+        API(`/api/vh/backoffice/fees/${feeid}/notified`, { data: { phone, message: text } });
+        window.location.href = smsLink(phone, text);
+    };
+
+    const copy = async (feeid: number) => {
+        try {
+            await navigator.clipboard.writeText(preview[feeid] ?? "");
+            toast.ok("Мессеж хуулагдлаа");
+        } catch {
+            toast.fail();
+        }
+    };
 
     const generate = async () => {
         setBusy(true);
@@ -105,10 +137,10 @@ export default function InvoiceSheet({ open, onClose, groupId, title }: {
                 </>
             ) : month.loading && !month.data ? <Loading /> : (
                 <>
-                    {s && !s.sms_enabled && (
-                        <div className="alert tone-sun" style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-                            <TriangleAlert size={18} style={{ flexShrink: 0, marginTop: 1 }} />
-                            <span>SMS үйлчилгээ (gateway) хараахан тохируулагдаагүй байна. Нэхэмжлэх бүртгэгдэх боловч эцэг эхэд очихгүй.</span>
+                    {s?.sms_enabled && (
+                        <div className="seg" style={{ marginBottom: 12 }}>
+                            <button className={mode === "phone" ? "on" : ""} onClick={() => setMode("phone")}>Өөрийн утаснаас</button>
+                            <button className={mode === "gateway" ? "on" : ""} onClick={() => setMode("gateway")}>Бүгдэд нэг дор</button>
                         </div>
                     )}
                     {s && !s.bank_account && (
@@ -129,6 +161,43 @@ export default function InvoiceSheet({ open, onClose, groupId, title }: {
                             {(month.data?.fee_count ?? 0) > 0 ? "Бүгд төлсөн байна" : "Энэ сард төлбөр үүсээгүй байна"}
                         </div>
                     ) : (
+                        mode === "phone" ? (
+                            <>
+                                <p className="caption" style={{ marginTop: 0 }}>
+                                    «Мессеж» дарахад утасны мессеж апп нээгдэж, эцэг эхийн дугаар болон нэхэмжлэхийн текст бэлэн болно. Та зөвхөн илгээх товчийг дарна.
+                                </p>
+                                <div className="list" style={{ marginBottom: 12 }}>
+                                    {unpaid.map((f) => {
+                                        const done = opened.includes(f.feeid);
+                                        return (
+                                            <div key={f.feeid} className="row">
+                                                <div className="grow">
+                                                    <div className="title">{shortName(f.last_name, f.first_name)} <span className="amount" style={{ fontSize: 14 }}>{money(f.balance)}</span></div>
+                                                    <div className="meta">
+                                                        {f.phone ?? "Утасны дугааргүй"}
+                                                        {f.notified_at && !done ? ` · ${shortDate(f.notified_at)}-нд илгээсэн` : ""}
+                                                    </div>
+                                                </div>
+                                                {preview[f.feeid] && (
+                                                    <button className="icon-btn" aria-label="Мессежийг хуулах" onClick={() => copy(f.feeid)}><Copy size={18} /></button>
+                                                )}
+                                                {f.phone ? (
+                                                    <button className={`btn sm ${done ? "" : "primary"}`} disabled={!preview[f.feeid]} onClick={() => openSms(f.feeid, f.phone!)}>
+                                                        {done ? <Check size={16} /> : <MessageSquare size={16} />} {done ? "Нээсэн" : "Мессеж"}
+                                                    </button>
+                                                ) : <span className="badge tone-muted">Утасгүй</span>}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {unpaid[0] && preview[unpaid[0].feeid] && (
+                                    <div>
+                                        <div className="caption" style={{ marginBottom: 4 }}>Жишээ мессеж</div>
+                                        <div className="message-preview">{preview[unpaid[0].feeid]}</div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
                         <>
                             <div className="list" style={{ marginBottom: 12 }}>
                                 {unpaid.map((f) => (
@@ -157,6 +226,7 @@ export default function InvoiceSheet({ open, onClose, groupId, title }: {
                                 <Send size={18} /> {picked.length} эцэг эхэд илгээх
                             </button>
                         </>
+                        )
                     )}
                 </>
             )}
