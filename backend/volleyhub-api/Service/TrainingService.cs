@@ -444,14 +444,15 @@ public class TrainingService
                     groupid = group.groupid,
                     studentid = student.studentid,
                     fee_amount = data.fee_amount ?? group.fee_amount,
-                    joined = student.start_date ?? now,
+                    // A new child joins the class on their start date; a child moving classes joins
+                    // the new one today. start_date stays the child's own first day.
+                    joined = data.studentid > 0 ? now : student.start_date ?? now,
                     isactive = true,
                 });
             }
             else
             {
                 if (data.fee_amount is decimal fee) current.fee_amount = fee;
-                if (student.start_date is DateTime start) current.joined = start;
             }
         }
 

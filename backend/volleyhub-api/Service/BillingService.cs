@@ -83,9 +83,10 @@ public class BillingService
         var groups = await _db.training_group.AsNoTracking().ToDictionaryAsync(g => g.groupid, g => g.name);
 
         var feeIds = fees.Select(f => f.feeid).ToList();
-        // Only delivered texts count: a coach with no gateway yet should not see "sent".
+        // Delivered by the gateway, or sent from the coach's own phone. A text that was only logged
+        // (no gateway yet) does not count.
         var notified = await _db.fee_notice.AsNoTracking()
-            .Where(n => feeIds.Contains(n.feeid) && n.status == 1)
+            .Where(n => feeIds.Contains(n.feeid) && (n.status == 1 || n.status == 4))
             .GroupBy(n => n.feeid)
             .Select(g => new { feeid = g.Key, at = g.Max(n => n.created) })
             .ToDictionaryAsync(x => x.feeid, x => x.at);

@@ -242,6 +242,10 @@ public class BackofficeController : ApiControllerBase
     public Task<IActionResult> Notify([FromBody] NotifyBT data) =>
         Run(async () => { AssertStaff(); return await _invoices.Notify(TenantId(), data, StaffId()); });
 
+    [HttpPost("fees/{id:long}/notified")]
+    public Task<IActionResult> RecordManualNotice(long id, [FromBody] ManualNoticeBT data) =>
+        Run(async () => { AssertStaff(); return await _invoices.RecordManual(id, data, StaffId()); });
+
     [HttpPost("fees/{id:long}/paid")]
     public Task<IActionResult> MarkPaid(long id, [FromBody] MarkPaidBT? data) =>
         Run(async () => { AssertStaff(); return await _billing.MarkPaid(id, data ?? new MarkPaidBT(), StaffId()); });
@@ -306,6 +310,11 @@ public class BackofficeController : ApiControllerBase
     [HttpDelete("plans/{id:long}")]
     public Task<IActionResult> DeletePlan(long id) =>
         Run(async () => { AssertStaff(); return await _planning.DeletePlan(id); });
+
+    // A starter library: ~17 children's drills and 4 hour-long plans. Skips anything already there.
+    [HttpPost("plans/samples")]
+    public Task<IActionResult> AddPlanSamples() =>
+        Run(async () => { AssertStaff(); return await _planning.AddSamples(await _progress.Skills()); });
 
     [HttpPost("sessions/{id:long}/plan")]
     public Task<IActionResult> SetSessionPlan(long id, [FromBody] SessionPlanBT data) =>

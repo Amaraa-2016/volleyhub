@@ -457,6 +457,13 @@ public class NotifyBT
     public bool preview { get; set; }
 }
 
+// The coach sent this fee's invoice from their own phone's messaging app.
+public class ManualNoticeBT
+{
+    public string? phone { get; set; }
+    public string? message { get; set; }
+}
+
 public class NotifyItemRT
 {
     public long feeid { get; set; }

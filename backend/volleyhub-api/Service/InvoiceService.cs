@@ -161,4 +161,22 @@ public class InvoiceService
         if (!data.preview) await _db.SaveChangesAsync();
         return result;
     }
+
+    public async Task<object> RecordManual(long feeId, ManualNoticeBT data, int staffId)
+    {
+        var fee = await _db.student_fee.AsNoTracking().FirstOrDefaultAsync(f => f.feeid == feeId && !f.is_deleted)
+            ?? throw new InvalidOperationException("fee_not_found");
+        _db.fee_notice.Add(new FeeNotice
+        {
+            feeid = fee.feeid,
+            studentid = fee.studentid,
+            phone = NullIfEmpty(data.phone) ?? "",
+            message = data.message ?? "",
+            status = 4,
+            staffid = staffId,
+            created = DateTime.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+        return new { ok = true };
+    }
 }

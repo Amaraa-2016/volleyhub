@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace volleyhub_api.Service;
 
 // The drill library and reusable lesson plans, and which plan a class session uses.
-public class PlanningService
+public partial class PlanningService
 {
     private readonly VolleyDbContext _db;
 

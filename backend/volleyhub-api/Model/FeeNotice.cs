@@ -13,7 +13,8 @@ public class FeeNotice
     [MaxLength(100)]
     public string phone { get; set; } = string.Empty;
     public string message { get; set; } = string.Empty;
-    // 1=Sent, 2=Failed, 3=Logged only (no SMS gateway configured)
+    // 1=Sent by the gateway, 2=Failed, 3=Logged only (no gateway), 4=Opened in the coach's own
+    // phone messaging app (we cannot know if they pressed send, but they chose to)
     public short status { get; set; }
     [MaxLength(500)]
     public string? error { get; set; }
