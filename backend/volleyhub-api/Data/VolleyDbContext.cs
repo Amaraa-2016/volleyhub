@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace volleyhub_api.Data;
 
-// Tenant context: every per-training-centre table, scoped to that centre's schema (tenant_<id>).
+// Tenant context: every table of one coach's workspace, scoped to its schema (tenant_<id>).
 // Isolation is by schema, so the domain entities carry no tenantid column.
 public class VolleyDbContext : DbContext, ITenantDbContext
 {
@@ -15,21 +15,15 @@ public class VolleyDbContext : DbContext, ITenantDbContext
         Schema = tenantProvider.GetSchema();
     }
 
-    // Staff + roles.
+    // Staff + roles. In practice one row: the coach who owns the workspace.
     public DbSet<Role> role { get; set; }
     public DbSet<Staff> staff { get; set; }
 
-    // Coaches: public profiles, not logins - see Coach.
-    public DbSet<Coach> coach { get; set; }
-    public DbSet<GroupCoach> group_coach { get; set; }
-
-    // Courses and the students in them. The table is training_group, not group, because group is a
+    // Groups and the children in them. The table is training_group, not group, because group is a
     // reserved word in SQL and a contextual keyword in C# LINQ - both avoidable for free.
     public DbSet<Group> training_group { get; set; }
     public DbSet<Student> student { get; set; }
     public DbSet<Enrollment> enrollment { get; set; }
-    // Asked for from the public site; becomes a student and an enrollment once the centre approves.
-    public DbSet<EnrollmentRequest> enrollment_request { get; set; }
 
     // Where and when training happens.
     public DbSet<Venue> venue { get; set; }
@@ -37,12 +31,12 @@ public class VolleyDbContext : DbContext, ITenantDbContext
     public DbSet<TrainingSession> training_session { get; set; }
     public DbSet<AttendanceRecord> attendance_record { get; set; }
 
-    // Money.
+    // Money, as the coach records it from their bank statement.
     public DbSet<StudentFee> student_fee { get; set; }
     public DbSet<Payment> payment { get; set; }
 
-    // The centre talking to its own students.
-    public DbSet<Announcement> announcement { get; set; }
+    // The coach's monthly skill scores.
+    public DbSet<SkillRating> skill_rating { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

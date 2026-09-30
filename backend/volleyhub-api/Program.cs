@@ -16,10 +16,7 @@ builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<TrainingService>();
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<BillingService>();
-builder.Services.AddScoped<PlatformContentService>();
-builder.Services.AddScoped<PublicSiteService>();
-builder.Services.AddSingleton<volleyhub_api.Service.Storage.IFileStorage,
-    volleyhub_api.Service.Storage.S3FileStorage>();
+builder.Services.AddScoped<ProgressService>();
 
 builder.Services.AddControllers().AddNewtonsoftJson(options =>
 {
@@ -76,11 +73,11 @@ builder.Services.AddCors(options =>
 
 var connStr = builder.Configuration["ConnectionStrings:dbCon"];
 
-// Shared (public) schema - the club registry.
+// Shared (public) schema - the workspace registry.
 builder.Services.AddDbContext<SharedDbContext>(option => option.UseNpgsql(connStr));
 
-// Shared (public) schema - identity, membership, registration applications. Tenant-independent, so
-// anonymous account endpoints work with no tenantid header.
+// Shared (public) schema - identity and workspace membership. Tenant-independent, so login and
+// register work with no tenantid header.
 builder.Services.AddDbContext<AccountDbContext>(option => option.UseNpgsql(connStr));
 
 // Tenant context - the schema is resolved per request via ITenantProvider.
@@ -93,11 +90,10 @@ builder.Services.AddScoped<TenantSchemaManager>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
-// Bootstrap the public schema, then create or column-sync a schema per club. Idempotent, so it
+// Bootstrap the public schema, then create or column-sync a schema per workspace. Idempotent, so it
 // runs on every start and a deploy that adds a column needs no migration step.
 using (var scope = app.Services.CreateScope())
 {

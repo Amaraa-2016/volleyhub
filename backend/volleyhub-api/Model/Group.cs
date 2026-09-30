@@ -2,13 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace volleyhub_api.Model;
 
-// A course the centre offers - the unit a student enrolls in, and the unit the public site lists.
-// Per-tenant (tenant_<id> schema), so there is no tenantid column.
-//
-// Address, phone and map link live here rather than only on the centre: one organisation often
-// runs courses in different halls, and a visitor is choosing a course at a place and time, not an
-// organisation. `fee_amount` is the standard monthly price; a student's own fee rows keep the
-// amount agreed at enrollment, so repricing a course never rewrites past invoices.
+// A group the coach trains - the unit a child is enrolled in, takes attendance in and is billed for.
+// Per-tenant (tenant_<id> schema), so there is no tenantid column. `fee_amount` is the standard
+// monthly price; a child's own fee rows keep the amount agreed at enrollment, so repricing a group
+// never rewrites past months.
 public class Group
 {
     [Key]
@@ -22,30 +19,11 @@ public class Group
     public string? agegroup { get; set; }
     // 1=Male, 2=Female, 3=Mixed
     public short gender { get; set; } = 3;
-    // Coaches are a list, not a column - see GroupCoach.
     public long? venueid { get; set; }
     public int capacity { get; set; }
     public decimal fee_amount { get; set; }
     public string? notes { get; set; }
     public bool isactive { get; set; } = true;
-
-    // ---- public listing ---------------------------------------------------
-
-    public string? cover { get; set; }
-    // When the course starts taking students. Null for one that runs continuously.
-    public DateTime? start_date { get; set; }
-    [MaxLength(500)]
-    public string? address { get; set; }
-    // A share link pasted from Google Maps, kept as-is because that is what the site links out to.
-    [MaxLength(1000)]
-    public string? map_url { get; set; }
-    // Read out of that link when the course is saved - see MapLink. Stored rather than derived on
-    // every read so the public map never waits on Google, and null when the link carried no
-    // position, in which case the course simply has no pin.
-    public double? latitude { get; set; }
-    public double? longitude { get; set; }
-    [MaxLength(100)]
-    public string? phone { get; set; }
 
     public bool is_deleted { get; set; }
     public DateTime created { get; set; }

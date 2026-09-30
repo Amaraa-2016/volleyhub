@@ -5,10 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace volleyhub_api.Controllers;
 
-// Training-centre management. Every endpoint is per-centre: the tenantid header selects the schema
+// The coach's workspace. Every endpoint is per-workspace: the tenantid header selects the schema
 // and the tenant provider checks the caller is a member of it, so nothing here filters by tenant
-// itself. The role gate below is the second half of that - membership alone must not let a student
-// edit the roster.
+// itself. The role gate is the second half of that: only staff roles get in. Children and parents
+// have no login at all.
 [Authorize]
 [ApiController]
 [Route("api/vh/backoffice")]
@@ -18,71 +18,55 @@ public class BackofficeController : ApiControllerBase
     private readonly TrainingService _training;
     private readonly ScheduleService _schedule;
     private readonly BillingService _billing;
-    private readonly AccountService _account;
-    private readonly PublicSiteService _site;
+    private readonly ProgressService _progress;
 
     protected override ILogger Logger => _logger;
 
-    private static readonly string[] ManageRoles = ["owner", "admin"];
     private static readonly string[] StaffRoles = ["owner", "admin", "coach"];
 
     public BackofficeController(ILogger<BackofficeController> logger, TrainingService training,
-        ScheduleService schedule, BillingService billing, AccountService account, PublicSiteService site)
+        ScheduleService schedule, BillingService billing, ProgressService progress)
     {
         _logger = logger;
         _training = training;
         _schedule = schedule;
         _billing = billing;
-        _account = account;
-        _site = site;
+        _progress = progress;
     }
 
-    // A coach may read everything, take the register and enter payments; changing the centre itself
-    // needs owner/admin.
     private void AssertStaff()
     {
         if (!StaffRoles.Contains(Role())) throw new UnauthorizedAccessException("staff_only");
     }
 
-    private void AssertManager()
-    {
-        if (!ManageRoles.Contains(Role())) throw new UnauthorizedAccessException("admin_only");
-    }
+    // ---- home -------------------------------------------------------------
 
-    // ---- dashboard --------------------------------------------------------
-
+    // `date` is the coach's own calendar day (YYYY-MM-DD). The server runs in UTC, and before 8am in
+    // Ulaanbaatar its "today" is still yesterday - so the client says which day it is.
     [HttpGet("dashboard")]
-    public Task<IActionResult> Dashboard() =>
+    public Task<IActionResult> Dashboard([FromQuery] DateTime? date) =>
         Run(async () =>
         {
             AssertStaff();
 
-            var today = DateTime.UtcNow.Date;
-            var upcoming = await _schedule.Sessions(null, today, today.AddDays(7), null);
-            var pending = (await _account.Members(TenantId(), "pending")).Count;
-            var (owed, debtors) = await _billing.Outstanding();
+            var today = DateTime.SpecifyKind((date ?? DateTime.UtcNow).Date, DateTimeKind.Utc);
+            var period = $"{today.Year:D4}-{today.Month:D2}";
+            var week = await _schedule.Sessions(null, today, today.AddDays(7), null);
+            var (expected, received, unpaid) = await _billing.MonthTotals(period);
 
             return new DashboardRT
             {
                 groups = (await _training.Groups()).Count,
-                students = (await _training.Students(null, null)).Count,
-                sessions_this_week = upcoming.Count,
-                pending_members = pending,
-                unpaid_total = owed,
-                unpaid_students = debtors,
-                next_sessions = upcoming.Where(s => s.status != 3).Take(6).ToList(),
+                students = (await _training.Students(null, null)).Select(s => s.studentid).Distinct().Count(),
+                today = week.Where(s => s.session_date.Date == today).ToList(),
+                upcoming = week.Where(s => s.session_date.Date > today && s.status != 3).Take(5).ToList(),
+                period = period,
+                month_expected = expected,
+                month_received = received,
+                month_unpaid = unpaid,
+                absent_streaks = await _progress.AbsentStreaks(),
             };
         });
-
-    // ---- public profile of this centre ------------------------------------
-
-    [HttpGet("profile")]
-    public Task<IActionResult> Profile() =>
-        Run(async () => { AssertStaff(); return await _site.Profile(TenantId()); });
-
-    [HttpPut("profile")]
-    public Task<IActionResult> SaveProfile([FromBody] TrainingProfileBT data) =>
-        Run(async () => { AssertManager(); return await _site.SaveProfile(TenantId(), data); });
 
     // ---- groups -----------------------------------------------------------
 
@@ -96,27 +80,11 @@ public class BackofficeController : ApiControllerBase
 
     [HttpPost("groups")]
     public Task<IActionResult> SaveGroup([FromBody] GroupBT data) =>
-        Run(async () => { AssertManager(); return await _training.SaveGroup(data); });
+        Run(async () => { AssertStaff(); return await _training.SaveGroup(data); });
 
     [HttpDelete("groups/{id:long}")]
     public Task<IActionResult> DeleteGroup(long id) =>
-        Run(async () => { AssertManager(); return await _training.DeleteGroup(id); });
-
-    // ---- coaches ----------------------------------------------------------
-
-    [HttpGet("coaches")]
-    public Task<IActionResult> Coaches([FromQuery] bool includeInactive = false) =>
-        Run(async () => { AssertStaff(); return await _training.Coaches(includeInactive); });
-
-    [HttpPost("coaches")]
-    public Task<IActionResult> SaveCoach([FromBody] CoachBT data) =>
-        Run(async () => { AssertManager(); return await _training.SaveCoach(data); });
-
-    [HttpDelete("coaches/{id:long}")]
-    public Task<IActionResult> DeleteCoach(long id) =>
-        Run(async () => { AssertManager(); return await _training.DeleteCoach(id); });
-
-    // ---- enrollment -------------------------------------------------------
+        Run(async () => { AssertStaff(); return await _training.DeleteGroup(id); });
 
     [HttpGet("groups/{id:long}/students")]
     public Task<IActionResult> Roster(long id) =>
@@ -130,21 +98,7 @@ public class BackofficeController : ApiControllerBase
     public Task<IActionResult> Unenroll(long id, long studentId) =>
         Run(async () => { AssertStaff(); return await _training.Unenroll(id, studentId); });
 
-    // ---- requests to join a course, sent from the public site ---------------
-
-    [HttpGet("enrollment-requests")]
-    public Task<IActionResult> EnrollmentRequests([FromQuery] short? status) =>
-        Run(async () => { AssertStaff(); return await _training.EnrollmentRequests(status); });
-
-    [HttpPost("enrollment-requests/{id:long}/approve")]
-    public Task<IActionResult> ApproveEnrollmentRequest(long id) =>
-        Run(async () => { AssertStaff(); return await _training.ApproveEnrollmentRequest(id); });
-
-    [HttpPost("enrollment-requests/{id:long}/reject")]
-    public Task<IActionResult> RejectEnrollmentRequest(long id, [FromBody] RejectRequestBT data) =>
-        Run(async () => { AssertStaff(); return await _training.RejectEnrollmentRequest(id, data.note); });
-
-    // ---- students ---------------------------------------------------------
+    // ---- children ---------------------------------------------------------
 
     [HttpGet("students")]
     public Task<IActionResult> Students([FromQuery] long? groupid, [FromQuery] string? search,
@@ -161,11 +115,19 @@ public class BackofficeController : ApiControllerBase
 
     [HttpDelete("students/{id:long}")]
     public Task<IActionResult> DeleteStudent(long id) =>
-        Run(async () => { AssertManager(); return await _training.DeleteStudent(id); });
+        Run(async () => { AssertStaff(); return await _training.DeleteStudent(id); });
 
     [HttpGet("students/{id:long}/attendance")]
     public Task<IActionResult> StudentAttendance(long id) =>
         Run(async () => { AssertStaff(); return await _schedule.StudentAttendance(id); });
+
+    [HttpGet("students/{id:long}/ratings")]
+    public Task<IActionResult> Ratings(long id) =>
+        Run(async () => { AssertStaff(); return await _progress.Ratings(id); });
+
+    [HttpPost("students/{id:long}/ratings")]
+    public Task<IActionResult> SaveRatings(long id, [FromBody] RatingSaveBT data) =>
+        Run(async () => { AssertStaff(); return await _progress.SaveRatings(id, data, StaffId()); });
 
     // ---- weekly timetable -------------------------------------------------
 
@@ -175,13 +137,13 @@ public class BackofficeController : ApiControllerBase
 
     [HttpPost("schedule")]
     public Task<IActionResult> SaveSchedule([FromBody] ScheduleEntryBT data) =>
-        Run(async () => { AssertManager(); return await _schedule.SaveScheduleEntry(data); });
+        Run(async () => { AssertStaff(); return await _schedule.SaveScheduleEntry(data); });
 
     [HttpDelete("schedule/{id:long}")]
     public Task<IActionResult> DeleteSchedule(long id) =>
-        Run(async () => { AssertManager(); return await _schedule.DeleteScheduleEntry(id); });
+        Run(async () => { AssertStaff(); return await _schedule.DeleteScheduleEntry(id); });
 
-    // ---- dated classes ----------------------------------------------------
+    // ---- dated classes and the register -----------------------------------
 
     [HttpGet("sessions")]
     public Task<IActionResult> Sessions([FromQuery] long? groupid, [FromQuery] DateTime? from,
@@ -198,13 +160,11 @@ public class BackofficeController : ApiControllerBase
 
     [HttpPost("sessions/generate")]
     public Task<IActionResult> GenerateSessions([FromBody] GenerateSessionsBT data) =>
-        Run(async () => { AssertManager(); return await _schedule.GenerateSessions(data); });
+        Run(async () => { AssertStaff(); return await _schedule.GenerateSessions(data); });
 
     [HttpDelete("sessions/{id:long}")]
     public Task<IActionResult> DeleteSession(long id) =>
-        Run(async () => { AssertManager(); return await _schedule.DeleteSession(id); });
-
-    // ---- attendance -------------------------------------------------------
+        Run(async () => { AssertStaff(); return await _schedule.DeleteSession(id); });
 
     [HttpGet("sessions/{id:long}/attendance")]
     public Task<IActionResult> Attendance(long id) =>
@@ -214,7 +174,11 @@ public class BackofficeController : ApiControllerBase
     public Task<IActionResult> SaveAttendance(long id, [FromBody] AttendanceSaveBT data) =>
         Run(async () => { AssertStaff(); return await _schedule.SaveAttendance(id, data, StaffId()); });
 
-    // ---- fees and payments ------------------------------------------------
+    // ---- fees: the coach's record of what arrived in their bank account ----
+
+    [HttpGet("month")]
+    public Task<IActionResult> Month([FromQuery] string period, [FromQuery] long? groupid) =>
+        Run(async () => { AssertStaff(); return await _billing.Month(period, groupid); });
 
     [HttpGet("fees")]
     public Task<IActionResult> Fees([FromQuery] long? groupid, [FromQuery] long? studentid,
@@ -223,19 +187,23 @@ public class BackofficeController : ApiControllerBase
 
     [HttpPost("fees")]
     public Task<IActionResult> SaveFee([FromBody] FeeBT data) =>
-        Run(async () => { AssertManager(); return await _billing.SaveFee(data); });
+        Run(async () => { AssertStaff(); return await _billing.SaveFee(data); });
 
     [HttpPost("fees/generate")]
     public Task<IActionResult> GenerateFees([FromBody] GenerateFeesBT data) =>
-        Run(async () => { AssertManager(); return await _billing.GenerateFees(data); });
+        Run(async () => { AssertStaff(); return await _billing.GenerateFees(data); });
+
+    [HttpPost("fees/{id:long}/paid")]
+    public Task<IActionResult> MarkPaid(long id, [FromBody] MarkPaidBT? data) =>
+        Run(async () => { AssertStaff(); return await _billing.MarkPaid(id, data ?? new MarkPaidBT(), StaffId()); });
 
     [HttpPost("fees/{id:long}/waive")]
     public Task<IActionResult> WaiveFee(long id, [FromBody] FeeBT? data) =>
-        Run(async () => { AssertManager(); return await _billing.WaiveFee(id, data?.note); });
+        Run(async () => { AssertStaff(); return await _billing.WaiveFee(id, data?.note); });
 
     [HttpDelete("fees/{id:long}")]
     public Task<IActionResult> DeleteFee(long id) =>
-        Run(async () => { AssertManager(); return await _billing.DeleteFee(id); });
+        Run(async () => { AssertStaff(); return await _billing.DeleteFee(id); });
 
     [HttpPost("payments")]
     public Task<IActionResult> AddPayment([FromBody] PaymentBT data) =>
@@ -245,11 +213,12 @@ public class BackofficeController : ApiControllerBase
     public Task<IActionResult> Payments([FromQuery] DateTime? from, [FromQuery] DateTime? to) =>
         Run(async () => { AssertStaff(); return await _billing.Payments(from, to); });
 
+    // Undo: the fee follows, so it goes back to unpaid.
     [HttpDelete("payments/{id:long}")]
     public Task<IActionResult> DeletePayment(long id) =>
-        Run(async () => { AssertManager(); return await _billing.DeletePayment(id); });
+        Run(async () => { AssertStaff(); return await _billing.DeletePayment(id); });
 
-    // ---- venues -----------------------------------------------------------
+    // ---- halls ------------------------------------------------------------
 
     [HttpGet("venues")]
     public Task<IActionResult> Venues() =>
@@ -257,45 +226,9 @@ public class BackofficeController : ApiControllerBase
 
     [HttpPost("venues")]
     public Task<IActionResult> SaveVenue([FromBody] VenueBT data) =>
-        Run(async () => { AssertManager(); return await _training.SaveVenue(data); });
+        Run(async () => { AssertStaff(); return await _training.SaveVenue(data); });
 
     [HttpDelete("venues/{id:long}")]
     public Task<IActionResult> DeleteVenue(long id) =>
-        Run(async () => { AssertManager(); return await _training.DeleteVenue(id); });
-
-    // ---- announcements ----------------------------------------------------
-
-    [HttpGet("announcements")]
-    public Task<IActionResult> Announcements() =>
-        Run(async () => { AssertStaff(); return await _training.Announcements(publishedOnly: false); });
-
-    [HttpPost("announcements")]
-    public Task<IActionResult> SaveAnnouncement([FromBody] AnnouncementBT data) =>
-        Run(async () => { AssertStaff(); return await _training.SaveAnnouncement(data, StaffId()); });
-
-    [HttpDelete("announcements/{id:long}")]
-    public Task<IActionResult> DeleteAnnouncement(long id) =>
-        Run(async () => { AssertManager(); return await _training.DeleteAnnouncement(id); });
-
-    // ---- people -----------------------------------------------------------
-
-    [HttpGet("staff")]
-    public Task<IActionResult> Staff() =>
-        Run(async () => { AssertStaff(); return await _training.StaffList(); });
-
-    [HttpGet("members")]
-    public Task<IActionResult> Members([FromQuery] string? status) =>
-        Run(async () => { AssertManager(); return await _account.Members(TenantId(), status); });
-
-    [HttpPost("members/{id:int}/approve")]
-    public Task<IActionResult> ApproveMember(int id, [FromBody] MemberActionBT? data) =>
-        Run(async () => { AssertManager(); return await _account.ApproveMember(TenantId(), id, data ?? new MemberActionBT()); });
-
-    [HttpPost("members/{id:int}/role")]
-    public Task<IActionResult> SetMemberRole(int id, [FromBody] MemberActionBT data) =>
-        Run(async () => { AssertManager(); return await _account.SetMemberRole(TenantId(), id, data); });
-
-    [HttpDelete("members/{id:int}")]
-    public Task<IActionResult> RemoveMember(int id) =>
-        Run(async () => { AssertManager(); return await _account.RemoveMember(TenantId(), id); });
+        Run(async () => { AssertStaff(); return await _training.DeleteVenue(id); });
 }

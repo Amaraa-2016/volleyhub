@@ -2,8 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace volleyhub_api.Model;
 
-// Someone attending the training centre. `accountid` links them to a mobile login when they have
-// one (0 = no linked account yet, e.g. a child registered by a coach or a parent).
+// A child the coach trains. Children and parents never log in; `accountid` is kept only so rows
+// created by the earlier mobile app still load (0 for everyone the coach adds).
 public class Student
 {
     [Key]
@@ -31,6 +31,10 @@ public class Student
     // 1=Active, 2=Paused, 3=Left
     public short status { get; set; } = 1;
     public string? notes { get; set; }
+    // The text the coach asked the parent to put in the transfer description ("Бат 10"), so the
+    // child's payment is easy to find in the bank statement.
+    [MaxLength(100)]
+    public string? pay_ref { get; set; }
     public bool is_deleted { get; set; }
     public DateTime created { get; set; }
     public DateTime updated { get; set; }

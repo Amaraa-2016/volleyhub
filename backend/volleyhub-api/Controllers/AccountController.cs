@@ -5,9 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace volleyhub_api.Controllers;
 
-// Global identity and club membership, shared by the backoffice and the mobile app.
-// Tenant-independent: anonymous flows need no tenantid header, and authenticated flows resolve the
-// caller from the JWT accountid claim rather than the header.
+// Global identity: register, login, profile. Registering also creates the coach's workspace, so
+// there is nothing to apply for or approve. Tenant-independent: no tenantid header needed.
 [Authorize]
 [ApiController]
 [Route("api/vh/account")]
@@ -36,11 +35,6 @@ public class AccountController : ApiControllerBase
     public Task<IActionResult> Login([FromBody] AccountLoginBT data) =>
         Run(async () => await _service.Login(data));
 
-    [AllowAnonymous]
-    [HttpGet("clubs")]
-    public Task<IActionResult> SearchClubs([FromQuery] string? q) =>
-        Run(async () => await _service.SearchTenants(q));
-
     // ---- profile ----------------------------------------------------------
 
     [HttpGet("me")]
@@ -55,7 +49,7 @@ public class AccountController : ApiControllerBase
     public Task<IActionResult> ChangePassword([FromBody] ChangePasswordBT data) =>
         Run(async () => await _service.ChangePassword(AccountId(), data));
 
-    // ---- clubs ------------------------------------------------------------
+    // ---- workspace ------------------------------------------------------------
 
     [HttpGet("tenants")]
     public Task<IActionResult> Tenants() =>
@@ -64,25 +58,4 @@ public class AccountController : ApiControllerBase
     [HttpPost("switch")]
     public Task<IActionResult> Switch([FromBody] SwitchTenantBT data) =>
         Run(async () => await _service.Switch(AccountId(), data.tenantid));
-
-    [HttpPost("tenant/request")]
-    public Task<IActionResult> RequestTenant([FromBody] TenantRequestBT data) =>
-        Run(async () => await _service.RequestTenant(AccountId(), data));
-
-    [HttpGet("tenant/request")]
-    public Task<IActionResult> MyRequests() =>
-        Run(async () => await _service.MyRequests(AccountId()));
-
-    [HttpPost("join")]
-    public Task<IActionResult> Join([FromBody] JoinRequestBT data) =>
-        Run(async () => await _service.RequestJoin(AccountId(), data));
-
-    // Asking to join one course, from its page on the public site.
-    [HttpPost("course/request")]
-    public Task<IActionResult> RequestCourse([FromBody] CourseRequestBT data) =>
-        Run(async () => await _service.RequestCourse(AccountId(), data));
-
-    [HttpGet("course/request")]
-    public Task<IActionResult> MyCourseRequest([FromQuery] int tenantid, [FromQuery] long groupid) =>
-        Run(async () => await _service.MyCourseRequest(AccountId(), tenantid, groupid));
 }

@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace volleyhub_api.Service;
 
-// The weekly timetable, the dated classes generated from it, and who turned up. Two levels on
+// The weekly timetable, the dated classes generated from it, and who turned up. Venue clashes are
+// still checked when a hall is named, though a coach working alone rarely names one. Two levels on
 // purpose: editing the timetable never rewrites history, and cancelling one class never touches
 // the timetable.
 public class ScheduleService
@@ -173,8 +174,18 @@ public class ScheduleService
     {
         var query = _db.training_session.AsNoTracking().Where(s => !s.is_deleted);
         if (groupId is long gid) query = query.Where(s => s.groupid == gid);
-        if (from is DateTime f) query = query.Where(s => s.session_date >= f.Date);
-        if (to is DateTime t) query = query.Where(s => s.session_date <= t.Date);
+        // Query-string dates arrive with Kind=Unspecified, which Npgsql refuses for timestamptz.
+        // Session dates are calendar days stored at midnight UTC, so the day is all that matters.
+        if (from is DateTime f)
+        {
+            var fromDay = DateTime.SpecifyKind(f.Date, DateTimeKind.Utc);
+            query = query.Where(s => s.session_date >= fromDay);
+        }
+        if (to is DateTime t)
+        {
+            var toDay = DateTime.SpecifyKind(t.Date, DateTimeKind.Utc);
+            query = query.Where(s => s.session_date <= toDay);
+        }
         if (status is short st) query = query.Where(s => s.status == st);
 
         var sessions = await query

@@ -5,9 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace volleyhub_api.Service;
 
-// Monthly fees and the payments against them. `paid_amount` and `status` on a fee are always
-// recomputed from its payments, never written from a request - so a corrected or deleted payment
-// can never leave a fee claiming to be settled.
+// Monthly fees and the payments the coach records against them. The app never touches money: the
+// coach checks their own bank statement and marks a fee paid here. `paid_amount` and `status` on a
+// fee are always recomputed from its payments, never written from a request - so undoing a mark
+// (deleting the payment) can never leave a fee claiming to be settled.
 public class BillingService
 {
     private readonly VolleyDbContext _db;
@@ -30,6 +31,8 @@ public class BillingService
         }
         return $"{year:D4}-{month:D2}";
     }
+
+    private static string? NullIfEmpty(string? s) => (s ?? string.Empty).Trim() is { Length: > 0 } v ? v : null;
 
     private static void Recalculate(StudentFee fee, decimal paid)
     {
@@ -62,13 +65,13 @@ public class BillingService
         if (!string.IsNullOrWhiteSpace(period)) query = query.Where(f => f.period == period);
         if (status is short st) query = query.Where(f => f.status == st);
 
-        var fees = await query.OrderByDescending(f => f.period).ThenBy(f => f.studentid).ToListAsync();
+        var fees = await query.OrderByDescending(f => f.period).ThenBy(f => f.studentid).Take(2000).ToListAsync();
         if (fees.Count == 0) return [];
 
         var studentIds = fees.Select(f => f.studentid).Distinct().ToList();
         var students = await _db.student.AsNoTracking()
             .Where(s => studentIds.Contains(s.studentid))
-            .ToDictionaryAsync(s => s.studentid, s => new { s.last_name, s.first_name });
+            .ToDictionaryAsync(s => s.studentid, s => new { s.last_name, s.first_name, s.pay_ref });
         var groups = await _db.training_group.AsNoTracking().ToDictionaryAsync(g => g.groupid, g => g.name);
 
         var feeIds = fees.Select(f => f.feeid).ToList();
@@ -94,6 +97,7 @@ public class BillingService
             due_date = f.due_date,
             status = f.status,
             note = f.note,
+            pay_ref = students.TryGetValue(f.studentid, out var s3) ? s3.pay_ref : null,
             payments = payments.TryGetValue(f.feeid, out var p) ? p : [],
         }).ToList();
     }
@@ -228,7 +232,8 @@ public class BillingService
             method = data.method,
             paid_at = data.paid_at ?? now,
             received_by_staffid = staffId,
-            note = data.note,
+            payer = NullIfEmpty(data.payer),
+            note = NullIfEmpty(data.note),
             created = now,
         };
         _db.payment.Add(payment);
@@ -238,6 +243,54 @@ public class BillingService
 
         await _db.SaveChangesAsync();
         return new { payment.paymentid, fee.status, fee.paid_amount };
+    }
+
+    // The one-tap path: the coach found the transfer in their statement. Pays whatever is left on
+    // the fee unless a smaller amount is given, which records a part payment instead.
+    public async Task<object> MarkPaid(long feeId, MarkPaidBT data, int staffId)
+    {
+        var fee = await _db.student_fee.AsNoTracking().FirstOrDefaultAsync(f => f.feeid == feeId && !f.is_deleted)
+            ?? throw new InvalidOperationException("fee_not_found");
+
+        var remaining = fee.amount - fee.paid_amount;
+        if (remaining <= 0) throw new InvalidOperationException("fee_already_paid");
+
+        return await AddPayment(new PaymentBT
+        {
+            feeid = feeId,
+            amount = data.amount ?? remaining,
+            method = data.method,
+            paid_at = data.paid_at,
+            payer = data.payer,
+            note = data.note,
+        }, staffId);
+    }
+
+    // A month as the coach reconciles it against the bank statement.
+    public async Task<MonthRT> Month(string period, long? groupId)
+    {
+        period = NormalisePeriod(period);
+        var fees = await Fees(groupId, null, period, null);
+
+        var billed = fees.Select(f => (f.studentid, f.groupid)).ToHashSet();
+        var missing = await _db.enrollment.AsNoTracking()
+            .Where(e => e.isactive && e.fee_amount > 0 && (groupId == null || e.groupid == groupId))
+            .Select(e => new { e.studentid, e.groupid })
+            .ToListAsync();
+
+        var live = fees.Where(f => f.status != 4).ToList();
+        return new MonthRT
+        {
+            period = period,
+            expected = live.Sum(f => f.amount),
+            received = live.Sum(f => f.paid_amount),
+            paid_count = live.Count(f => f.status == 3),
+            fee_count = live.Count,
+            missing_count = missing.Count(m => !billed.Contains((m.studentid, m.groupid))),
+            // Unpaid first: that is the list the coach is working through.
+            fees = fees.OrderBy(f => f.status == 3 || f.status == 4 ? 1 : 0)
+                .ThenBy(f => f.last_name).ThenBy(f => f.first_name).ToList(),
+        };
     }
 
     public async Task<object> DeletePayment(long paymentId)
@@ -261,7 +314,24 @@ public class BillingService
         if (to is DateTime t) query = query.Where(p => p.paid_at <= t);
 
         var rows = await query.OrderByDescending(p => p.paid_at).Take(500).ToListAsync();
-        return rows.Select(ToPaymentRT).ToList();
+        var result = rows.Select(ToPaymentRT).ToList();
+        if (result.Count == 0) return result;
+
+        var studentIds = rows.Select(p => p.studentid).Distinct().ToList();
+        var names = await _db.student.AsNoTracking()
+            .Where(s => studentIds.Contains(s.studentid))
+            .ToDictionaryAsync(s => s.studentid, s => (s.last_name + " " + s.first_name).Trim());
+        var feeIds = rows.Select(p => p.feeid).Distinct().ToList();
+        var periods = await _db.student_fee.AsNoTracking()
+            .Where(f => feeIds.Contains(f.feeid))
+            .ToDictionaryAsync(f => f.feeid, f => f.period);
+
+        foreach (var p in result)
+        {
+            p.studentname = names.TryGetValue(p.studentid, out var n) ? n : null;
+            p.period = periods.TryGetValue(p.feeid, out var per) ? per : null;
+        }
+        return result;
     }
 
     private static PaymentRT ToPaymentRT(Payment p) => new()
@@ -272,10 +342,20 @@ public class BillingService
         amount = p.amount,
         method = p.method,
         paid_at = p.paid_at,
+        payer = p.payer,
         note = p.note,
     };
 
     // ---- totals -----------------------------------------------------------
+
+    public async Task<(decimal expected, decimal received, int unpaid)> MonthTotals(string period)
+    {
+        var rows = await _db.student_fee.AsNoTracking()
+            .Where(f => !f.is_deleted && f.period == period && f.status != 4)
+            .Select(f => new { f.amount, f.paid_amount, f.status })
+            .ToListAsync();
+        return (rows.Sum(r => r.amount), rows.Sum(r => r.paid_amount), rows.Count(r => r.status != 3));
+    }
 
     public async Task<(decimal owed, int students)> Outstanding()
     {
