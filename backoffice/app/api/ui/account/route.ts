@@ -7,16 +7,12 @@ export async function POST(req: NextRequest) { return handleProxy(req); }
 export async function PUT(req: NextRequest) { return handleProxy(req); }
 export async function DELETE(req: NextRequest) { return handleProxy(req); }
 
-// Proxy for club-independent endpoints (/api/vh/account/*, /api/vh/platform/*). Sends the
-// account-level token and no tenantid header - these endpoints must work before a club is chosen,
-// and the platform console is cross-club by design.
-//
-// Anonymous paths (register, login, club search) are allowed through without a session, so the
-// signup screens can use the same helper as the rest of the app.
+// Proxy for workspace-independent endpoints (/api/vh/account/*). Sends the account-level token and
+// no tenantid header. Register and login are allowed through without a session, so the signup
+// screen can use the same helper as the rest of the app.
 const ANONYMOUS_PATHS = [
     "/api/vh/account/register",
     "/api/vh/account/login",
-    "/api/vh/account/clubs",
 ];
 
 async function handleProxy(req: NextRequest) {

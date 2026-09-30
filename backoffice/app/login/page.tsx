@@ -1,59 +1,58 @@
 "use client";
 
-import { Typography } from "antd";
-import { getSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { Volleyball } from "lucide-react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { LoginFields } from "@/app/components/AuthForms";
-import Wordmark from "@/app/components/Wordmark";
+import { signIn } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Brand from "@/app/components/Brand";
+import { Field } from "@/app/components/ui";
 
-// Signing in from the site itself happens in a dialog. This page is what middleware redirects to
-// when a signed-out visitor asks for a protected route, so it still has to exist - and it is the
-// one place that knows where to send them afterwards.
-function Login() {
+function LoginForm() {
     const router = useRouter();
     const params = useSearchParams();
+    const [phone, setPhone] = useState("");
+    const [password, setPassword] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState("");
 
-    const onSuccess = async () => {
-        const callbackUrl = params.get("callbackUrl");
-        if (callbackUrl) {
-            router.push(callbackUrl);
-            router.refresh();
+    const submit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setBusy(true);
+        setError("");
+        const res = await signIn("credentials", { phone: phone.trim(), password, redirect: false });
+        setBusy(false);
+        if (!res || res.error) {
+            setError("Утасны дугаар эсвэл нууц үг буруу байна");
             return;
         }
-
-        // Most people signing in are here to browse, not to manage: land them on the site. Only
-        // someone whose single centre was auto-selected at login goes straight to the console -
-        // anyone else would just be bounced back out of it for having nothing selected.
-        const current = await getSession();
-        router.push(current?.selectedTenantId ? "/manage/dashboard" : "/");
+        router.replace(params.get("callbackUrl") || "/home");
         router.refresh();
     };
 
     return (
-        <div className="auth-page">
-            <div className="auth-card">
-                <div className="auth-brand">
-                    <Volleyball size={24} color="#F26522" />
-                    <Wordmark />
-                </div>
-                <Typography.Title level={4} style={{ marginTop: 0 }}>Нэвтрэх</Typography.Title>
-                <LoginFields onSuccess={onSuccess} />
-                <div style={{ marginTop: 16, textAlign: "center" }}>
-                    Бүртгэл байхгүй юу? <Link href="/register">Бүртгүүлэх</Link>
-                </div>
-            </div>
-        </div>
+        <form onSubmit={submit}>
+            <Field label="Утасны дугаар">
+                <input className="input" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+            </Field>
+            <Field label="Нууц үг">
+                <input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </Field>
+            {error && <p className="alert tone-absent" role="alert">{error}</p>}
+            <button className="btn primary block" disabled={busy}>{busy ? "Нэвтэрч байна…" : "Нэвтрэх"}</button>
+            <p className="center muted" style={{ marginTop: 20 }}>
+                Бүртгэлгүй юу? <Link href="/register" style={{ color: "var(--brand)", fontWeight: 800 }}>Бүртгүүлэх</Link>
+            </p>
+        </form>
     );
 }
 
 export default function LoginPage() {
-    // useSearchParams needs a Suspense boundary under the app router.
     return (
-        <Suspense>
-            <Login />
-        </Suspense>
+        <main className="auth">
+            <Brand />
+            <Suspense>
+                <LoginForm />
+            </Suspense>
+        </main>
     );
 }

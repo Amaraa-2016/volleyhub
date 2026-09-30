@@ -2,7 +2,7 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* .npmrc* ./
-# React 19 peer ranges in the antd ecosystem need legacy peer resolution.
+# Kept from the antd days; harmless now and saves a failed install on a stale lockfile.
 RUN npm install --legacy-peer-deps
 
 # --- builder ---

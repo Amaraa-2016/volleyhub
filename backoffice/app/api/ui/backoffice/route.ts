@@ -7,9 +7,9 @@ export async function POST(req: NextRequest) { return handleProxy(req); }
 export async function PUT(req: NextRequest) { return handleProxy(req); }
 export async function DELETE(req: NextRequest) { return handleProxy(req); }
 
-// Proxy for per-club endpoints (/api/vh/backoffice/*). The club comes from the user's session, not
-// from a subdomain or anything the browser can set. The per-club token and the tenantid header must
-// agree, or the backend membership check rejects the call - so both are read from the same session.
+// Proxy for the coach's workspace endpoints (/api/vh/backoffice/*). The workspace comes from the
+// session, not from anything the browser can set. The token and the tenantid header must agree, or
+// the backend membership check rejects the call - so both are read from the same session.
 async function handleProxy(req: NextRequest) {
     const url = new URL(req.url);
     const path = url.searchParams.get("path");

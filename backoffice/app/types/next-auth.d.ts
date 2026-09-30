@@ -12,10 +12,9 @@ export interface TenantMembership {
 
 declare module "next-auth" {
     interface Session {
-        // Account-level token: identity only, no club. Used for the account endpoints and the
-        // platform console.
+        // Account-level token: identity only, no workspace. Used for the account endpoints.
         accountToken?: string;
-        // Per-club token, paired with selectedTenantId. Both are sent by the backoffice proxy.
+        // Per-workspace token, paired with selectedTenantId. Both are sent by the backoffice proxy.
         accessToken?: string;
         selectedTenantId?: string;
         selectedTenantName?: string;
@@ -27,7 +26,6 @@ declare module "next-auth" {
         firstname?: string | null;
         phone?: string;
         tenants?: TenantMembership[];
-        isPlatformAdmin?: boolean;
     }
 
     interface User {
@@ -42,7 +40,6 @@ declare module "next-auth" {
         firstname?: string | null;
         phone?: string;
         tenants?: TenantMembership[];
-        isPlatformAdmin?: boolean;
     }
 }
 
@@ -59,6 +56,5 @@ declare module "next-auth/jwt" {
         firstname?: string | null;
         phone?: string;
         tenants?: TenantMembership[];
-        isPlatformAdmin?: boolean;
     }
 }

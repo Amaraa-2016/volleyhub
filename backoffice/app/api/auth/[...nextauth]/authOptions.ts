@@ -20,7 +20,6 @@ interface AccountLoginResult {
     token: string;
     tenants: TenantMembership[];
     selected?: SwitchResult | null;
-    isplatformadmin?: boolean;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -32,9 +31,8 @@ export const authOptions: NextAuthOptions = {
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                // Global account login - no club involved. The response also carries the clubs this
-                // account belongs to, and a per-club token when there is exactly one, so a
-                // single-club user never sees a picker.
+                // Account login. The response carries the coach's workspace token already
+                // selected - every coach has exactly one workspace, created when they registered.
                 const res = await fetch(`${API_BASE_URL}/api/vh/account/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -58,8 +56,6 @@ export const authOptions: NextAuthOptions = {
                     phone: data.phone,
                     accountToken: data.token,
                     tenants: data.tenants ?? [],
-                    // Routing hint only - every platform endpoint re-checks the database.
-                    isPlatformAdmin: data.isplatformadmin ?? false,
                     accessToken: data.selected?.token,
                     selectedTenantId: data.selected ? String(data.selected.tenantid) : undefined,
                     selectedTenantName: data.selected?.tenantname,
@@ -82,21 +78,19 @@ export const authOptions: NextAuthOptions = {
                 token.firstname = user.firstname ?? null;
                 token.phone = user.phone;
                 token.tenants = user.tenants;
-                token.isPlatformAdmin = user.isPlatformAdmin;
                 token.accessToken = user.accessToken;
                 token.selectedTenantId = user.selectedTenantId;
                 token.selectedTenantName = user.selectedTenantName;
                 token.selectedRole = user.selectedRole;
             }
 
-            // Client-driven updates via useSession().update(...) - selecting or creating a club.
+            // Client-driven updates via useSession().update(...) - the profile page renaming the coach.
             if (trigger === "update" && session) {
                 if (session.selectedTenantId !== undefined) token.selectedTenantId = session.selectedTenantId;
                 if (session.selectedTenantName !== undefined) token.selectedTenantName = session.selectedTenantName;
                 if (session.selectedRole !== undefined) token.selectedRole = session.selectedRole;
                 if (session.accessToken !== undefined) token.accessToken = session.accessToken;
                 if (session.tenants !== undefined) token.tenants = session.tenants;
-                if (session.isPlatformAdmin !== undefined) token.isPlatformAdmin = session.isPlatformAdmin;
                 // The profile page updates these without a re-login.
                 if (session.photo !== undefined) token.photo = session.photo;
                 if (session.name !== undefined) token.name = session.name;
@@ -119,13 +113,14 @@ export const authOptions: NextAuthOptions = {
             session.firstname = token.firstname ?? null;
             session.phone = token.phone;
             session.tenants = token.tenants;
-            session.isPlatformAdmin = token.isPlatformAdmin;
             return session;
         },
     },
     session: {
         strategy: "jwt",
-        maxAge: 12 * 60 * 60,
+        // A coach opens this on their phone at the gym; logging in every 12 hours is a chore. The
+        // backend token lives 7 days, so the session must not outlive it.
+        maxAge: 7 * 24 * 60 * 60,
     },
     secret: process.env.NEXTAUTH_SECRET,
 };
