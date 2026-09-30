@@ -14,8 +14,7 @@ public class SkillRating
     // YYYY-MM, like a fee period.
     [MaxLength(7)]
     public string period { get; set; } = string.Empty;
-    // 1=Serve (давшилт), 2=Receive (хүлээн авалт), 3=Set (дамжуулалт), 4=Attack (цохилт),
-    // 5=Movement (хөдөлгөөн, биеийн бэлтгэл)
+    // skill.skillid - the coach's own list of criteria.
     public short skill { get; set; }
     // 1..5
     public short score { get; set; }

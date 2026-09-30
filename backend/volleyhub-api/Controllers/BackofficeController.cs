@@ -140,6 +140,23 @@ public class BackofficeController : ApiControllerBase
     public Task<IActionResult> DeleteNote(long id, long noteId) =>
         Run(async () => { AssertStaff(); return await _training.DeleteNote(id, noteId); });
 
+    // The coach's own rating criteria.
+    [HttpGet("skills")]
+    public Task<IActionResult> Skills() =>
+        Run(async () => { AssertStaff(); return await _progress.Skills(); });
+
+    [HttpPost("skills")]
+    public Task<IActionResult> SaveSkill([FromBody] SkillBT data) =>
+        Run(async () => { AssertStaff(); return await _progress.SaveSkill(data); });
+
+    [HttpPost("skills/order")]
+    public Task<IActionResult> OrderSkills([FromBody] SkillOrderBT data) =>
+        Run(async () => { AssertStaff(); return await _progress.OrderSkills(data); });
+
+    [HttpDelete("skills/{id:int}")]
+    public Task<IActionResult> DeleteSkill(int id) =>
+        Run(async () => { AssertStaff(); return await _progress.DeleteSkill((short)id); });
+
     [HttpGet("students/{id:long}/ratings")]
     public Task<IActionResult> Ratings(long id) =>
         Run(async () => { AssertStaff(); return await _progress.Ratings(id); });

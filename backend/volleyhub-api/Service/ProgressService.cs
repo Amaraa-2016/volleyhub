@@ -11,10 +11,15 @@ public class ProgressService
 {
     private readonly VolleyDbContext _db;
 
-    // 1=Serve, 2=Receive, 3=Set, 4=Attack, 5=Movement. Kept as a range rather than a table: the
-    // list is part of the product, and the UI owns the names.
-    private const short FirstSkill = 1;
-    private const short LastSkill = 5;
+    // What a new workspace starts with, in this order - see Skill for why the order matters.
+    private static readonly (string name, string hint)[] DefaultSkills =
+    [
+        ("Давшилт", "Serve"),
+        ("Хүлээн авалт", "Receive"),
+        ("Дамжуулалт", "Set"),
+        ("Цохилт", "Attack"),
+        ("Хөдөлгөөн", "Movement"),
+    ];
 
     public ProgressService(VolleyDbContext db)
     {
@@ -32,6 +37,79 @@ public class ProgressService
             throw new ArgumentException("period_must_be_yyyy_mm");
         }
         return $"{year:D4}-{month:D2}";
+    }
+
+    // ---- criteria -------------------------------------------------------------
+
+    public async Task<List<SkillRT>> Skills()
+    {
+        // Seeded once, only into a table that has never had a row - a coach who deleted every
+        // criterion does not get the defaults back.
+        if (!await _db.skill.AnyAsync())
+        {
+            var now = DateTime.UtcNow;
+            var order = 0;
+            foreach (var (name, hint) in DefaultSkills)
+            {
+                _db.skill.Add(new Skill { name = name, hint = hint, sort_order = ++order, created = now });
+                // One at a time so the ids come out 1..5 in this order.
+                await _db.SaveChangesAsync();
+            }
+        }
+
+        return await _db.skill.AsNoTracking()
+            .Where(k => !k.is_deleted)
+            .OrderBy(k => k.sort_order).ThenBy(k => k.skillid)
+            .Select(k => new SkillRT { skillid = k.skillid, name = k.name, hint = k.hint, sort_order = k.sort_order })
+            .ToListAsync();
+    }
+
+    public async Task<object> SaveSkill(SkillBT data)
+    {
+        var name = (data.name ?? string.Empty).Trim();
+        if (name.Length == 0) throw new ArgumentException("name_required");
+        var hint = (data.hint ?? string.Empty).Trim() is { Length: > 0 } h ? h : null;
+
+        Skill skill;
+        if (data.skillid > 0)
+        {
+            skill = await _db.skill.FirstOrDefaultAsync(k => k.skillid == data.skillid && !k.is_deleted)
+                ?? throw new InvalidOperationException("skill_not_found");
+        }
+        else
+        {
+            await Skills();
+            var last = await _db.skill.Where(k => !k.is_deleted).MaxAsync(k => (int?)k.sort_order) ?? 0;
+            skill = new Skill { created = DateTime.UtcNow, sort_order = last + 1 };
+            _db.skill.Add(skill);
+        }
+
+        skill.name = name;
+        skill.hint = hint;
+        await _db.SaveChangesAsync();
+        return new { skill.skillid };
+    }
+
+    public async Task<object> DeleteSkill(short skillId)
+    {
+        var skill = await _db.skill.FirstOrDefaultAsync(k => k.skillid == skillId && !k.is_deleted)
+            ?? throw new InvalidOperationException("skill_not_found");
+        skill.is_deleted = true;
+        await _db.SaveChangesAsync();
+        return new { ok = true };
+    }
+
+    public async Task<object> OrderSkills(SkillOrderBT data)
+    {
+        var skills = await _db.skill.Where(k => !k.is_deleted).ToListAsync();
+        var order = 0;
+        foreach (var id in data.skillids ?? [])
+        {
+            var k = skills.FirstOrDefault(x => x.skillid == id);
+            if (k != null) k.sort_order = ++order;
+        }
+        await _db.SaveChangesAsync();
+        return new { ok = true };
     }
 
     // Every rated month of one child, newest first.
@@ -65,7 +143,8 @@ public class ProgressService
 
         var scores = (data.scores ?? []).GroupBy(s => s.skill).Select(g => g.Last()).ToList();
         if (scores.Count == 0) throw new ArgumentException("no_scores");
-        if (scores.Any(s => s.skill < FirstSkill || s.skill > LastSkill)) throw new ArgumentException("skill_out_of_range");
+        var known = (await Skills()).Select(k => k.skillid).ToHashSet();
+        if (scores.Any(s => !known.Contains(s.skill))) throw new ArgumentException("skill_out_of_range");
         if (scores.Any(s => s.score is < 1 or > 5)) throw new ArgumentException("score_out_of_range");
 
         var existing = await _db.skill_rating

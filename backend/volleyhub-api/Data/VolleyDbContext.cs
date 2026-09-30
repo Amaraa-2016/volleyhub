@@ -39,6 +39,7 @@ public class VolleyDbContext : DbContext, ITenantDbContext
     public DbSet<FeeNotice> fee_notice { get; set; }
 
     // The coach's monthly skill scores and running notes on each child.
+    public DbSet<Skill> skill { get; set; }
     public DbSet<SkillRating> skill_rating { get; set; }
     public DbSet<StudentNote> student_note { get; set; }
 

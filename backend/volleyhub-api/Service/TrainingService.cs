@@ -106,10 +106,19 @@ public class TrainingService
         group.gender = data.gender;
         group.venueid = data.venueid;
         group.capacity = data.capacity;
+        // The fee belongs to the class: changing it moves every child currently in the class to the
+        // new price from the next month's invoice. Months already billed keep their amount.
+        var repriced = data.groupid > 0 && group.fee_amount != data.fee_amount;
         group.fee_amount = data.fee_amount;
         group.notes = data.notes;
         group.isactive = data.isactive;
         group.updated = now;
+
+        if (repriced)
+        {
+            foreach (var e in await _db.enrollment.Where(e => e.groupid == group.groupid && e.isactive).ToListAsync())
+                e.fee_amount = data.fee_amount;
+        }
 
         await _db.SaveChangesAsync();
         return new { group.groupid };

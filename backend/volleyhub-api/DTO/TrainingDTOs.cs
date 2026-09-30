@@ -384,6 +384,29 @@ public class RatingMonthRT
     public string? note { get; set; }
 }
 
+// ---- rating criteria --------------------------------------------------------
+
+public class SkillBT
+{
+    public short skillid { get; set; }
+    public string name { get; set; } = string.Empty;
+    public string? hint { get; set; }
+    public int sort_order { get; set; }
+}
+
+public class SkillRT
+{
+    public short skillid { get; set; }
+    public string name { get; set; } = string.Empty;
+    public string? hint { get; set; }
+    public int sort_order { get; set; }
+}
+
+public class SkillOrderBT
+{
+    public List<short> skillids { get; set; } = new();
+}
+
 // ---- notes ----------------------------------------------------------------
 
 public class NoteBT
