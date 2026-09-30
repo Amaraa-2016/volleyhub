@@ -22,6 +22,11 @@ public class TrainingSession
     // Set once a coach saves attendance, which is what stops the generator from touching it.
     public bool attendance_taken { get; set; }
     public string? notes { get; set; }
+    // Why a cancelled class did not happen ("Заал засвартай"), shown on the register and in texts.
+    [System.ComponentModel.DataAnnotations.MaxLength(300)]
+    public string? cancel_reason { get; set; }
+    // For a make-up class: the cancelled class it replaces.
+    public long? makeup_for { get; set; }
     // The lesson plan used for this class, if one was picked.
     public long? planid { get; set; }
     public bool is_deleted { get; set; }

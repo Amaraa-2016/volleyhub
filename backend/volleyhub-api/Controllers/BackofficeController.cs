@@ -201,6 +201,22 @@ public class BackofficeController : ApiControllerBase
     public Task<IActionResult> SaveSession([FromBody] SessionBT data) =>
         Run(async () => { AssertStaff(); return await _schedule.SaveSession(data); });
 
+    [HttpPost("sessions/{id:long}/cancel")]
+    public Task<IActionResult> CancelSession(long id, [FromBody] CancelSessionBT? data) =>
+        Run(async () => { AssertStaff(); return await _schedule.CancelSession(id, data?.reason); });
+
+    [HttpPost("sessions/{id:long}/restore")]
+    public Task<IActionResult> RestoreSession(long id) =>
+        Run(async () => { AssertStaff(); return await _schedule.RestoreSession(id); });
+
+    [HttpPost("sessions/cancel-range")]
+    public Task<IActionResult> CancelRange([FromBody] CancelRangeBT data) =>
+        Run(async () => { AssertStaff(); return await _schedule.CancelRange(data); });
+
+    [HttpPost("sessions/{id:long}/makeup")]
+    public Task<IActionResult> Makeup(long id, [FromBody] MakeupBT data) =>
+        Run(async () => { AssertStaff(); return await _schedule.Makeup(id, data); });
+
     [HttpPost("sessions/generate")]
     public Task<IActionResult> GenerateSessions([FromBody] GenerateSessionsBT data) =>
         Run(async () => { AssertStaff(); return await _schedule.GenerateSessions(data); });

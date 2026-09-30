@@ -194,6 +194,12 @@ public class SessionRT
     public string? notes { get; set; }
     public long? planid { get; set; }
     public string? planname { get; set; }
+    public string? cancel_reason { get; set; }
+    public long? makeup_for { get; set; }
+    // For a cancelled class: its make-up class, if one was booked.
+    public long? makeup_sessionid { get; set; }
+    public DateTime? makeup_date { get; set; }
+    public int? makeup_start_minute { get; set; }
     public int present_count { get; set; }
     public int student_count { get; set; }
 }
@@ -560,6 +566,29 @@ public class PlanRT
     public string? notes { get; set; }
     public int total_minutes { get; set; }
     public List<PlanItemRT> items { get; set; } = new();
+}
+
+public class CancelSessionBT
+{
+    public string? reason { get; set; }
+}
+
+// Cancel every class in a date range - a holiday, the hall closed for a week. Classes the
+// timetable would have produced but that were not generated yet are created as cancelled, so a
+// later "generate" cannot bring them back.
+public class CancelRangeBT
+{
+    public DateTime from { get; set; }
+    public DateTime to { get; set; }
+    public long? groupid { get; set; }
+    public string? reason { get; set; }
+}
+
+public class MakeupBT
+{
+    public DateTime date { get; set; }
+    public int start_minute { get; set; }
+    public int end_minute { get; set; }
 }
 
 public class SessionPlanBT

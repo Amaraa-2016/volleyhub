@@ -211,6 +211,12 @@ public class ScheduleService
         var groups = await _db.training_group.AsNoTracking().ToDictionaryAsync(g => g.groupid, g => g.name);
         var venues = await _db.venue.AsNoTracking().ToDictionaryAsync(v => v.venueid, v => v.name);
         var staff = await _db.staff.AsNoTracking().ToDictionaryAsync(s => s.staffid, s => s.staffname);
+        var cancelledIds = sessions.Where(s => s.status == 3).Select(s => s.sessionid).ToList();
+        var makeups = cancelledIds.Count == 0 ? new Dictionary<long, TrainingSession>() : (await _db.training_session.AsNoTracking()
+                .Where(m => m.makeup_for != null && cancelledIds.Contains(m.makeup_for.Value) && !m.is_deleted)
+                .ToListAsync())
+            .GroupBy(m => m.makeup_for!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderBy(m => m.session_date).First());
         var planIds = sessions.Where(s => s.planid != null).Select(s => s.planid!.Value).Distinct().ToList();
         var plans = await _db.plan.AsNoTracking().Where(p => planIds.Contains(p.planid) && !p.is_deleted)
             .ToDictionaryAsync(p => p.planid, p => p.name);
@@ -246,6 +252,11 @@ public class ScheduleService
             notes = s.notes,
             planid = s.planid is long pid && plans.ContainsKey(pid) ? pid : null,
             planname = s.planid is long pn && plans.TryGetValue(pn, out var pname) ? pname : null,
+            cancel_reason = s.cancel_reason,
+            makeup_for = s.makeup_for,
+            makeup_sessionid = makeups.TryGetValue(s.sessionid, out var mk) ? mk.sessionid : null,
+            makeup_date = makeups.TryGetValue(s.sessionid, out var mk2) ? mk2.session_date : null,
+            makeup_start_minute = makeups.TryGetValue(s.sessionid, out var mk3) ? mk3.start_minute : null,
             present_count = present.TryGetValue(s.sessionid, out var p) ? p : 0,
             student_count = enrolled.TryGetValue(s.groupid, out var e) ? e : 0,
         }).ToList();
@@ -336,6 +347,99 @@ public class ScheduleService
         _db.training_session.Add(session);
         await _db.SaveChangesAsync();
         return new { session.sessionid, created = true };
+    }
+
+    // ---- cancelling ---------------------------------------------------------------
+
+    // A class that did not happen. Allowed even after the register was taken - the coach may only
+    // learn afterwards - in which case the marks are removed, so nobody reads as absent for it.
+    public async Task<object> CancelSession(long sessionId, string? reason)
+    {
+        var session = await _db.training_session.FirstOrDefaultAsync(s => s.sessionid == sessionId && !s.is_deleted)
+            ?? throw new InvalidOperationException("session_not_found");
+
+        if (session.attendance_taken)
+        {
+            _db.attendance_record.RemoveRange(await _db.attendance_record.Where(a => a.sessionid == sessionId).ToListAsync());
+            session.attendance_taken = false;
+        }
+        session.status = 3;
+        session.cancel_reason = (reason ?? "").Trim() is { Length: > 0 } r ? (r.Length > 300 ? r[..300] : r) : null;
+        session.updated = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return new { ok = true };
+    }
+
+    public async Task<object> RestoreSession(long sessionId)
+    {
+        var session = await _db.training_session.FirstOrDefaultAsync(s => s.sessionid == sessionId && !s.is_deleted)
+            ?? throw new InvalidOperationException("session_not_found");
+        session.status = 1;
+        session.cancel_reason = null;
+        session.updated = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return new { ok = true };
+    }
+
+    public async Task<List<SessionRT>> CancelRange(CancelRangeBT data)
+    {
+        var from = DateTime.SpecifyKind(data.from.Date, DateTimeKind.Utc);
+        var to = DateTime.SpecifyKind(data.to.Date, DateTimeKind.Utc);
+        if (to < from) throw new ArgumentException("to_before_from");
+        if ((to - from).TotalDays > 62) throw new ArgumentException("range_too_long");
+
+        // First make sure every class the timetable has in the range exists, so it can be cancelled.
+        var hasSchedule = await _db.schedule_entry.AnyAsync(s => s.isactive && (data.groupid == null || s.groupid == data.groupid));
+        if (hasSchedule)
+            await GenerateSessions(new GenerateSessionsBT { groupid = data.groupid, from = from, to = to });
+
+        var sessions = await _db.training_session
+            .Where(s => !s.is_deleted && s.session_date >= from && s.session_date <= to && s.status != 3
+                && (data.groupid == null || s.groupid == data.groupid))
+            .ToListAsync();
+        if (sessions.Count == 0) throw new InvalidOperationException("nothing_to_cancel");
+
+        var ids = sessions.Select(s => s.sessionid).ToList();
+        _db.attendance_record.RemoveRange(await _db.attendance_record.Where(a => ids.Contains(a.sessionid)).ToListAsync());
+
+        var reason = (data.reason ?? "").Trim() is { Length: > 0 } r ? (r.Length > 300 ? r[..300] : r) : null;
+        var now = DateTime.UtcNow;
+        foreach (var s in sessions)
+        {
+            s.status = 3;
+            s.attendance_taken = false;
+            s.cancel_reason = reason;
+            s.updated = now;
+        }
+        await _db.SaveChangesAsync();
+        return await Decorate(sessions.OrderBy(s => s.session_date).ThenBy(s => s.start_minute).ToList());
+    }
+
+    // A one-off class booked to replace a cancelled one, in the same class.
+    public async Task<object> Makeup(long sessionId, MakeupBT data)
+    {
+        var original = await _db.training_session.AsNoTracking().FirstOrDefaultAsync(s => s.sessionid == sessionId && !s.is_deleted)
+            ?? throw new InvalidOperationException("session_not_found");
+        if (data.end_minute <= data.start_minute) throw new ArgumentException("end_before_start");
+
+        var now = DateTime.UtcNow;
+        var makeup = new TrainingSession
+        {
+            groupid = original.groupid,
+            venueid = original.venueid,
+            session_date = DateTime.SpecifyKind(data.date.Date, DateTimeKind.Utc),
+            start_minute = data.start_minute,
+            end_minute = data.end_minute,
+            status = 1,
+            planid = original.planid,
+            notes = "Нөхөх хичээл",
+            makeup_for = original.sessionid,
+            created = now,
+            updated = now,
+        };
+        _db.training_session.Add(makeup);
+        await _db.SaveChangesAsync();
+        return new { makeup.sessionid };
     }
 
     // ---- attendance -------------------------------------------------------
