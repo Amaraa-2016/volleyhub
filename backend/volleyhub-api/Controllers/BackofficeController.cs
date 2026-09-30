@@ -20,13 +20,17 @@ public class BackofficeController : ApiControllerBase
     private readonly BillingService _billing;
     private readonly ProgressService _progress;
     private readonly InvoiceService _invoices;
+    private readonly PlanningService _planning;
+    private readonly HealthService _health;
+    private readonly ReportService _reports;
 
     protected override ILogger Logger => _logger;
 
     private static readonly string[] StaffRoles = ["owner", "admin", "coach"];
 
     public BackofficeController(ILogger<BackofficeController> logger, TrainingService training,
-        ScheduleService schedule, BillingService billing, ProgressService progress, InvoiceService invoices)
+        ScheduleService schedule, BillingService billing, ProgressService progress, InvoiceService invoices,
+        PlanningService planning, HealthService health, ReportService reports)
     {
         _logger = logger;
         _training = training;
@@ -34,6 +38,9 @@ public class BackofficeController : ApiControllerBase
         _billing = billing;
         _progress = progress;
         _invoices = invoices;
+        _planning = planning;
+        _health = health;
+        _reports = reports;
     }
 
     private void AssertStaff()
@@ -269,6 +276,103 @@ public class BackofficeController : ApiControllerBase
     [HttpPut("settings")]
     public Task<IActionResult> SaveSettings([FromBody] SettingsBT data) =>
         Run(async () => { AssertStaff(); return await _invoices.SaveSettings(TenantId(), data); });
+
+    // ---- drill library and lesson plans --------------------------------------
+
+    [HttpGet("drills")]
+    public Task<IActionResult> Drills() =>
+        Run(async () => { AssertStaff(); return await _planning.Drills(); });
+
+    [HttpPost("drills")]
+    public Task<IActionResult> SaveDrill([FromBody] DrillBT data) =>
+        Run(async () => { AssertStaff(); return await _planning.SaveDrill(data); });
+
+    [HttpDelete("drills/{id:long}")]
+    public Task<IActionResult> DeleteDrill(long id) =>
+        Run(async () => { AssertStaff(); return await _planning.DeleteDrill(id); });
+
+    [HttpGet("plans")]
+    public Task<IActionResult> Plans() =>
+        Run(async () => { AssertStaff(); return await _planning.Plans(); });
+
+    [HttpGet("plans/{id:long}")]
+    public Task<IActionResult> Plan(long id) =>
+        Run(async () => { AssertStaff(); return await _planning.Plan(id); });
+
+    [HttpPost("plans")]
+    public Task<IActionResult> SavePlan([FromBody] PlanBT data) =>
+        Run(async () => { AssertStaff(); return await _planning.SavePlan(data); });
+
+    [HttpDelete("plans/{id:long}")]
+    public Task<IActionResult> DeletePlan(long id) =>
+        Run(async () => { AssertStaff(); return await _planning.DeletePlan(id); });
+
+    [HttpPost("sessions/{id:long}/plan")]
+    public Task<IActionResult> SetSessionPlan(long id, [FromBody] SessionPlanBT data) =>
+        Run(async () => { AssertStaff(); return await _planning.SetSessionPlan(id, data.planid); });
+
+    // ---- discount types ------------------------------------------------------
+
+    [HttpGet("discounts")]
+    public Task<IActionResult> Discounts() =>
+        Run(async () => { AssertStaff(); return await _billing.Discounts(); });
+
+    [HttpPost("discounts")]
+    public Task<IActionResult> SaveDiscount([FromBody] DiscountBT data) =>
+        Run(async () => { AssertStaff(); return await _billing.SaveDiscount(data); });
+
+    [HttpDelete("discounts/{id:long}")]
+    public Task<IActionResult> DeleteDiscount(long id) =>
+        Run(async () => { AssertStaff(); return await _billing.DeleteDiscount(id); });
+
+    // ---- physical development and health ---------------------------------------
+
+    [HttpGet("measure-types")]
+    public Task<IActionResult> MeasureTypes() =>
+        Run(async () => { AssertStaff(); return await _health.Types(); });
+
+    [HttpPost("measure-types")]
+    public Task<IActionResult> SaveMeasureType([FromBody] MeasureTypeBT data) =>
+        Run(async () => { AssertStaff(); return await _health.SaveType(data); });
+
+    [HttpDelete("measure-types/{id:long}")]
+    public Task<IActionResult> DeleteMeasureType(long id) =>
+        Run(async () => { AssertStaff(); return await _health.DeleteType(id); });
+
+    [HttpGet("students/{id:long}/measurements")]
+    public Task<IActionResult> Measurements(long id) =>
+        Run(async () => { AssertStaff(); return await _health.Measurements(id); });
+
+    [HttpPost("students/{id:long}/measurements")]
+    public Task<IActionResult> SaveMeasurements(long id, [FromBody] MeasureSaveBT data) =>
+        Run(async () => { AssertStaff(); return await _health.SaveMeasurements(id, data); });
+
+    [HttpDelete("students/{id:long}/measurements/{measureId:long}")]
+    public Task<IActionResult> DeleteMeasurement(long id, long measureId) =>
+        Run(async () => { AssertStaff(); return await _health.DeleteMeasurement(id, measureId); });
+
+    [HttpGet("students/{id:long}/injuries")]
+    public Task<IActionResult> Injuries(long id) =>
+        Run(async () => { AssertStaff(); return await _health.Injuries(id); });
+
+    [HttpPost("students/{id:long}/injuries")]
+    public Task<IActionResult> SaveInjury(long id, [FromBody] InjuryBT data) =>
+        Run(async () => { AssertStaff(); return await _health.SaveInjury(id, data, StaffId()); });
+
+    [HttpDelete("students/{id:long}/injuries/{injuryId:long}")]
+    public Task<IActionResult> DeleteInjury(long id, long injuryId) =>
+        Run(async () => { AssertStaff(); return await _health.DeleteInjury(id, injuryId); });
+
+    // Allergy / open-injury flags for every child, for lists that show a warning icon.
+    [HttpGet("health-flags")]
+    public Task<IActionResult> HealthFlags() =>
+        Run(async () => { AssertStaff(); return (await _health.Flags()).Values.ToList(); });
+
+    // ---- reports ---------------------------------------------------------------
+
+    [HttpGet("reports/income")]
+    public Task<IActionResult> IncomeReport([FromQuery] int year) =>
+        Run(async () => { AssertStaff(); return await _reports.Income(year); });
 
     // ---- halls ------------------------------------------------------------
 

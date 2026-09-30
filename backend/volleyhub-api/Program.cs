@@ -18,6 +18,9 @@ builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<BillingService>();
 builder.Services.AddScoped<ProgressService>();
 builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<PlanningService>();
+builder.Services.AddScoped<HealthService>();
+builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<volleyhub_api.Service.Sms.ISmsSender, volleyhub_api.Service.Sms.HttpSmsSender>();
 builder.Services.AddHttpClient();
 

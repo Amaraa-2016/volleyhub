@@ -211,6 +211,9 @@ public class ScheduleService
         var groups = await _db.training_group.AsNoTracking().ToDictionaryAsync(g => g.groupid, g => g.name);
         var venues = await _db.venue.AsNoTracking().ToDictionaryAsync(v => v.venueid, v => v.name);
         var staff = await _db.staff.AsNoTracking().ToDictionaryAsync(s => s.staffid, s => s.staffname);
+        var planIds = sessions.Where(s => s.planid != null).Select(s => s.planid!.Value).Distinct().ToList();
+        var plans = await _db.plan.AsNoTracking().Where(p => planIds.Contains(p.planid) && !p.is_deleted)
+            .ToDictionaryAsync(p => p.planid, p => p.name);
 
         var ids = sessions.Select(s => s.sessionid).ToList();
         var present = await _db.attendance_record.AsNoTracking()
@@ -241,6 +244,8 @@ public class ScheduleService
             status = s.status,
             attendance_taken = s.attendance_taken,
             notes = s.notes,
+            planid = s.planid is long pid && plans.ContainsKey(pid) ? pid : null,
+            planname = s.planid is long pn && plans.TryGetValue(pn, out var pname) ? pname : null,
             present_count = present.TryGetValue(s.sessionid, out var p) ? p : 0,
             student_count = enrolled.TryGetValue(s.groupid, out var e) ? e : 0,
         }).ToList();
@@ -352,9 +357,24 @@ public class ScheduleService
             .Where(a => a.sessionid == sessionId)
             .ToDictionaryAsync(a => a.studentid, a => a);
 
+        // Allergies and unhealed injuries ride along, so the register warns before a drill starts.
+        var ids = roster.Select(r => r.studentid).ToList();
+        var allergies = await _db.student.AsNoTracking()
+            .Where(s => ids.Contains(s.studentid) && s.allergies != null && s.allergies != "")
+            .ToDictionaryAsync(s => s.studentid, s => s.allergies);
+        var injuries = (await _db.injury.AsNoTracking()
+                .Where(i => ids.Contains(i.studentid) && !i.is_deleted && i.status == 1)
+                .OrderByDescending(i => i.occurred_on)
+                .Select(i => new { i.studentid, i.body_part, i.description })
+                .ToListAsync())
+            .GroupBy(i => i.studentid)
+            .ToDictionary(g => g.Key, g => g.First().body_part ?? g.First().description);
+
         return roster.Select(r => new AttendanceRT
         {
             studentid = r.studentid,
+            allergies = allergies.TryGetValue(r.studentid, out var al) ? al : null,
+            injury = injuries.TryGetValue(r.studentid, out var inj) ? inj : null,
             last_name = r.last_name,
             first_name = r.first_name,
             // Default to present: a coach marks the exceptions, which is how a register is used.

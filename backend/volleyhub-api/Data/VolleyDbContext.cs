@@ -43,6 +43,19 @@ public class VolleyDbContext : DbContext, ITenantDbContext
     public DbSet<SkillRating> skill_rating { get; set; }
     public DbSet<StudentNote> student_note { get; set; }
 
+    // Lesson planning: the drill library and reusable plans.
+    public DbSet<Drill> drill { get; set; }
+    public DbSet<Plan> plan { get; set; }
+    public DbSet<PlanItem> plan_item { get; set; }
+
+    // Discount types given to children.
+    public DbSet<Discount> discount { get; set; }
+
+    // Physical development and health.
+    public DbSet<MeasureType> measure_type { get; set; }
+    public DbSet<Measurement> measurement { get; set; }
+    public DbSet<Injury> injury { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);

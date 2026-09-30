@@ -34,6 +34,14 @@ public class BillingService
 
     private static string? NullIfEmpty(string? s) => (s ?? string.Empty).Trim() is { Length: > 0 } v ? v : null;
 
+    // Percent rounds to whole tugrik; neither kind can take a fee below zero.
+    public static decimal ApplyDiscount(decimal amount, Discount? d)
+    {
+        if (d == null || d.value <= 0) return amount;
+        var off = d.kind == 1 ? Math.Round(amount * Math.Min(d.value, 100m) / 100m, 0) : d.value;
+        return Math.Max(0m, amount - off);
+    }
+
     private static void Recalculate(StudentFee fee, decimal paid)
     {
         fee.paid_amount = paid;
@@ -104,6 +112,8 @@ public class BillingService
             status = f.status,
             note = f.note,
             pay_ref = students.TryGetValue(f.studentid, out var s3) ? s3.pay_ref : null,
+            base_amount = f.base_amount,
+            discount_name = f.discount_name,
             phone = students.TryGetValue(f.studentid, out var s4) ? s4.phone : null,
             notified_at = notified.TryGetValue(f.feeid, out var at) ? at : null,
             payments = payments.TryGetValue(f.feeid, out var p) ? p : [],
@@ -167,22 +177,37 @@ public class BillingService
             .Select(f => (f.studentid, f.groupid))
             .ToHashSet();
 
+        // Discounts are read now and frozen into the fee, so editing a discount type later never
+        // changes a month already billed. A 100% discount still creates the fee - as waived - so
+        // the month shows who trained for free.
+        var studentIds = enrollments.Select(e => e.studentid).Distinct().ToList();
+        var discountOf = await _db.student.AsNoTracking()
+            .Where(s => studentIds.Contains(s.studentid) && s.discountid != null)
+            .ToDictionaryAsync(s => s.studentid, s => s.discountid!.Value);
+        var discounts = await _db.discount.AsNoTracking().Where(d => !d.is_deleted).ToDictionaryAsync(d => d.discountid);
+
         var now = DateTime.UtcNow;
-        var created = enrollments
-            .Where(e => !existing.Contains((e.studentid, e.groupid)) && e.fee_amount > 0)
-            .Select(e => new StudentFee
+        var created = new List<StudentFee>();
+        foreach (var e in enrollments.Where(e => !existing.Contains((e.studentid, e.groupid)) && e.fee_amount > 0))
+        {
+            Discount? d = discountOf.TryGetValue(e.studentid, out var did) && discounts.TryGetValue(did, out var found) ? found : null;
+            var amount = ApplyDiscount(e.fee_amount, d);
+            created.Add(new StudentFee
             {
                 studentid = e.studentid,
                 groupid = e.groupid,
                 period = period,
-                amount = e.fee_amount,
+                amount = amount,
+                base_amount = e.fee_amount,
+                discount_name = d?.name,
                 paid_amount = 0,
                 due_date = data.due_date,
-                status = 1,
+                status = amount <= 0 ? (short)4 : (short)1,
+                note = amount <= 0 ? d?.name : null,
                 created = now,
                 updated = now,
-            })
-            .ToList();
+            });
+        }
 
         _db.student_fee.AddRange(created);
         await _db.SaveChangesAsync();
@@ -353,6 +378,62 @@ public class BillingService
         payer = p.payer,
         note = p.note,
     };
+
+    // ---- discount types -------------------------------------------------------
+
+    public async Task<List<DiscountRT>> Discounts()
+    {
+        var counts = await _db.student.AsNoTracking()
+            .Where(s => !s.is_deleted && s.status != 3 && s.discountid != null)
+            .GroupBy(s => s.discountid!.Value)
+            .Select(g => new { id = g.Key, n = g.Count() })
+            .ToDictionaryAsync(x => x.id, x => x.n);
+
+        return (await _db.discount.AsNoTracking().Where(d => !d.is_deleted).OrderBy(d => d.name).ToListAsync())
+            .Select(d => new DiscountRT
+            {
+                discountid = d.discountid, name = d.name, kind = d.kind, value = d.value,
+                student_count = counts.TryGetValue(d.discountid, out var n) ? n : 0,
+            })
+            .ToList();
+    }
+
+    public async Task<object> SaveDiscount(DiscountBT data)
+    {
+        var name = (data.name ?? string.Empty).Trim();
+        if (name.Length == 0) throw new ArgumentException("name_required");
+        if (data.kind is not (1 or 2)) throw new ArgumentException("discount_kind_invalid");
+        if (data.value <= 0 || (data.kind == 1 && data.value > 100)) throw new ArgumentException("discount_value_invalid");
+
+        Discount d;
+        if (data.discountid > 0)
+        {
+            d = await _db.discount.FirstOrDefaultAsync(x => x.discountid == data.discountid && !x.is_deleted)
+                ?? throw new InvalidOperationException("discount_not_found");
+        }
+        else
+        {
+            d = new Discount { created = DateTime.UtcNow };
+            _db.discount.Add(d);
+        }
+        d.name = name;
+        d.kind = data.kind;
+        d.value = data.value;
+        await _db.SaveChangesAsync();
+        return new { d.discountid };
+    }
+
+    // Children who had it stop getting it from the next month; months already billed keep it.
+    public async Task<object> DeleteDiscount(long discountId)
+    {
+        var d = await _db.discount.FirstOrDefaultAsync(x => x.discountid == discountId && !x.is_deleted)
+            ?? throw new InvalidOperationException("discount_not_found");
+        d.is_deleted = true;
+        foreach (var s in await _db.student.Where(s => s.discountid == discountId).ToListAsync())
+            s.discountid = null;
+        await _db.SaveChangesAsync();
+        return new { ok = true };
+    }
 
     // ---- totals -----------------------------------------------------------
 

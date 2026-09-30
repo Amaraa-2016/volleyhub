@@ -22,6 +22,8 @@ public class TrainingSession
     // Set once a coach saves attendance, which is what stops the generator from touching it.
     public bool attendance_taken { get; set; }
     public string? notes { get; set; }
+    // The lesson plan used for this class, if one was picked.
+    public long? planid { get; set; }
     public bool is_deleted { get; set; }
     public DateTime created { get; set; }
     public DateTime updated { get; set; }

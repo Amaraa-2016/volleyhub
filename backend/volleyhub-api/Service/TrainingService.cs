@@ -276,6 +276,7 @@ public class TrainingService
             .ToDictionary(g => g.Key, g => g.ToList());
         var groups = await _db.training_group.AsNoTracking().ToDictionaryAsync(g => g.groupid, g => g.name);
         var balances = await Balances();
+        var discountNames = await _db.discount.AsNoTracking().Where(d => !d.is_deleted).ToDictionaryAsync(d => d.discountid, d => d.name);
 
         static Enrollment? Pick(List<Enrollment> list, long? gid)
         {
@@ -319,6 +320,11 @@ public class TrainingService
                 left_date = s.left_date,
                 notes = s.notes,
                 pay_ref = s.pay_ref,
+                discountid = s.discountid,
+                discountname = s.discountid is long did && discountNames.TryGetValue(did, out var dn) ? dn : null,
+                allergies = s.allergies,
+                medical_notes = s.medical_notes,
+                blood_type = s.blood_type,
                 groupid = e?.groupid,
                 groupname = e != null && groups.TryGetValue(e.groupid, out var gn) ? gn : null,
                 fee_amount = e?.fee_amount,
@@ -392,6 +398,13 @@ public class TrainingService
         student.left_date = data.status == 3 ? Day(data.left_date) : null;
         student.notes = data.notes;
         student.pay_ref = NullIfEmpty(data.pay_ref);
+        student.allergies = NullIfEmpty(data.allergies);
+        student.medical_notes = NullIfEmpty(data.medical_notes);
+        student.blood_type = NullIfEmpty(data.blood_type);
+        if (data.discountid is long discountId
+            && !await _db.discount.AnyAsync(d => d.discountid == discountId && !d.is_deleted))
+            throw new InvalidOperationException("discount_not_found");
+        student.discountid = data.discountid;
         student.updated = now;
 
         await _db.SaveChangesAsync();

@@ -55,6 +55,10 @@ public class StudentBT
     public DateTime? left_date { get; set; }
     public string? notes { get; set; }
     public string? pay_ref { get; set; }
+    public long? discountid { get; set; }
+    public string? allergies { get; set; }
+    public string? medical_notes { get; set; }
+    public string? blood_type { get; set; }
     // The class this form is filled in from. The child is enrolled there (or kept there) at
     // fee_amount; null fee_amount takes the class price.
     public long? groupid { get; set; }
@@ -81,6 +85,11 @@ public class StudentRT
     public DateTime? left_date { get; set; }
     public string? notes { get; set; }
     public string? pay_ref { get; set; }
+    public long? discountid { get; set; }
+    public string? discountname { get; set; }
+    public string? allergies { get; set; }
+    public string? medical_notes { get; set; }
+    public string? blood_type { get; set; }
     // Current group, when the student is in one.
     public long? groupid { get; set; }
     public string? groupname { get; set; }
@@ -183,6 +192,8 @@ public class SessionRT
     public short status { get; set; }
     public bool attendance_taken { get; set; }
     public string? notes { get; set; }
+    public long? planid { get; set; }
+    public string? planname { get; set; }
     public int present_count { get; set; }
     public int student_count { get; set; }
 }
@@ -203,6 +214,8 @@ public class AttendanceSaveBT
 public class AttendanceRT
 {
     public long studentid { get; set; }
+    public string? allergies { get; set; }
+    public string? injury { get; set; }
     public string last_name { get; set; } = string.Empty;
     public string first_name { get; set; } = string.Empty;
     public short status { get; set; }
@@ -268,6 +281,8 @@ public class FeeRT
     public short status { get; set; }
     public string? note { get; set; }
     public string? pay_ref { get; set; }
+    public decimal? base_amount { get; set; }
+    public string? discount_name { get; set; }
     public string? phone { get; set; }
     // When the last invoice text for this fee went out, if one has.
     public DateTime? notified_at { get; set; }
@@ -478,4 +493,193 @@ public class SettingsBT
 public class SettingsRT : SettingsBT
 {
     public bool sms_enabled { get; set; }
+}
+
+// ---- drill library and lesson plans -------------------------------------------
+
+public class DrillBT
+{
+    public long drillid { get; set; }
+    public string name { get; set; } = string.Empty;
+    public string? description { get; set; }
+    public int minutes { get; set; }
+    public string? level { get; set; }
+    public string? equipment { get; set; }
+    public List<short> skillids { get; set; } = new();
+}
+
+public class DrillRT
+{
+    public long drillid { get; set; }
+    public string name { get; set; } = string.Empty;
+    public string? description { get; set; }
+    public int minutes { get; set; }
+    public string? level { get; set; }
+    public string? equipment { get; set; }
+    public List<short> skillids { get; set; } = new();
+    // How many plans use it, so deleting can warn.
+    public int plan_count { get; set; }
+}
+
+public class PlanItemBT
+{
+    public long? drillid { get; set; }
+    public string title { get; set; } = string.Empty;
+    public int minutes { get; set; }
+}
+
+public class PlanBT
+{
+    public long planid { get; set; }
+    public string name { get; set; } = string.Empty;
+    public string? notes { get; set; }
+    public List<PlanItemBT> items { get; set; } = new();
+}
+
+public class PlanItemRT
+{
+    public long itemid { get; set; }
+    public long? drillid { get; set; }
+    public string title { get; set; } = string.Empty;
+    public int minutes { get; set; }
+    public string? description { get; set; }
+    public List<short> skillids { get; set; } = new();
+}
+
+public class PlanRT
+{
+    public long planid { get; set; }
+    public string name { get; set; } = string.Empty;
+    public string? notes { get; set; }
+    public int total_minutes { get; set; }
+    public List<PlanItemRT> items { get; set; } = new();
+}
+
+public class SessionPlanBT
+{
+    public long? planid { get; set; }
+}
+
+// ---- discounts --------------------------------------------------------------
+
+public class DiscountBT
+{
+    public long discountid { get; set; }
+    public string name { get; set; } = string.Empty;
+    // 1=Percent, 2=Fixed ₮
+    public short kind { get; set; } = 1;
+    public decimal value { get; set; }
+}
+
+public class DiscountRT : DiscountBT
+{
+    public int student_count { get; set; }
+}
+
+// ---- physical development and health ------------------------------------------
+
+public class MeasureTypeBT
+{
+    public long typeid { get; set; }
+    public string name { get; set; } = string.Empty;
+    public string unit { get; set; } = string.Empty;
+    public bool higher_is_better { get; set; } = true;
+}
+
+public class MeasureTypeRT : MeasureTypeBT
+{
+    public int sort_order { get; set; }
+}
+
+public class MeasureValueBT
+{
+    public long typeid { get; set; }
+    public decimal value { get; set; }
+}
+
+// One sitting: several measurements taken the same day.
+public class MeasureSaveBT
+{
+    public DateTime measured_on { get; set; }
+    public List<MeasureValueBT> values { get; set; } = new();
+    public string? note { get; set; }
+}
+
+public class MeasurementRT
+{
+    public long measureid { get; set; }
+    public long typeid { get; set; }
+    public decimal value { get; set; }
+    public DateTime measured_on { get; set; }
+    public string? note { get; set; }
+}
+
+public class InjuryBT
+{
+    public long injuryid { get; set; }
+    public DateTime occurred_on { get; set; }
+    public string? body_part { get; set; }
+    public string description { get; set; } = string.Empty;
+    public short status { get; set; } = 1;
+    public DateTime? recovered_on { get; set; }
+}
+
+public class InjuryRT : InjuryBT
+{
+    public DateTime created { get; set; }
+}
+
+// Health flags shown next to a name on the register and class list.
+public class HealthFlagRT
+{
+    public long studentid { get; set; }
+    public string? allergies { get; set; }
+    public bool injured { get; set; }
+    public string? injury { get; set; }
+}
+
+// ---- income report ----------------------------------------------------------
+
+public class ReportMonthRT
+{
+    public string period { get; set; } = string.Empty;
+    // Billed for this month (after discounts), and how much of that has been paid so far.
+    public decimal billed { get; set; }
+    public decimal paid { get; set; }
+    public decimal discounts { get; set; }
+    // Money actually received during this calendar month, whatever month it was for.
+    public decimal collected { get; set; }
+    public int children { get; set; }
+}
+
+public class ReportGroupRT
+{
+    public long groupid { get; set; }
+    public string name { get; set; } = string.Empty;
+    public decimal billed { get; set; }
+    public decimal paid { get; set; }
+}
+
+public class ReportDebtorRT
+{
+    public long studentid { get; set; }
+    public string name { get; set; } = string.Empty;
+    public string? groupname { get; set; }
+    public decimal owed { get; set; }
+    public int months { get; set; }
+}
+
+public class IncomeReportRT
+{
+    public int year { get; set; }
+    public decimal billed { get; set; }
+    public decimal paid { get; set; }
+    public decimal collected { get; set; }
+    public decimal discounts { get; set; }
+    public decimal outstanding { get; set; }
+    public List<ReportMonthRT> months { get; set; } = new();
+    public List<ReportGroupRT> groups { get; set; } = new();
+    // method -> amount collected this year
+    public Dictionary<short, decimal> methods { get; set; } = new();
+    public List<ReportDebtorRT> debtors { get; set; } = new();
 }

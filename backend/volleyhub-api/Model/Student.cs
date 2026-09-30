@@ -41,6 +41,16 @@ public class Student
     // child's payment is easy to find in the bank statement.
     [MaxLength(100)]
     public string? pay_ref { get; set; }
+    // The discount this child gets on every new month's fee, if any.
+    public long? discountid { get; set; }
+
+    // Health: what the coach must know before a child trains. Shown with the emergency contact.
+    [MaxLength(300)]
+    public string? allergies { get; set; }
+    // Conditions and medicines ("астма - ингалятор цүнхэнд").
+    public string? medical_notes { get; set; }
+    [MaxLength(10)]
+    public string? blood_type { get; set; }
     public bool is_deleted { get; set; }
     public DateTime created { get; set; }
     public DateTime updated { get; set; }

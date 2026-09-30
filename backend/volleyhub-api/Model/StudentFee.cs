@@ -15,7 +15,12 @@ public class StudentFee
     // instant, and it is what the uniqueness of a monthly fee is defined on.
     [MaxLength(7)]
     public string period { get; set; } = string.Empty;
+    // What the child owes after any discount.
     public decimal amount { get; set; }
+    // The class price before the discount, and the discount as it was when the fee was made.
+    public decimal? base_amount { get; set; }
+    [MaxLength(100)]
+    public string? discount_name { get; set; }
     public decimal paid_amount { get; set; }
     public DateTime? due_date { get; set; }
     // 1=Unpaid, 2=Partly paid, 3=Paid, 4=Waived
