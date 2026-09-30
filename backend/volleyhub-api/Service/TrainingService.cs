@@ -124,32 +124,48 @@ public class TrainingService
         return new { group.groupid };
     }
 
-    // A group with history behind it is archived rather than deleted, so past attendance and fees
-    // keep resolving to a name.
+    // Deleting a class. It is only ever hidden (is_deleted), never removed, so attendance and fees
+    // already recorded keep showing the class name. What goes with it:
+    //   - the children's places in it close today; the children themselves stay, and anyone with
+    //     no other class shows as "Ангигүй" until moved;
+    //   - the weekly timetable, and future classes nobody has taken the register for;
+    //   - nothing about money: fees already billed, paid or not, stay as they are.
     public async Task<object> DeleteGroup(long groupId)
     {
         var group = await _db.training_group.FirstOrDefaultAsync(g => g.groupid == groupId && !g.is_deleted)
             ?? throw new InvalidOperationException("group_not_found");
 
-        var hasHistory = await _db.training_session.AnyAsync(s => s.groupid == groupId && !s.is_deleted)
-            || await _db.student_fee.AnyAsync(f => f.groupid == groupId && !f.is_deleted);
-
-        group.updated = DateTime.UtcNow;
-        if (hasHistory)
-        {
-            group.isactive = false;
-            await _db.SaveChangesAsync();
-            return new { ok = true, archived = true };
-        }
+        var now = DateTime.UtcNow;
+        var today = DateTime.SpecifyKind(now.Date, DateTimeKind.Utc);
 
         group.is_deleted = true;
         group.isactive = false;
+        group.updated = now;
 
-        _db.enrollment.RemoveRange(await _db.enrollment.Where(e => e.groupid == groupId).ToListAsync());
-        _db.schedule_entry.RemoveRange(await _db.schedule_entry.Where(s => s.groupid == groupId).ToListAsync());
+        var open = await _db.enrollment.Where(e => e.groupid == groupId && e.isactive).ToListAsync();
+        foreach (var e in open)
+        {
+            e.isactive = false;
+            e.left_at = today;
+        }
+
+        foreach (var slot in await _db.schedule_entry.Where(x => x.groupid == groupId && x.isactive).ToListAsync())
+        {
+            slot.isactive = false;
+            slot.updated = now;
+        }
+
+        var future = await _db.training_session
+            .Where(x => x.groupid == groupId && !x.is_deleted && !x.attendance_taken && x.session_date >= today)
+            .ToListAsync();
+        foreach (var session in future)
+        {
+            session.is_deleted = true;
+            session.updated = now;
+        }
 
         await _db.SaveChangesAsync();
-        return new { ok = true, archived = false };
+        return new { ok = true, children = open.Count, sessions = future.Count };
     }
 
     // ---- enrollment -------------------------------------------------------
