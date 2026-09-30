@@ -8,6 +8,8 @@ public class Token
 
 public class AccountRegisterBT
 {
+    // The training's name ("Од волейболын сургалт") - becomes the workspace name.
+    public string? tenantname { get; set; }
     public string phone { get; set; } = string.Empty;
     public string password { get; set; } = string.Empty;
     public string? lastname { get; set; }

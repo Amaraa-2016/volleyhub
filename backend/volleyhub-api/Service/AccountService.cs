@@ -103,10 +103,11 @@ public class AccountService
                       }).ToListAsync();
     }
 
-    // Every coach has exactly one workspace of their own. Registration creates it; an account that
+    // Every coach has exactly one workspace of their own, named after their training. Registration
+    // creates it; an account that
     // somehow has none (one registered under the old platform without running a centre) gets it
     // here on its next login, so nobody is ever left at a "pick a club" screen with nothing in it.
-    private async Task EnsureWorkspace(Account account)
+    private async Task EnsureWorkspace(Account account, string? workspaceName = null)
     {
         // Only a membership that can actually run the app counts: an old "player" or "fan"
         // membership in someone else's club is not a workspace.
@@ -116,7 +117,7 @@ public class AccountService
 
         var tenant = new Tenant
         {
-            tenantname = WorkspaceName(account),
+            tenantname = workspaceName ?? WorkspaceName(account),
             contactphone = account.phone,
             locale = "mn",
             currency = "MNT",
@@ -152,9 +153,9 @@ public class AccountService
     private static string WorkspaceName(Account account) =>
         NameHelper.JoinFullName(account.lastname, account.firstname) ?? account.name ?? account.phone;
 
-    private async Task<AccountLoginRT> BuildLoginResult(Account account)
+    private async Task<AccountLoginRT> BuildLoginResult(Account account, string? workspaceName = null)
     {
-        await EnsureWorkspace(account);
+        await EnsureWorkspace(account, workspaceName);
 
         var token = GenerateAccountToken(account);
         var tenants = await Memberships(account.accountid);
@@ -189,7 +190,9 @@ public class AccountService
         var phone = Norm(data.phone);
         if (phone.Length == 0) throw new ArgumentException("phone_required");
         if (Norm(data.password).Length < 6) throw new ArgumentException("password_too_short");
-        // The workspace is named after the coach, so a name is needed from the start.
+        var trainingName = Norm(data.tenantname);
+        if (trainingName.Length == 0) throw new ArgumentException("training_name_required");
+        if (Norm(data.lastname).Length == 0) throw new ArgumentException("last_name_required");
         if (Norm(data.firstname).Length == 0) throw new ArgumentException("first_name_required");
 
         if (await _db.account.AnyAsync(a => a.phone == phone))
@@ -209,7 +212,7 @@ public class AccountService
         _db.account.Add(account);
         await _db.SaveChangesAsync();
 
-        return await BuildLoginResult(account);
+        return await BuildLoginResult(account, trainingName);
     }
 
     public async Task<AccountLoginRT> Login(AccountLoginBT data)

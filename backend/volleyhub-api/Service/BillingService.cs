@@ -71,10 +71,16 @@ public class BillingService
         var studentIds = fees.Select(f => f.studentid).Distinct().ToList();
         var students = await _db.student.AsNoTracking()
             .Where(s => studentIds.Contains(s.studentid))
-            .ToDictionaryAsync(s => s.studentid, s => new { s.last_name, s.first_name, s.pay_ref });
+            .ToDictionaryAsync(s => s.studentid, s => new { s.last_name, s.first_name, s.pay_ref, phone = s.emergency_phone ?? s.phone });
         var groups = await _db.training_group.AsNoTracking().ToDictionaryAsync(g => g.groupid, g => g.name);
 
         var feeIds = fees.Select(f => f.feeid).ToList();
+        // Only delivered texts count: a coach with no gateway yet should not see "sent".
+        var notified = await _db.fee_notice.AsNoTracking()
+            .Where(n => feeIds.Contains(n.feeid) && n.status == 1)
+            .GroupBy(n => n.feeid)
+            .Select(g => new { feeid = g.Key, at = g.Max(n => n.created) })
+            .ToDictionaryAsync(x => x.feeid, x => x.at);
         var payments = (await _db.payment.AsNoTracking()
                 .Where(p => feeIds.Contains(p.feeid) && !p.is_deleted)
                 .OrderByDescending(p => p.paid_at)
@@ -98,6 +104,8 @@ public class BillingService
             status = f.status,
             note = f.note,
             pay_ref = students.TryGetValue(f.studentid, out var s3) ? s3.pay_ref : null,
+            phone = students.TryGetValue(f.studentid, out var s4) ? s4.phone : null,
+            notified_at = notified.TryGetValue(f.feeid, out var at) ? at : null,
             payments = payments.TryGetValue(f.feeid, out var p) ? p : [],
         }).ToList();
     }

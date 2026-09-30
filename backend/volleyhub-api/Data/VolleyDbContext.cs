@@ -35,8 +35,12 @@ public class VolleyDbContext : DbContext, ITenantDbContext
     public DbSet<StudentFee> student_fee { get; set; }
     public DbSet<Payment> payment { get; set; }
 
-    // The coach's monthly skill scores.
+    // Invoice texts sent to parents.
+    public DbSet<FeeNotice> fee_notice { get; set; }
+
+    // The coach's monthly skill scores and running notes on each child.
     public DbSet<SkillRating> skill_rating { get; set; }
+    public DbSet<StudentNote> student_note { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

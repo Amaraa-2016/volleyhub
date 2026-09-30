@@ -145,25 +145,56 @@ public class TrainingService
 
     // ---- enrollment -------------------------------------------------------
 
-    public async Task<List<EnrollmentRT>> Roster(long groupId)
+    // Everyone in the class: active children, and - when asked - the ones who have left, so the
+    // class page can still open their history. A child who merely moved to another class is not
+    // "left" and does not show here.
+    public async Task<List<EnrollmentRT>> Roster(long groupId, bool includeLeft = false)
     {
-        return await (from e in _db.enrollment.AsNoTracking()
-                      join s in _db.student.AsNoTracking() on e.studentid equals s.studentid
-                      where e.groupid == groupId && e.isactive && !s.is_deleted
-                      orderby s.last_name, s.first_name
-                      select new EnrollmentRT
-                      {
-                          enrollmentid = e.enrollmentid,
-                          studentid = s.studentid,
-                          last_name = s.last_name,
-                          first_name = s.first_name,
-                          phone = s.phone,
-                          emergency_phone = s.emergency_phone,
-                          date_of_birth = s.date_of_birth,
-                          status = s.status,
-                          fee_amount = e.fee_amount,
-                          joined = e.joined,
-                      }).ToListAsync();
+        var rows = await (from e in _db.enrollment.AsNoTracking()
+                          join s in _db.student.AsNoTracking() on e.studentid equals s.studentid
+                          where e.groupid == groupId && !s.is_deleted
+                          select new { e, s }).ToListAsync();
+
+        var ids = rows.Select(r => r.s.studentid).Distinct().ToList();
+        var balances = await Balances(ids);
+
+        return rows
+            .GroupBy(r => r.s.studentid)
+            .Select(g => g.Where(r => r.e.isactive).OrderBy(r => r.e.joined).FirstOrDefault()
+                ?? g.OrderByDescending(r => r.e.left_at ?? r.e.joined).First())
+            .Where(r => r.e.isactive || (includeLeft && r.s.status == 3))
+            .OrderBy(r => r.e.isactive ? 0 : 1).ThenBy(r => r.s.last_name).ThenBy(r => r.s.first_name)
+            .Select(r => new EnrollmentRT
+            {
+                enrollmentid = r.e.enrollmentid,
+                studentid = r.s.studentid,
+                last_name = r.s.last_name,
+                first_name = r.s.first_name,
+                gender = r.s.gender,
+                birth_year = r.s.birth_year,
+                phone = r.s.phone,
+                emergency_name = r.s.emergency_name,
+                emergency_relation = r.s.emergency_relation,
+                emergency_phone = r.s.emergency_phone,
+                date_of_birth = r.s.date_of_birth,
+                status = r.s.status,
+                fee_amount = r.e.fee_amount,
+                joined = r.e.joined,
+                left_at = r.e.left_at,
+                active = r.e.isactive,
+                balance = balances.TryGetValue(r.s.studentid, out var owed) ? owed : 0m,
+            })
+            .ToList();
+    }
+
+    private async Task<Dictionary<long, decimal>> Balances(List<long>? studentIds = null)
+    {
+        var query = _db.student_fee.AsNoTracking().Where(f => !f.is_deleted && f.status != 4);
+        if (studentIds != null) query = query.Where(f => studentIds.Contains(f.studentid));
+        return await query
+            .GroupBy(f => f.studentid)
+            .Select(g => new { studentid = g.Key, owed = g.Sum(f => f.amount - f.paid_amount) })
+            .ToDictionaryAsync(x => x.studentid, x => x.owed);
     }
 
     public async Task<object> Enroll(long groupId, EnrollBT data)
@@ -223,59 +254,73 @@ public class TrainingService
 
     // ---- students ---------------------------------------------------------
 
+    // One row per child, with the class they are in now - or, for a child who has left, the class
+    // they left from. Built in memory: a coach has dozens of children, not thousands, and picking
+    // "the" enrollment per child is far clearer here than in SQL.
     public async Task<List<StudentRT>> Students(long? groupId, string? search, bool unassignedOnly = false)
     {
         var term = Norm(search).ToLowerInvariant();
 
-        var query = from s in _db.student.AsNoTracking()
-                    where !s.is_deleted
-                    join e in _db.enrollment.AsNoTracking().Where(x => x.isactive)
-                        on s.studentid equals e.studentid into ge
-                    from e in ge.DefaultIfEmpty()
-                    join g in _db.training_group.AsNoTracking() on e.groupid equals g.groupid into gg
-                    from g in gg.DefaultIfEmpty()
-                    select new StudentRT
-                    {
-                        studentid = s.studentid,
-                        accountid = s.accountid,
-                        last_name = s.last_name,
-                        first_name = s.first_name,
-                        date_of_birth = s.date_of_birth,
-                        gender = s.gender,
-                        phone = s.phone,
-                        emergency_name = s.emergency_name,
-                        emergency_relation = s.emergency_relation,
-                        emergency_phone = s.emergency_phone,
-                        height_cm = s.height_cm,
-                        photo = s.photo,
-                        status = s.status,
-                        notes = s.notes,
-                        pay_ref = s.pay_ref,
-                        groupid = g != null ? g.groupid : null,
-                        groupname = g != null ? g.name : null,
-                        fee_amount = e != null ? e.fee_amount : null,
-                    };
+        var students = await _db.student.AsNoTracking().Where(s => !s.is_deleted).ToListAsync();
+        var byStudent = (await _db.enrollment.AsNoTracking().ToListAsync())
+            .GroupBy(e => e.studentid)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        var groups = await _db.training_group.AsNoTracking().ToDictionaryAsync(g => g.groupid, g => g.name);
+        var balances = await Balances();
 
-        if (groupId is long gid) query = query.Where(s => s.groupid == gid);
-        if (unassignedOnly) query = query.Where(s => s.groupid == null);
-        if (term.Length > 0)
-            query = query.Where(s => s.last_name.ToLower().Contains(term)
-                || s.first_name.ToLower().Contains(term)
-                || (s.phone != null && s.phone.Contains(term)));
+        static Enrollment? Pick(List<Enrollment> list, long? gid)
+        {
+            var pool = gid is long g ? list.Where(e => e.groupid == g).ToList() : list;
+            return pool.Where(e => e.isactive).OrderBy(e => e.joined).FirstOrDefault()
+                ?? pool.OrderByDescending(e => e.left_at ?? e.joined).FirstOrDefault();
+        }
 
-        var rows = await query.OrderBy(s => s.last_name).ThenBy(s => s.first_name).ToListAsync();
+        var rows = new List<StudentRT>();
+        foreach (var s in students)
+        {
+            var list = byStudent.TryGetValue(s.studentid, out var l) ? l : new List<Enrollment>();
+            var e = Pick(list, groupId);
 
-        // One grouped pass for balances rather than a query per student.
-        var balances = await _db.student_fee.AsNoTracking()
-            .Where(f => !f.is_deleted && f.status != 4)
-            .GroupBy(f => f.studentid)
-            .Select(g => new { studentid = g.Key, owed = g.Sum(f => f.amount - f.paid_amount) })
-            .ToDictionaryAsync(x => x.studentid, x => x.owed);
+            if (groupId != null && (e == null || (!e.isactive && s.status != 3))) continue;
+            if (unassignedOnly && list.Any(x => x.isactive)) continue;
+            if (term.Length > 0 && !(s.last_name.ToLower().Contains(term)
+                    || s.first_name.ToLower().Contains(term)
+                    || (s.phone ?? "").Contains(term)
+                    || (s.emergency_phone ?? "").Contains(term)
+                    || (s.pay_ref ?? "").ToLower().Contains(term)))
+                continue;
 
-        foreach (var row in rows)
-            row.balance = balances.TryGetValue(row.studentid, out var owed) ? owed : 0m;
+            rows.Add(new StudentRT
+            {
+                studentid = s.studentid,
+                accountid = s.accountid,
+                last_name = s.last_name,
+                first_name = s.first_name,
+                date_of_birth = s.date_of_birth,
+                birth_year = s.birth_year,
+                gender = s.gender,
+                phone = s.phone,
+                emergency_name = s.emergency_name,
+                emergency_relation = s.emergency_relation,
+                emergency_phone = s.emergency_phone,
+                height_cm = s.height_cm,
+                photo = s.photo,
+                status = s.status,
+                start_date = s.start_date,
+                left_date = s.left_date,
+                notes = s.notes,
+                pay_ref = s.pay_ref,
+                groupid = e?.groupid,
+                groupname = e != null && groups.TryGetValue(e.groupid, out var gn) ? gn : null,
+                fee_amount = e?.fee_amount,
+                balance = balances.TryGetValue(s.studentid, out var owed) ? owed : 0m,
+            });
+        }
 
-        return rows;
+        return rows
+            .OrderBy(r => r.status == 3 ? 1 : 0)
+            .ThenBy(r => r.last_name).ThenBy(r => r.first_name)
+            .ToList();
     }
 
     public async Task<StudentRT> Student(long studentId)
@@ -285,9 +330,22 @@ public class TrainingService
             ?? throw new InvalidOperationException("student_not_found");
     }
 
+    private static DateTime? Day(DateTime? d) =>
+        d is DateTime v ? DateTime.SpecifyKind(v.Date, DateTimeKind.Utc) : null;
+
+    // The child form, saved from a class page. Besides the child's own fields it keeps the class
+    // enrollment in step with the status: leaving closes every open enrollment on left_date, and
+    // coming back (or a new child) opens one in the class the form came from.
     public async Task<object> SaveStudent(StudentBT data)
     {
         if (Norm(data.first_name).Length == 0) throw new ArgumentException("first_name_required");
+        if (data.status is not (1 or 2 or 3)) throw new ArgumentException("status_out_of_range");
+        if (data.status == 3 && data.left_date == null) throw new ArgumentException("left_date_required");
+        if (data.left_date != null && data.start_date != null && data.left_date.Value.Date < data.start_date.Value.Date)
+            throw new ArgumentException("left_before_start");
+        if (data.birth_year is int by && (by < 1950 || by > DateTime.UtcNow.Year))
+            throw new ArgumentException("birth_year_out_of_range");
+        if (data.fee_amount < 0) throw new ArgumentException("fee_cannot_be_negative");
 
         var now = DateTime.UtcNow;
         Student student;
@@ -302,9 +360,17 @@ public class TrainingService
             _db.student.Add(student);
         }
 
+        Group? group = null;
+        if (data.groupid is long gid)
+        {
+            group = await _db.training_group.AsNoTracking().FirstOrDefaultAsync(g => g.groupid == gid && !g.is_deleted)
+                ?? throw new InvalidOperationException("group_not_found");
+        }
+
         student.last_name = Norm(data.last_name);
         student.first_name = Norm(data.first_name);
         student.date_of_birth = data.date_of_birth;
+        student.birth_year = data.birth_year;
         student.gender = data.gender;
         student.phone = NullIfEmpty(data.phone);
         student.emergency_name = NullIfEmpty(data.emergency_name);
@@ -313,17 +379,102 @@ public class TrainingService
         student.height_cm = data.height_cm;
         student.photo = data.photo;
         student.status = data.status;
+        student.start_date = Day(data.start_date) ?? student.start_date ?? Day(now);
+        student.left_date = data.status == 3 ? Day(data.left_date) : null;
         student.notes = data.notes;
         student.pay_ref = NullIfEmpty(data.pay_ref);
         student.updated = now;
 
         await _db.SaveChangesAsync();
 
-        // Adding a child from a group's page puts them straight into it.
-        if (data.studentid == 0 && data.groupid is long gid)
-            await Enroll(gid, new EnrollBT { studentid = student.studentid });
+        var open = await _db.enrollment.Where(e => e.studentid == student.studentid && e.isactive).ToListAsync();
 
+        if (student.status == 3)
+        {
+            foreach (var e in open)
+            {
+                e.isactive = false;
+                e.left_at = student.left_date;
+            }
+        }
+        else if (group != null)
+        {
+            var current = open.FirstOrDefault(e => e.groupid == group.groupid);
+            if (current == null)
+            {
+                // Picking another class on the child's form moves them: the old place closes today.
+                // (Being in two classes at once is still possible through "add to class".)
+                if (data.studentid > 0)
+                {
+                    foreach (var other in open)
+                    {
+                        other.isactive = false;
+                        other.left_at = Day(now);
+                    }
+                }
+
+                if (group.capacity > 0
+                    && await _db.enrollment.CountAsync(e => e.groupid == group.groupid && e.isactive) >= group.capacity)
+                    throw new InvalidOperationException("group_full");
+
+                _db.enrollment.Add(new Enrollment
+                {
+                    groupid = group.groupid,
+                    studentid = student.studentid,
+                    fee_amount = data.fee_amount ?? group.fee_amount,
+                    joined = student.start_date ?? now,
+                    isactive = true,
+                });
+            }
+            else
+            {
+                if (data.fee_amount is decimal fee) current.fee_amount = fee;
+                if (student.start_date is DateTime start) current.joined = start;
+            }
+        }
+
+        await _db.SaveChangesAsync();
         return new { student.studentid };
+    }
+
+    // ---- notes --------------------------------------------------------------
+
+    public async Task<List<NoteRT>> Notes(long studentId)
+    {
+        var staff = await _db.staff.AsNoTracking().ToDictionaryAsync(s => s.staffid, s => s.staffname);
+        var rows = await _db.student_note.AsNoTracking()
+            .Where(n => n.studentid == studentId && !n.is_deleted)
+            .OrderByDescending(n => n.created)
+            .ToListAsync();
+        return rows.Select(n => new NoteRT
+        {
+            noteid = n.noteid,
+            body = n.body,
+            author = staff.TryGetValue(n.staffid, out var name) ? name : null,
+            created = n.created,
+        }).ToList();
+    }
+
+    public async Task<object> AddNote(long studentId, NoteBT data, int staffId)
+    {
+        var body = Norm(data.body);
+        if (body.Length == 0) throw new ArgumentException("note_required");
+        _ = await _db.student.AsNoTracking().FirstOrDefaultAsync(s => s.studentid == studentId && !s.is_deleted)
+            ?? throw new InvalidOperationException("student_not_found");
+
+        var note = new StudentNote { studentid = studentId, body = body, staffid = staffId, created = DateTime.UtcNow };
+        _db.student_note.Add(note);
+        await _db.SaveChangesAsync();
+        return new { note.noteid };
+    }
+
+    public async Task<object> DeleteNote(long studentId, long noteId)
+    {
+        var note = await _db.student_note.FirstOrDefaultAsync(n => n.noteid == noteId && n.studentid == studentId && !n.is_deleted)
+            ?? throw new InvalidOperationException("note_not_found");
+        note.is_deleted = true;
+        await _db.SaveChangesAsync();
+        return new { ok = true };
     }
 
     public async Task<object> DeleteStudent(long studentId)

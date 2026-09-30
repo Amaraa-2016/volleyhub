@@ -17,6 +17,9 @@ builder.Services.AddScoped<TrainingService>();
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<BillingService>();
 builder.Services.AddScoped<ProgressService>();
+builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<volleyhub_api.Service.Sms.ISmsSender, volleyhub_api.Service.Sms.HttpSmsSender>();
+builder.Services.AddHttpClient();
 
 builder.Services.AddControllers().AddNewtonsoftJson(options =>
 {

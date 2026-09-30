@@ -85,8 +85,12 @@ public class TenantSchemaManager
             ALTER TABLE public.tenant ADD COLUMN IF NOT EXISTS createdby integer;
             ALTER TABLE public.tenant ADD COLUMN IF NOT EXISTS created timestamp with time zone;
 
-            -- A workspace is named after its coach, and two coaches may share a name. The old
-            -- directory needed unique centre names; a private workspace does not.
+            ALTER TABLE public.tenant ADD COLUMN IF NOT EXISTS bank_name character varying(100);
+            ALTER TABLE public.tenant ADD COLUMN IF NOT EXISTS bank_account character varying(100);
+            ALTER TABLE public.tenant ADD COLUMN IF NOT EXISTS bank_holder character varying(200);
+
+            -- Two coaches may name their trainings the same. The old public directory needed unique
+            -- centre names; a private workspace does not.
             DROP INDEX IF EXISTS public.ux_tenant_name;
             """;
         await cmd.ExecuteNonQueryAsync();

@@ -293,6 +293,46 @@ public class ScheduleService
         return new { ok = true };
     }
 
+    // "Take the register" from a class page: the class's session on that day, created on the spot
+    // if there is none. The time comes from the weekly timetable when that day has a slot, so a
+    // coach who never set one up can still take attendance.
+    public async Task<object> TodaySession(long groupId, DateTime date)
+    {
+        var group = await _db.training_group.AsNoTracking()
+            .FirstOrDefaultAsync(g => g.groupid == groupId && !g.is_deleted)
+            ?? throw new InvalidOperationException("group_not_found");
+
+        var day = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
+
+        var existing = await _db.training_session.AsNoTracking()
+            .Where(s => s.groupid == groupId && !s.is_deleted && s.session_date == day)
+            .OrderBy(s => s.start_minute)
+            .FirstOrDefaultAsync();
+        if (existing != null) return new { existing.sessionid, created = false };
+
+        var weekday = (short)day.DayOfWeek;
+        var slot = await _db.schedule_entry.AsNoTracking()
+            .Where(s => s.groupid == groupId && s.isactive && s.weekday == weekday)
+            .OrderBy(s => s.start_minute)
+            .FirstOrDefaultAsync();
+
+        var now = DateTime.UtcNow;
+        var session = new TrainingSession
+        {
+            groupid = groupId,
+            venueid = slot?.venueid ?? group.venueid,
+            session_date = day,
+            start_minute = slot?.start_minute ?? 18 * 60,
+            end_minute = slot?.end_minute ?? 19 * 60 + 30,
+            status = 1,
+            created = now,
+            updated = now,
+        };
+        _db.training_session.Add(session);
+        await _db.SaveChangesAsync();
+        return new { session.sessionid, created = true };
+    }
+
     // ---- attendance -------------------------------------------------------
 
     // The register of one class: every currently enrolled student, with whatever was marked before.
@@ -361,7 +401,7 @@ public class ScheduleService
     }
 
     // One student's attendance history, as the mobile app shows it.
-    public async Task<AttendanceSummaryRT> StudentAttendance(long studentId, int take = 30)
+    public async Task<AttendanceSummaryRT> StudentAttendance(long studentId, int take = 200)
     {
         var rows = await (from a in _db.attendance_record.AsNoTracking()
                           join s in _db.training_session.AsNoTracking() on a.sessionid equals s.sessionid

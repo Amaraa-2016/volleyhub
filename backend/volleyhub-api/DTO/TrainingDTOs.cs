@@ -41,6 +41,7 @@ public class StudentBT
     public string last_name { get; set; } = string.Empty;
     public string first_name { get; set; } = string.Empty;
     public DateTime? date_of_birth { get; set; }
+    public int? birth_year { get; set; }
     public short? gender { get; set; }
     public string? phone { get; set; }
     public string? emergency_name { get; set; }
@@ -48,11 +49,16 @@ public class StudentBT
     public string? emergency_phone { get; set; }
     public int? height_cm { get; set; }
     public string? photo { get; set; }
+    // 1=Active, 3=Left. Left requires left_date.
     public short status { get; set; } = 1;
+    public DateTime? start_date { get; set; }
+    public DateTime? left_date { get; set; }
     public string? notes { get; set; }
     public string? pay_ref { get; set; }
-    // Optional: put the new child straight into a group.
+    // The class this form is filled in from. The child is enrolled there (or kept there) at
+    // fee_amount; null fee_amount takes the class price.
     public long? groupid { get; set; }
+    public decimal? fee_amount { get; set; }
 }
 
 public class StudentRT
@@ -70,6 +76,9 @@ public class StudentRT
     public int? height_cm { get; set; }
     public string? photo { get; set; }
     public short status { get; set; }
+    public int? birth_year { get; set; }
+    public DateTime? start_date { get; set; }
+    public DateTime? left_date { get; set; }
     public string? notes { get; set; }
     public string? pay_ref { get; set; }
     // Current group, when the student is in one.
@@ -93,12 +102,20 @@ public class EnrollmentRT
     public long studentid { get; set; }
     public string last_name { get; set; } = string.Empty;
     public string first_name { get; set; } = string.Empty;
+    public short? gender { get; set; }
+    public int? birth_year { get; set; }
     public string? phone { get; set; }
+    public string? emergency_name { get; set; }
+    public string? emergency_relation { get; set; }
     public string? emergency_phone { get; set; }
     public DateTime? date_of_birth { get; set; }
+    // The child's status (1=Active, 3=Left), not the enrollment's.
     public short status { get; set; }
     public decimal fee_amount { get; set; }
     public DateTime joined { get; set; }
+    public DateTime? left_at { get; set; }
+    public bool active { get; set; }
+    public decimal balance { get; set; }
 }
 
 // ---- schedule -------------------------------------------------------------
@@ -251,6 +268,9 @@ public class FeeRT
     public short status { get; set; }
     public string? note { get; set; }
     public string? pay_ref { get; set; }
+    public string? phone { get; set; }
+    // When the last invoice text for this fee went out, if one has.
+    public DateTime? notified_at { get; set; }
     public List<PaymentRT> payments { get; set; } = new();
 }
 
@@ -362,4 +382,77 @@ public class RatingMonthRT
     // skill -> score, only the skills that were rated.
     public Dictionary<short, short> scores { get; set; } = new();
     public string? note { get; set; }
+}
+
+// ---- notes ----------------------------------------------------------------
+
+public class NoteBT
+{
+    public string body { get; set; } = string.Empty;
+}
+
+public class NoteRT
+{
+    public long noteid { get; set; }
+    public string body { get; set; } = string.Empty;
+    public string? author { get; set; }
+    public DateTime created { get; set; }
+}
+
+// ---- taking the register from a class ---------------------------------------
+
+// The coach's own calendar day; the class's session for it is found or created.
+public class TodaySessionBT
+{
+    public DateTime date { get; set; }
+}
+
+// ---- invoices -------------------------------------------------------------
+
+public class NotifyBT
+{
+    public string period { get; set; } = string.Empty;
+    public long? groupid { get; set; }
+    // Only these fees; empty means every unpaid fee of the period (and class).
+    public List<long>? feeids { get; set; }
+    // true: build the texts and return them without sending anything.
+    public bool preview { get; set; }
+}
+
+public class NotifyItemRT
+{
+    public long feeid { get; set; }
+    public long studentid { get; set; }
+    public string name { get; set; } = string.Empty;
+    public string? phone { get; set; }
+    public string message { get; set; } = string.Empty;
+    // sent | failed | logged | no_phone | preview
+    public string status { get; set; } = string.Empty;
+    public string? error { get; set; }
+}
+
+public class NotifyRT
+{
+    public int sent { get; set; }
+    public int failed { get; set; }
+    public int skipped { get; set; }
+    // False when no SMS gateway is configured: texts are recorded but not delivered.
+    public bool gateway { get; set; }
+    public List<NotifyItemRT> items { get; set; } = new();
+}
+
+// ---- workspace settings -----------------------------------------------------
+
+public class SettingsBT
+{
+    public string tenantname { get; set; } = string.Empty;
+    public string? contactphone { get; set; }
+    public string? bank_name { get; set; }
+    public string? bank_account { get; set; }
+    public string? bank_holder { get; set; }
+}
+
+public class SettingsRT : SettingsBT
+{
+    public bool sms_enabled { get; set; }
 }

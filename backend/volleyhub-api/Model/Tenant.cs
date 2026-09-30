@@ -26,4 +26,12 @@ public class Tenant
     public string? currency { get; set; }
     public int? createdby { get; set; }
     public DateTime? created { get; set; }
+
+    // Where parents pay, printed on every invoice text.
+    [MaxLength(100)]
+    public string? bank_name { get; set; }
+    [MaxLength(100)]
+    public string? bank_account { get; set; }
+    [MaxLength(200)]
+    public string? bank_holder { get; set; }
 }
