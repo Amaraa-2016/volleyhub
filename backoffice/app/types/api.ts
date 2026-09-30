@@ -94,6 +94,11 @@ export interface Session {
     notes?: string | null;
     planid?: number | null;
     planname?: string | null;
+    cancel_reason?: string | null;
+    makeup_for?: number | null;
+    makeup_sessionid?: number | null;
+    makeup_date?: string | null;
+    makeup_start_minute?: number | null;
     present_count: number;
     student_count: number;
 }

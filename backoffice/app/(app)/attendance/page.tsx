@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarPlus } from "lucide-react";
-import { TopBar, useData, Loading, ErrorBox, Empty, useToast } from "@/app/components/ui";
+import { ChevronLeft, ChevronRight, CalendarPlus, CalendarX } from "lucide-react";
+import CancelRange from "@/app/components/CancelRange";
+import { TopBar, useData, Loading, ErrorBox, Empty, Sheet, useToast } from "@/app/components/ui";
 import type { Group, Session } from "@/app/types/api";
 import { API } from "@/app/utils/API";
 import { addDays, dayLabel, hhmm, today, WEEKDAYS_SHORT, parseDay } from "@/app/utils/format";
@@ -12,6 +13,7 @@ export default function AttendancePage() {
     const toast = useToast();
     const [day, setDay] = useState(today());
     const [busy, setBusy] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
 
     // The week around the chosen day, so the strip of days can show which ones have classes.
     const start = addDays(day, -((parseDay(day).getDay() + 6) % 7));
@@ -40,11 +42,14 @@ export default function AttendancePage() {
     return (
         <>
             <TopBar title="Ирц" sub={dayLabel(day)} right={
-                hasTimetable ? (
-                    <button className="icon-btn" aria-label="Хуваариас хичээл үүсгэх" onClick={generate} disabled={busy}>
-                        <CalendarPlus size={22} />
-                    </button>
-                ) : undefined
+                <>
+                    <button className="icon-btn" aria-label="Хичээл цуцлах (амралт)" onClick={() => setCancelling(true)}><CalendarX size={22} /></button>
+                    {hasTimetable && (
+                        <button className="icon-btn" aria-label="Хуваариас хичээл үүсгэх" onClick={generate} disabled={busy}>
+                            <CalendarPlus size={22} />
+                        </button>
+                    )}
+                </>
             } />
             <main className="page">
                 <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 12 }}>
@@ -100,7 +105,7 @@ export default function AttendancePage() {
                                     <div className="title">{s.groupname}</div>
                                     <div className="meta">{s.student_count} хүүхэд{s.notes ? ` · ${s.notes}` : ""}</div>
                                 </div>
-                                {s.status === 3 ? <span className="badge tone-muted">Цуцалсан</span>
+                                {s.status === 3 ? <span className="badge tone-muted">{s.cancel_reason ?? "Цуцалсан"}</span>
                                     : s.attendance_taken ? <span className="badge tone-present">{s.present_count}/{s.student_count}</span>
                                     : <span className="badge tone-brand">Ирц авах</span>}
                             </Link>
@@ -108,6 +113,9 @@ export default function AttendancePage() {
                     </div>
                 )}
             </main>
+            <Sheet open={cancelling} onClose={() => setCancelling(false)} title="Олон хичээл цуцлах">
+                {cancelling && <CancelRange day={day} onDone={reload} />}
+            </Sheet>
         </>
     );
 }

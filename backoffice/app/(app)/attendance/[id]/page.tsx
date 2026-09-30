@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, X, Clock, Minus, Ban, Undo2, TriangleAlert, ClipboardList } from "lucide-react";
+import CancelClass from "@/app/components/CancelClass";
 import { TopBar, useData, Loading, ErrorBox, Empty, Sheet, Field, useToast } from "@/app/components/ui";
 import type { AttendanceRow, Plan, Session } from "@/app/types/api";
 import { API } from "@/app/utils/API";
@@ -22,6 +23,7 @@ export default function RegisterPage({ params }: { params: Promise<{ id: string 
     const [dirty, setDirty] = useState(false);
     const [busy, setBusy] = useState(false);
     const [planOpen, setPlanOpen] = useState(false);
+    const [cancelOpen, setCancelOpen] = useState(false);
     const plans = useData<Plan[]>(planOpen ? "/api/vh/backoffice/plans" : null);
     const current = useData<Plan>(session.data?.planid ? `/api/vh/backoffice/plans/${session.data.planid}` : null);
     const [plan, setPlan] = useState("");
@@ -98,10 +100,29 @@ export default function RegisterPage({ params }: { params: Promise<{ id: string 
                             </button>
 
                             {cancelled ? (
-                                <div className="card">
-                                    <Empty title="Энэ хичээл цуцлагдсан">
-                                        <button className="btn" disabled={busy} onClick={() => saveSession({ status: 1 })}><Undo2 size={18} /> Сэргээх</button>
-                                    </Empty>
+                                <div className="card pad">
+                                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                        <span className="badge tone-muted"><Ban size={14} /> Цуцлагдсан</span>
+                                        {s.cancel_reason && <strong>{s.cancel_reason}</strong>}
+                                    </div>
+                                    <p className="caption" style={{ margin: "8px 0 0" }}>Энэ хичээл ирцийн тайланд тоологдохгүй.</p>
+                                    {s.makeup_sessionid && s.makeup_date && (
+                                        <Link href={`/attendance/${s.makeup_sessionid}`} className="row" style={{ padding: "10px 0", borderBottom: 0 }}>
+                                            <div className="grow">
+                                                <div className="meta">Нөхөх хичээл</div>
+                                                <div className="title">{dayLabel(s.makeup_date)} {hhmm(s.makeup_start_minute ?? s.start_minute)}</div>
+                                            </div>
+                                        </Link>
+                                    )}
+                                    <div className="actions" style={{ marginTop: 12 }}>
+                                        <button className="btn primary" onClick={() => setCancelOpen(true)}>Эцэг эхэд мэдэгдэх</button>
+                                        <button className="btn" disabled={busy} onClick={async () => {
+                                            const res = await API(`/api/vh/backoffice/sessions/${id}/restore`, { method: "POST" });
+                                            if (res.error) return toast.fail(res.error);
+                                            toast.ok("Хичээл сэргээгдлээ");
+                                            session.reload();
+                                        }}><Undo2 size={18} /> Сэргээх</button>
+                                    </div>
                                 </div>
                             ) : rows.length === 0 ? (
                                 <div className="card"><Empty title="Ангид хүүхэд алга" text="Ангийн хуудсаас хүүхэд нэмнэ үү." /></div>
@@ -144,16 +165,23 @@ export default function RegisterPage({ params }: { params: Promise<{ id: string 
                                 </>
                             )}
 
-                            {!cancelled && !s.attendance_taken && (
-                                <button className="btn ghost block" style={{ marginTop: 12 }} disabled={busy} onClick={async () => {
-                                    if (await saveSession({ status: 3 })) toast.ok("Хичээл цуцлагдлаа");
-                                }}>
-                                    <Ban size={16} /> Хичээлийг цуцлах
+                            {!cancelled && (
+                                <button className="btn ghost block danger" style={{ marginTop: 12 }} onClick={() => setCancelOpen(true)}>
+                                    <Ban size={16} /> Хичээл ороогүй / цуцлах
                                 </button>
+                            )}
+                            {s.makeup_for && (
+                                <p className="caption center" style={{ marginTop: 8 }}>
+                                    Энэ бол <Link href={`/attendance/${s.makeup_for}`} style={{ color: "var(--brand)", fontWeight: 800 }}>цуцлагдсан хичээлийн</Link> нөхөх хичээл.
+                                </p>
                             )}
                         </>
                     )}
             </main>
+
+            <Sheet open={cancelOpen} onClose={() => setCancelOpen(false)} title={cancelled ? "Эцэг эхэд мэдэгдэх" : "Хичээл цуцлах"}>
+                {s && cancelOpen && <CancelClass session={s} onDone={() => { session.reload(); register.reload(); }} />}
+            </Sheet>
 
             <Sheet open={planOpen} onClose={() => setPlanOpen(false)} title="Хичээлийн төлөвлөгөө">
                 <div className="field">

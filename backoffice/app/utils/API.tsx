@@ -108,6 +108,8 @@ const ERRORS: Record<string, string> = {
     status_out_of_range: "Төлөв буруу байна",
     note_required: "Тэмдэглэл хоосон байна",
     note_not_found: "Тэмдэглэл олдсонгүй",
+    nothing_to_cancel: "Энэ хугацаанд цуцлах хичээл алга",
+    session_not_found: "Хичээл олдсонгүй",
     // invoices
     nothing_to_notify: "Нэхэмжлэх илгээх төлөөгүй төлбөр алга",
     // planning, discounts, health, reports
