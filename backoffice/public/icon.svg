@@ -1,5 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#c2410c"/>
-  <circle cx="256" cy="256" r="150" fill="none" stroke="#fff" stroke-width="28"/>
-  <path d="M256 106c-40 60-40 240 0 300M118 196c70 10 190 60 250 170M394 196c-70 10-190 60-250 170" fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Volleyhub"><rect width="512" height="512" rx="112" fill="#17233a"/><path d="M256,256 Q188.06,169.04 256.00,78.00 A178,178 0 0 1 410.15,345.00 Q365.29,240.64 256,256 Z" fill="#c2410c"/>
+<path d="M256,256 Q365.29,240.64 410.15,345.00 A178,178 0 0 1 101.85,345.00 Q214.66,358.32 256,256 Z" fill="#0f766e"/>
+<path d="M256,256 Q214.66,358.32 101.85,345.00 A178,178 0 0 1 256.00,78.00 Q188.06,169.04 256,256 Z" fill="#f5b82e"/>
+<path d="M256,256 Q188.06,169.04 256.00,78.00" fill="none" stroke="#17233a" stroke-width="17.80" stroke-linecap="round"/>
+<path d="M256,256 Q365.29,240.64 410.15,345.00" fill="none" stroke="#17233a" stroke-width="17.80" stroke-linecap="round"/>
+<path d="M256,256 Q214.66,358.32 101.85,345.00" fill="none" stroke="#17233a" stroke-width="17.80" stroke-linecap="round"/>
+<circle cx="256" cy="256" r="16.02" fill="#17233a"/></svg>

@@ -8,7 +8,10 @@ export const metadata: Metadata = {
     description: "Хүүхдийн волейболын дасгалжуулагчийн туслах: ирц, төлбөр, анги, ахиц",
     manifest: "/manifest.webmanifest",
     appleWebApp: { capable: true, title: "Volleyhub", statusBarStyle: "default" },
-    icons: { icon: "/icon.svg", apple: "/icon.svg" },
+    icons: {
+        icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/favicon.png", sizes: "32x32", type: "image/png" }],
+        apple: "/apple-touch-icon.png",
+    },
 };
 
 export const viewport: Viewport = {

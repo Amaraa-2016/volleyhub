@@ -7,7 +7,10 @@ import type { NextRequest } from "next/server";
 const PUBLIC_PREFIXES = [
     "/_next/",
     "/favicon.ico",
-    "/icon.svg",
+    "/icon",
+    "/favicon.png",
+    "/apple-touch-icon.png",
+    "/brand/",
     "/manifest.webmanifest",
     "/api/auth",
     "/api/ui/account",

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ThemeToggle } from "@/app/components/Theme";
-import { House, ClipboardCheck, Wallet, Users, LayoutGrid, Volleyball, ClipboardList, ChartColumn, Settings } from "lucide-react";
+import LogoMark from "@/app/components/LogoMark";
+import { House, ClipboardCheck, Wallet, Users, LayoutGrid, ClipboardList, ChartColumn, Settings } from "lucide-react";
 
 // Five destinations. On a phone they sit in a bar at the bottom, where the thumb is; on a wide
 // screen the same list becomes a sidebar (see the min-width: 960px block in globals.css).
@@ -32,9 +33,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {children}
             <div className="tabbar">
                 <Link href="/me" className="side-brand">
-                    <span className="logo"><Volleyball size={20} /></span>
+                    <LogoMark size={36} />
                     <span>
-                        <b>Volleyhub</b>
+                        <b>volley<span style={{ color: "var(--brand)" }}>hub</span></b>
                         <small>{session?.selectedTenantName ?? ""}</small>
                     </span>
                 </Link>
