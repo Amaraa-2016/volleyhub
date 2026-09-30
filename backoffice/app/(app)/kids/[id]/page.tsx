@@ -7,11 +7,11 @@ import { Phone, Pencil, Trash2, StickyNote, UserX, UserCheck, Check } from "luci
 import { TopBar, useData, Loading, ErrorBox, Sheet, Empty, useToast } from "@/app/components/ui";
 import StudentForm from "@/app/components/StudentForm";
 import FeeSheet from "@/app/components/FeeSheet";
-import type { AttendanceSummary, Fee, Group, Note, RatingMonth, Student } from "@/app/types/api";
+import type { AttendanceSummary, Fee, Group, Note, RatingMonth, Skill, Student } from "@/app/types/api";
 import { API } from "@/app/utils/API";
 import {
     ageOf, ATTENDANCE, currentPeriod, dayLabel, FEE_STATUS, GENDER, initials, METHODS, money,
-    periodLabel, shortDate, SKILLS, today,
+    periodLabel, shortDate, today,
 } from "@/app/utils/format";
 
 type Tab = "attendance" | "fees" | "notes" | "progress";
@@ -28,6 +28,7 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
     const notes = useData<Note[]>(`/api/vh/backoffice/students/${id}/notes`);
     const ratings = useData<RatingMonth[]>(`/api/vh/backoffice/students/${id}/ratings`);
     const groups = useData<Group[]>("/api/vh/backoffice/groups");
+    const skills = useData<Skill[]>("/api/vh/backoffice/skills");
     const [tab, setTab] = useState<Tab>("attendance");
     const [sheet, setSheet] = useState<null | "edit" | "note" | "status" | "rating">(null);
     const [openFee, setOpenFee] = useState<Fee | null>(null);
@@ -199,15 +200,15 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
                         {tab === "progress" && (
                             <div className="card pad">
                                 {!latest ? (
-                                    <p className="muted" style={{ margin: "0 0 12px", fontWeight: 600 }}>Сард нэг удаа 5 ур чадварыг 1–5 оноогоор үнэлбэл ахиц нь харагдана.</p>
+                                    <p className="muted" style={{ margin: "0 0 12px", fontWeight: 600 }}>Сард нэг удаа үзүүлэлт бүрийг 1–5 оноогоор үнэлбэл ахиц нь харагдана.</p>
                                 ) : (
                                     <>
                                         <div className="caption" style={{ marginBottom: 8 }}>{periodLabel(latest.period)}</div>
-                                        {SKILLS.map((k) => {
-                                            const v = latest.scores[k.id] ?? 0;
-                                            const was = ratings.data?.[1]?.scores[k.id];
+                                        {(skills.data ?? []).map((k) => {
+                                            const v = latest.scores[k.skillid] ?? 0;
+                                            const was = ratings.data?.[1]?.scores[k.skillid];
                                             return (
-                                                <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                                                <div key={k.skillid} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
                                                     <div style={{ width: 112, fontWeight: 700, fontSize: 14 }}>{k.name}</div>
                                                     <div className="bar on-card" style={{ flex: 1, marginTop: 0 }}><span style={{ width: `${v * 20}%`, background: "var(--court)" }} /></div>
                                                     <div className="num" style={{ width: 44, textAlign: "right", fontWeight: 800 }}>
@@ -219,7 +220,10 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
                                         {latest.note && <p style={{ margin: "8px 0 12px", fontSize: 14 }}>{latest.note}</p>}
                                     </>
                                 )}
-                                <button className="btn block" onClick={() => setSheet("rating")}>{latest?.period === currentPeriod() ? "Энэ сарын үнэлгээ засах" : "Энэ сард үнэлэх"}</button>
+                                <div className="actions">
+                                    <button className="btn" onClick={() => setSheet("rating")} disabled={!skills.data?.length}>{latest?.period === currentPeriod() ? "Энэ сарын үнэлгээ засах" : "Энэ сард үнэлэх"}</button>
+                                    <Link href="/me#skills" className="btn ghost">Үзүүлэлт засах</Link>
+                                </div>
                             </div>
                         )}
 
@@ -238,7 +242,7 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
                 {s && <StatusForm student={s} groups={groups.data ?? []} onSaved={() => { setSheet(null); kid.reload(); }} />}
             </Sheet>
             <Sheet open={sheet === "rating"} onClose={() => setSheet(null)} title={`${s?.first_name ?? ""} · ${periodLabel(currentPeriod())}`}>
-                <RatingForm studentId={id} initial={latest?.period === currentPeriod() ? latest : undefined}
+                <RatingForm studentId={id} skills={skills.data ?? []} initial={latest?.period === currentPeriod() ? latest : undefined}
                     onSaved={() => { setSheet(null); ratings.reload(); }} />
             </Sheet>
             <FeeSheet fee={openFee} onClose={() => setOpenFee(null)} onChanged={() => { setOpenFee(null); fees.reload(); kid.reload(); }} />
@@ -338,7 +342,7 @@ function StatusForm({ student, groups, onSaved }: { student: Student; groups: Gr
     );
 }
 
-function RatingForm({ studentId, initial, onSaved }: { studentId: string; initial?: RatingMonth; onSaved: () => void }) {
+function RatingForm({ studentId, skills, initial, onSaved }: { studentId: string; skills: Skill[]; initial?: RatingMonth; onSaved: () => void }) {
     const toast = useToast();
     const [scores, setScores] = useState<Record<number, number>>({});
     const [note, setNote] = useState("");
@@ -356,7 +360,9 @@ function RatingForm({ studentId, initial, onSaved }: { studentId: string; initia
         const res = await API(`/api/vh/backoffice/students/${studentId}/ratings`, {
             data: {
                 period: currentPeriod(),
-                scores: Object.entries(scores).map(([skill, score]) => ({ skill: Number(skill), score })),
+                scores: Object.entries(scores)
+                    .filter(([skill]) => skills.some((k) => k.skillid === Number(skill)))
+                    .map(([skill, score]) => ({ skill: Number(skill), score })),
                 note,
             },
         });
@@ -368,13 +374,13 @@ function RatingForm({ studentId, initial, onSaved }: { studentId: string; initia
 
     return (
         <div>
-            {SKILLS.map((k) => (
-                <div key={k.id} style={{ marginBottom: 14 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 6 }}>{k.name} <span className="caption">{k.hint}</span></div>
+            {skills.map((k) => (
+                <div key={k.skillid} style={{ marginBottom: 14 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 6 }}>{k.name} {k.hint && <span className="caption">{k.hint}</span>}</div>
                     <div className="stars">
                         {[1, 2, 3, 4, 5].map((n) => (
-                            <button key={n} type="button" className={(scores[k.id] ?? 0) >= n ? "on" : ""} aria-label={`${k.name} ${n}`}
-                                onClick={() => setScores({ ...scores, [k.id]: n })}>{n}</button>
+                            <button key={n} type="button" className={(scores[k.skillid] ?? 0) >= n ? "on" : ""} aria-label={`${k.name} ${n}`}
+                                onClick={() => setScores({ ...scores, [k.skillid]: n })}>{n}</button>
                         ))}
                     </div>
                 </div>

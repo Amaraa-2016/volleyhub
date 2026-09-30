@@ -5,6 +5,8 @@ import { signOut, useSession } from "next-auth/react";
 import { LogOut } from "lucide-react";
 import { TopBar, Field, useToast, useData } from "@/app/components/ui";
 import type { Settings } from "@/app/types/api";
+import SkillsEditor from "@/app/components/SkillsEditor";
+import { ThemePicker } from "@/app/components/Theme";
 import { AccountAPI, API } from "@/app/utils/API";
 import { initials } from "@/app/utils/format";
 
@@ -67,6 +69,11 @@ export default function MePage() {
                     </div>
                 </div>
 
+                <section className="section">
+                    <div className="section-head"><h2>Харагдах байдал</h2></div>
+                    <ThemePicker />
+                </section>
+
                 <form className="section" onSubmit={saveOrg}>
                     <div className="section-head"><h2>Сургалт</h2></div>
                     <div className="form-section">
@@ -90,6 +97,12 @@ export default function MePage() {
                     )}
                     <button className="btn primary block" disabled={busy}>Хадгалах</button>
                 </form>
+
+                <section className="section" id="skills">
+                    <div className="section-head"><h2>Үнэлгээний үзүүлэлт</h2></div>
+                    <p className="caption" style={{ marginTop: 0 }}>Хүүхдийн ахицыг сар бүр эдгээрээр 1–5 оноогоор үнэлнэ.</p>
+                    <SkillsEditor />
+                </section>
 
                 <form className="section" onSubmit={saveName}>
                     <div className="section-head"><h2>Миний нэр</h2></div>

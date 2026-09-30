@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Providers from "./Providers";
+import { themeScript } from "./components/Theme";
 
 export const metadata: Metadata = {
     title: "Volleyhub",
@@ -22,8 +23,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <html lang="mn">
+        <html lang="mn" suppressHydrationWarning>
             <head>
+                <script dangerouslySetInnerHTML={{ __html: themeScript }} />
                 {/* Loaded at runtime rather than through next/font so a build never needs to reach
                     Google; without it the system font takes over and nothing breaks. */}
                 <link rel="preconnect" href="https://fonts.googleapis.com" />

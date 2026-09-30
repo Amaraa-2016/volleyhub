@@ -122,10 +122,3 @@ export const METHODS: Record<number, string> = {
     4: "Бусад",
 };
 
-export const SKILLS = [
-    { id: 1, name: "Давшилт", hint: "Serve" },
-    { id: 2, name: "Хүлээн авалт", hint: "Receive" },
-    { id: 3, name: "Дамжуулалт", hint: "Set" },
-    { id: 4, name: "Цохилт", hint: "Attack" },
-    { id: 5, name: "Хөдөлгөөн", hint: "Movement" },
-];

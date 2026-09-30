@@ -113,6 +113,8 @@ const ERRORS: Record<string, string> = {
     // progress
     no_scores: "Дор хаяж нэг ур чадварыг үнэлнэ үү",
     score_out_of_range: "Үнэлгээ 1-5 байна",
+    skill_out_of_range: "Үнэлгээний үзүүлэлт олдсонгүй. Хуудсаа шинэчилнэ үү",
+    skill_not_found: "Үзүүлэлт олдсонгүй",
 };
 
 export const errorText = (code?: string): string => (code && ERRORS[code]) || "Алдаа гарлаа";

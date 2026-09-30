@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useMemo } from "react";
 import { ChevronRight, TriangleAlert, Settings } from "lucide-react";
+import { ThemeToggle } from "@/app/components/Theme";
 import { TopBar, useData, Loading, ErrorBox, Empty } from "@/app/components/ui";
 import type { Dashboard, Session } from "@/app/types/api";
 import { dayLabel, hhmm, money, periodLabel, shortName, today } from "@/app/utils/format";
@@ -43,7 +44,7 @@ export default function HomePage() {
             <TopBar
                 sub={dayLabel(day)}
                 title={hello ? `Сайн уу, ${hello}` : "Сайн уу"}
-                right={<Link href="/me" className="icon-btn" aria-label="Тохиргоо"><Settings size={22} /></Link>}
+                right={<><ThemeToggle /><Link href="/me" className="icon-btn" aria-label="Тохиргоо"><Settings size={22} /></Link></>}
             />
             <main className="page">
                 {loading && !data ? <Loading rows={4} /> : error && !data ? <ErrorBox code={error} retry={reload} /> : data && (

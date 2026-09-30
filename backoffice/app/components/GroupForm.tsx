@@ -56,7 +56,7 @@ export default function GroupForm({ group, onSaved }: { group?: Group | null; on
                 ))}
             </div>
             <div className="grid-2">
-                <Field label="Сарын төлбөр (₮)" hint="Шинэ хүүхдэд энэ дүн очно">
+                <Field label="Сарын төлбөр (₮)" hint="Ангийн бүх хүүхдэд хамаарна. Өмнө үүссэн сарын төлбөр өөрчлөгдөхгүй.">
                     <input className="input num" inputMode="numeric" placeholder="80000" value={f.fee_amount} onChange={(e) => setF({ ...f, fee_amount: e.target.value.replace(/[^\d]/g, "") })} />
                 </Field>
                 <Field label="Хүүхдийн дээд тоо" hint="Хоосон бол хязгааргүй">

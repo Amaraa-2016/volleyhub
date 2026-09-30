@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/ui";
 import type { Group, Student } from "@/app/types/api";
 import { API } from "@/app/utils/API";
-import { RELATIONS, today } from "@/app/utils/format";
+import { money, RELATIONS, today } from "@/app/utils/format";
 
-// A child's card: who they are, which class and from when, what they pay, who to call, and
+// A child's card: who they are, which class and from when, who to call, and
 // whether they still come. Opened from a class, it is enrolled there; "Гарсан" needs the day they
 // left, which the form insists on before it will save.
 export default function StudentForm({ student, groups, groupId, onSaved }: {
@@ -29,7 +29,6 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
         phone: student?.phone ?? "",
         groupid: initialGroup as number | null,
         start_date: student?.start_date?.slice(0, 10) ?? today(),
-        fee_amount: student?.fee_amount != null ? String(student.fee_amount) : "",
         emergency_relation: student?.emergency_relation ?? "",
         emergency_name: student?.emergency_name ?? "",
         emergency_phone: student?.emergency_phone ?? "",
@@ -66,7 +65,8 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                 phone: f.phone,
                 groupid: f.groupid,
                 start_date: f.start_date || null,
-                fee_amount: f.fee_amount === "" ? null : Number(f.fee_amount),
+                // The fee comes from the class, not the child.
+                fee_amount: null,
                 emergency_relation: f.emergency_relation,
                 emergency_name: f.emergency_name,
                 emergency_phone: f.emergency_phone,
@@ -128,7 +128,7 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
             </div>
 
             <div className="form-section">
-                <h4>Анги ба төлбөр</h4>
+                <h4>Анги</h4>
                 {!groupId && groups && groups.length > 0 && (
                     <label className="field">
                         <span>Анги</span>
@@ -138,19 +138,11 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                         </select>
                     </label>
                 )}
-                <div className="grid-2">
-                    <label className="field">
-                        <span>Эхэлсэн огноо</span>
-                        <input className="input" type="date" value={f.start_date} onChange={set("start_date")} />
-                    </label>
-                    <label className="field">
-                        <span>Сарын төлбөр (₮)</span>
-                        <input className="input num" inputMode="numeric" value={f.fee_amount}
-                            placeholder={group ? String(group.fee_amount) : "0"}
-                            onChange={(e) => setF({ ...f, fee_amount: e.target.value.replace(/[^\d]/g, "") })} />
-                        <small className="caption">{group ? "Хоосон бол ангийн үнэ" : ""}</small>
-                    </label>
-                </div>
+                <label className="field">
+                    <span>Эхэлсэн огноо</span>
+                    <input className="input" type="date" value={f.start_date} onChange={set("start_date")} />
+                    {group && <small className="caption">Сарын төлбөр ангийнхаараа: {money(group.fee_amount)}</small>}
+                </label>
                 <label className="field">
                     <span>Гүйлгээний утга</span>
                     <input className="input" value={f.pay_ref} onChange={set("pay_ref")} placeholder={f.first_name ? `${f.first_name} төлбөр` : "Жишээ: Бат төлбөр"} />

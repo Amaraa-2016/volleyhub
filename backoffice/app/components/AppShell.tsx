@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { ThemeToggle } from "@/app/components/Theme";
 import { House, ClipboardCheck, Wallet, Users, LayoutGrid, Volleyball } from "lucide-react";
 
 // Five destinations. On a phone they sit in a bar at the bottom, where the thumb is; on a wide
@@ -41,6 +42,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         );
                     })}
                 </nav>
+                <ThemeToggle withLabel />
             </div>
         </div>
     );

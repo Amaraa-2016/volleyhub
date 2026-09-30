@@ -215,3 +215,10 @@ export interface Settings {
     bank_holder?: string | null;
     sms_enabled: boolean;
 }
+
+export interface Skill {
+    skillid: number;
+    name: string;
+    hint?: string | null;
+    sort_order: number;
+}

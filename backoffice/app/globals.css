@@ -38,8 +38,10 @@
     color-scheme: light;
 }
 
+/* Dark theme: follows the phone/computer setting unless the coach picked one in the app
+   (data-theme on <html>, set before first paint by the script in layout.tsx). */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
         --surface-100: #141a24;
         --surface-200: #1f2733;
         --card: #1b222d;
@@ -62,6 +64,29 @@
         --shadow: none;
         color-scheme: dark;
     }
+}
+:root[data-theme="dark"] {
+        --surface-100: #141a24;
+        --surface-200: #1f2733;
+        --card: #1b222d;
+        --line: #2c3544;
+        --ink: #f3eee6;
+        --ink-muted: #a9b3c4;
+        --brand: #fb8a4c;
+        --brand-press: #fdae82;
+        --brand-soft: #3a2519;
+        --on-brand: #141a24;
+        --court: #2dd4bf;
+        --court-soft: #16302e;
+        --sun-soft: #3a3016;
+        --sun-ink: #f5c95a;
+        --present: #4ade80;
+        --present-soft: #15301f;
+        --absent: #f87171;
+        --absent-soft: #3a1d1d;
+        --muted-soft: #262e3a;
+        --shadow: none;
+        color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -174,7 +199,8 @@ button.row:active, a.row:active { background: var(--surface-200); }
 .stat .value small { font-size: 14px; color: var(--ink-muted); font-weight: 700; }
 
 .hero { background: var(--court); color: #fff; border-radius: var(--radius-lg); padding: var(--space-4); position: relative; overflow: hidden; }
-@media (prefers-color-scheme: dark) { .hero { background: #134e4a; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hero { background: #134e4a; } }
+:root[data-theme="dark"] .hero { background: #134e4a; }
 .hero .label { font-size: 13px; font-weight: 700; opacity: .85; }
 .hero .value { font-size: 30px; line-height: 38px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .hero .value small { font-size: 16px; opacity: .8; font-weight: 700; }
@@ -391,4 +417,16 @@ textarea.input { min-height: 88px; resize: vertical; }
     .sheet .grab { display: none; }
     .stats { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
     .action-grid { grid-template-columns: repeat(3, minmax(0, 200px)); }
+}
+
+/* ---- theme switch -------------------------------------------------------- */
+
+.theme-btn { margin-top: auto; }
+@media (max-width: 959px) { .tabbar .theme-btn { display: none; } }
+@media (min-width: 960px) {
+    .tabbar .theme-btn {
+        display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: none;
+        padding: 10px 8px; border-radius: 12px; font-weight: 700; font-size: 15px; color: var(--ink-muted); cursor: pointer;
+    }
+    .tabbar .theme-btn:hover { background: var(--surface-200); }
 }
