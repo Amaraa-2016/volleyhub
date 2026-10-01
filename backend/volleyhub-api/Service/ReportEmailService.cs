@@ -84,7 +84,7 @@ public class ReportEmailService
 
         var sections = (data.sections ?? new List<string>()).Where(x => AllSections.Contains(x)).ToHashSet();
         if (sections.Count == 0) sections = new HashSet<string> { "attendance", "progress", "measure" };
-        var from = data.from is DateTime f ? DateTime.SpecifyKind(f.Date, DateTimeKind.Utc) : DateTime.MinValue;
+        var since = data.from is DateTime f ? DateTime.SpecifyKind(f.Date, DateTimeKind.Utc) : DateTime.MinValue;
         var fromPeriod = data.from is DateTime fp ? $"{fp.Year:D4}-{fp.Month:D2}" : "0000-00";
         var name = $"{s.last_name} {s.first_name}".Trim();
         var range = data.from is DateTime r ? $"{D(r)} – {D(DateTime.UtcNow.AddHours(8))}" : "Бүх хугацаа";
@@ -105,7 +105,7 @@ public class ReportEmailService
         {
             var rows = await (from a in _db.attendance_record.AsNoTracking()
                               join x in _db.training_session.AsNoTracking() on a.sessionid equals x.sessionid
-                              where a.studentid == studentId && !x.is_deleted && x.status != 3 && x.session_date >= from
+                              where a.studentid == studentId && !x.is_deleted && x.status != 3 && x.session_date >= since
                               orderby x.session_date
                               select new { x.session_date, a.status, a.note }).ToListAsync();
             doc.Heading("Ирц");
@@ -147,7 +147,7 @@ public class ReportEmailService
         {
             var types = await _db.measure_type.AsNoTracking().Where(t => !t.is_deleted).OrderBy(t => t.sort_order).ToListAsync();
             var values = await _db.measurement.AsNoTracking()
-                .Where(m => m.studentid == studentId && m.measured_on >= from).OrderBy(m => m.measured_on).ToListAsync();
+                .Where(m => m.studentid == studentId && m.measured_on >= since).OrderBy(m => m.measured_on).ToListAsync();
             doc.Heading("Биеийн хөгжил");
             var rows = types.Select(t => (t, list: values.Where(v => v.typeid == t.typeid).ToList()))
                 .Where(x => x.list.Count > 0)
@@ -186,7 +186,7 @@ public class ReportEmailService
             doc.Heading("Эрүүл мэнд");
             doc.Para($"Харшил: {s.allergies ?? "байхгүй"}");
             var injuries = await _db.injury.AsNoTracking()
-                .Where(i => i.studentid == studentId && !i.is_deleted && (i.occurred_on >= from || i.status == 1))
+                .Where(i => i.studentid == studentId && !i.is_deleted && (i.occurred_on >= since || i.status == 1))
                 .OrderBy(i => i.occurred_on).ToListAsync();
             if (injuries.Count > 0)
                 doc.Table(["Огноо", "Хаана", "Тайлбар", "Төлөв"], injuries.Select(i => new[]
@@ -198,7 +198,7 @@ public class ReportEmailService
         if (sections.Contains("notes"))
         {
             var notes = await _db.student_note.AsNoTracking()
-                .Where(n => n.studentid == studentId && !n.is_deleted && n.created >= from && !n.body.StartsWith("📧"))
+                .Where(n => n.studentid == studentId && !n.is_deleted && n.created >= since && !n.body.StartsWith("📧"))
                 .OrderBy(n => n.created).ToListAsync();
             if (notes.Count > 0)
             {
