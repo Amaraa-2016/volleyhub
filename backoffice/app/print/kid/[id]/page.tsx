@@ -2,9 +2,10 @@
 
 import { use, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Printer } from "lucide-react";
+import { ChevronLeft, Mail, Printer } from "lucide-react";
 import { useData, Loading, ErrorBox } from "@/app/components/ui";
 import { LineChart } from "@/app/components/Charts";
+import EmailReport from "@/app/components/EmailReport";
 import type {
     AttendanceSummary, Fee, Injury, Measurement, MeasureType, Note, RatingMonth, Settings, Skill, Student,
 } from "@/app/types/api";
@@ -42,6 +43,7 @@ export default function KidReport({ params }: { params: Promise<{ id: string }> 
     const [range, setRange] = useState<Range>("year");
     const [parts, setParts] = useState<Part[]>(["attendance", "fees", "progress", "measure", "health", "notes"]);
     const has = (p: Part) => parts.includes(p);
+    const [mailing, setMailing] = useState(false);
 
     // The first day that counts, as YYYY-MM-DD (dates compare as strings).
     const from = useMemo(() => {
@@ -62,7 +64,8 @@ export default function KidReport({ params }: { params: Promise<{ id: string }> 
     const feeRows = (fees.data ?? []).filter((f) => periodIn(f.period)).sort((a, b) => a.period.localeCompare(b.period));
     const owed = feeRows.filter((f) => f.status === 1 || f.status === 2).reduce((n, f) => n + f.balance, 0);
     const ratingRows = (ratings.data ?? []).filter((r) => periodIn(r.period)).slice().reverse();
-    const noteRows = (notes.data ?? []).filter((n) => inRange(n.created));
+    // "Report emailed" entries are a log for the coach, not part of the report itself.
+    const noteRows = (notes.data ?? []).filter((n) => inRange(n.created) && !n.body.startsWith("📧"));
     const injuryRows = (injuries.data ?? []).filter((i) => inRange(i.occurred_on) || i.status === 1);
     const a = s ? ageOf(s) : null;
 
@@ -77,6 +80,7 @@ export default function KidReport({ params }: { params: Promise<{ id: string }> 
                     <button className={range === "year" ? "on" : ""} onClick={() => setRange("year")}>Энэ он</button>
                     <button className={range === "all" ? "on" : ""} onClick={() => setRange("all")}>Бүгд</button>
                 </div>
+                <button className="btn sm" onClick={() => setMailing(true)} disabled={loading || !s}><Mail size={16} /> Имэйл</button>
                 <button className="btn primary sm" onClick={() => window.print()} disabled={loading}><Printer size={16} /> Хэвлэх / PDF</button>
                 <div className="chips" style={{ flexBasis: "100%", flexWrap: "wrap" }}>
                     {PARTS.map((p) => (
@@ -110,6 +114,7 @@ export default function KidReport({ params }: { params: Promise<{ id: string }> 
                         <dl>
                             <dt>Холбоо барих</dt><dd>{[s.emergency_relation, s.emergency_name].filter(Boolean).join(" ") || "—"}</dd>
                             <dt>Утас</dt><dd>{s.emergency_phone ?? s.phone ?? "—"}</dd>
+                            {(s.emergency_email || s.email) && <><dt>Имэйл</dt><dd style={{ overflowWrap: "anywhere" }}>{s.emergency_email ?? s.email}</dd></>}
                             {has("fees") && <><dt>Сарын төлбөр</dt><dd>{s.fee_amount != null ? money(s.fee_amount) : "—"}{s.discountname ? ` (${s.discountname})` : ""}</dd></>}
                         </dl>
                     </section>
@@ -272,6 +277,10 @@ export default function KidReport({ params }: { params: Promise<{ id: string }> 
                         <span>Багшийн гарын үсэг: ____________________</span>
                     </footer>
                 </article>
+            )}
+            {s && (
+                <EmailReport open={mailing} onClose={() => setMailing(false)} kid={s}
+                    from={range === "all" ? null : from} sections={parts} enabled={!!settings.data?.email_enabled} />
             )}
         </div>
     );

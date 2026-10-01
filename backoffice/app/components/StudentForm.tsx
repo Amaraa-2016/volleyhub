@@ -5,7 +5,7 @@ import { useData } from "@/app/components/ui";
 import { useToast } from "@/app/components/ui";
 import type { Discount, Group, Student } from "@/app/types/api";
 import { API } from "@/app/utils/API";
-import { money, RELATIONS, today } from "@/app/utils/format";
+import { EMAIL, money, RELATIONS, today } from "@/app/utils/format";
 
 // A child's card: who they are, which class and from when, who to call, and
 // whether they still come. Opened from a class, it is enrolled there; "Гарсан" needs the day they
@@ -28,11 +28,13 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
         gender: student?.gender ?? 0,
         birth_year: student?.birth_year ? String(student.birth_year) : "",
         phone: student?.phone ?? "",
+        email: student?.email ?? "",
         groupid: initialGroup as number | null,
         start_date: student?.start_date?.slice(0, 10) ?? today(),
         emergency_relation: student?.emergency_relation ?? "",
         emergency_name: student?.emergency_name ?? "",
         emergency_phone: student?.emergency_phone ?? "",
+        emergency_email: student?.emergency_email ?? "",
         status: student?.status === 3 ? 3 : 1,
         left_date: student?.left_date?.slice(0, 10) ?? "",
         discountid: student?.discountid ?? null as number | null,
@@ -47,7 +49,10 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
     const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
         setF({ ...f, [k]: e.target.value });
 
+    const badEmail = (v: string) => v.trim() !== "" && !EMAIL.test(v.trim()) ? "Имэйл хаяг буруу байна" : "";
     const errors = {
+        email: badEmail(f.email),
+        emergency_email: badEmail(f.emergency_email),
         last_name: !f.last_name.trim() ? "Овог оруулна уу" : "",
         first_name: !f.first_name.trim() ? "Нэр оруулна уу" : "",
         left_date: f.status === 3 && !f.left_date ? "Гарсан огноог заавал оруулна уу"
@@ -69,6 +74,7 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                 birth_year: f.birth_year ? Number(f.birth_year) : null,
                 date_of_birth: student?.date_of_birth ?? null,
                 phone: f.phone,
+                email: f.email,
                 groupid: f.groupid,
                 start_date: f.start_date || null,
                 // The fee comes from the class, not the child.
@@ -76,6 +82,7 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                 emergency_relation: f.emergency_relation,
                 emergency_name: f.emergency_name,
                 emergency_phone: f.emergency_phone,
+                emergency_email: f.emergency_email,
                 status: f.status,
                 left_date: f.status === 3 ? f.left_date : null,
                 // Not asked on the form any more; an old value is kept, and invoices fall back to
@@ -133,10 +140,18 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                         </select>
                     </label>
                 </div>
-                <label className="field">
-                    <span>Утасны дугаар</span>
-                    <input className="input" inputMode="tel" value={f.phone} onChange={set("phone")} placeholder="Хүүхдийн өөрийн утас (байвал)" />
-                </label>
+                <div className="grid-2">
+                    <label className="field">
+                        <span>Утасны дугаар</span>
+                        <input className="input" inputMode="tel" value={f.phone} onChange={set("phone")} placeholder="Хүүхдийн өөрийн утас (байвал)" />
+                    </label>
+                    <label className="field">
+                        <span>Имэйл</span>
+                        <input className={`input${tried && errors.email ? " invalid" : ""}`} type="email" inputMode="email" autoComplete="off"
+                            value={f.email} onChange={set("email")} placeholder="Байвал" />
+                        {err("email")}
+                    </label>
+                </div>
                 <label className="field">
                     <span>Эхэлсэн огноо</span>
                     <input className="input" type="date" value={f.start_date} max={today()} onChange={set("start_date")} />
@@ -195,6 +210,12 @@ export default function StudentForm({ student, groups, groupId, onSaved }: {
                         <input className="input" inputMode="tel" value={f.emergency_phone} onChange={set("emergency_phone")} />
                     </label>
                 </div>
+                <label className="field">
+                    <span>Имэйл</span>
+                    <input className={`input${tried && errors.emergency_email ? " invalid" : ""}`} type="email" inputMode="email" autoComplete="off"
+                        value={f.emergency_email} onChange={set("emergency_email")} placeholder="Тайлан энэ хаяг руу очно" />
+                    {err("emergency_email")}
+                </label>
             </div>
 
             <div className="form-section">

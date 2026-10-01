@@ -80,6 +80,8 @@ export default function KidPage({ params }: { params: Promise<{ id: string }> })
                                 {isLeft && <><dt>Гарсан</dt><dd>{s.left_date ? shortDate(s.left_date) : "—"}</dd></>}
                                 <dt>Сарын төлбөр</dt><dd className="num">{s.fee_amount != null ? money(s.fee_amount) : "—"}</dd>
                                 {s.phone && <><dt>Утас</dt><dd className="num">{s.phone}</dd></>}
+                                {s.email && <><dt>Имэйл</dt><dd style={{ overflowWrap: "anywhere" }}>{s.email}</dd></>}
+                                {s.emergency_email && <><dt>{s.emergency_relation || "Асран хамгаалагч"}</dt><dd style={{ overflowWrap: "anywhere" }}>{s.emergency_email}</dd></>}
                                 {s.pay_ref && <><dt>Гүйлгээний утга</dt><dd>{s.pay_ref}</dd></>}
                                 {s.discountname && <><dt>Хөнгөлөлт</dt><dd>{s.discountname}</dd></>}
                             </dl>

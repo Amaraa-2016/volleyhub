@@ -132,6 +132,11 @@ const ERRORS: Record<string, string> = {
     score_out_of_range: "Үнэлгээ 1-5 байна",
     skill_out_of_range: "Үнэлгээний үзүүлэлт олдсонгүй. Хуудсаа шинэчилнэ үү",
     skill_not_found: "Үзүүлэлт олдсонгүй",
+    // email
+    email_invalid: "Имэйл хаяг буруу байна",
+    no_recipients: "Хүлээн авагчийн имэйл сонгоно уу",
+    email_not_configured: "Имэйл илгээх тохиргоо (SMTP) хийгдээгүй байна",
+    email_failed: "Имэйл илгээж чадсангүй. Тохиргоо эсвэл хаягаа шалгана уу",
 };
 
 export const errorText = (code?: string): string => (code && ERRORS[code]) || "Алдаа гарлаа";

@@ -40,6 +40,8 @@ export interface RosterEntry {
     emergency_name?: string | null;
     emergency_relation?: string | null;
     emergency_phone?: string | null;
+    emergency_email?: string | null;
+    email?: string | null;
     date_of_birth?: string | null;
     // The child's status: 1=Active, 3=Left
     status: number;
@@ -61,6 +63,8 @@ export interface Student {
     emergency_name?: string | null;
     emergency_relation?: string | null;
     emergency_phone?: string | null;
+    emergency_email?: string | null;
+    email?: string | null;
     height_cm?: number | null;
     photo?: string | null;
     // 1=Active, 2=Paused, 3=Left
@@ -230,6 +234,7 @@ export interface Settings {
     bank_account?: string | null;
     bank_holder?: string | null;
     sms_enabled: boolean;
+    email_enabled: boolean;
 }
 
 export interface Skill {
@@ -321,4 +326,12 @@ export interface IncomeReport {
     groups: { groupid: number; name: string; billed: number; paid: number }[];
     methods: Record<string, number>;
     debtors: { studentid: number; name: string; groupname?: string | null; owed: number; months: number }[];
+}
+
+export interface ReportEmail {
+    subject: string;
+    text: string;
+    html: string;
+    sent_to: string[];
+    sent: boolean;
 }

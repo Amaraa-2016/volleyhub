@@ -122,3 +122,5 @@ export const METHODS: Record<number, string> = {
     4: "Бусад",
 };
 
+// Loose on purpose: the server checks the same shape; the mail server is the real judge.
+export const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
