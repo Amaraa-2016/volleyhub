@@ -51,7 +51,7 @@ const request = async <T = object,>(route: string, path: string, options: APIOpt
 export const API = <T = object,>(path: string, options: APIOptions = {}): Promise<APIResult<T>> =>
     request<T>("/api/ui/backoffice", path, options);
 
-// Workspace-independent endpoints (/api/vh/account/*).
+// The coach's account (/api/vh/account/*).
 export const AccountAPI = <T = object,>(path: string, options: APIOptions = {}): Promise<APIResult<T>> =>
     request<T>("/api/ui/account", path, options);
 
@@ -62,7 +62,6 @@ const ERRORS: Record<string, string> = {
     backend_unreachable: "Сервертэй холбогдож чадсангүй",
     server_error: "Алдаа гарлаа. Дахин оролдоно уу",
     unauthorized: "Дахин нэвтэрнэ үү",
-    no_club_selected: "Дахин нэвтэрнэ үү",
     // auth
     invalid_credentials: "Утасны дугаар эсвэл нууц үг буруу байна",
     phone_taken: "Энэ дугаараар бүртгэл үүссэн байна",
@@ -70,6 +69,7 @@ const ERRORS: Record<string, string> = {
     password_too_short: "Нууц үг хамгийн багадаа 6 тэмдэгт байна",
     wrong_password: "Одоогийн нууц үг буруу байна",
     staff_only: "Энэ үйлдлийг хийх эрхгүй байна",
+    not_owner: "Энэ мэдээлэл таных биш байна",
     // common
     name_required: "Нэр оруулна уу",
     first_name_required: "Нэр оруулна уу",

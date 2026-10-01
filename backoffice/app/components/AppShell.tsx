@@ -36,7 +36,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <LogoMark size={36} />
                     <span>
                         <b>volley<span style={{ color: "var(--brand)" }}>hub</span></b>
-                        <small>{session?.selectedTenantName ?? ""}</small>
+                        <small>{session?.trainingName ?? ""}</small>
                     </span>
                 </Link>
                 <nav aria-label="Үндсэн цэс">

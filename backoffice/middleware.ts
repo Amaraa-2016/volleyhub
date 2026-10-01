@@ -27,9 +27,8 @@ export async function middleware(req: NextRequest) {
 
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-    // No session, or one from before the workspace existed (the old platform's login could leave
-    // a session with no workspace selected): log in again, which selects it.
-    if (!token || !token.selectedTenantId) {
+    // No session, or one from before the single-schema change (no trainingName): log in again.
+    if (!token || !token.accountToken || token.trainingName === undefined) {
         if (pathname.startsWith("/api/")) {
             return NextResponse.json({ error: "unauthorized" }, { status: 401 });
         }

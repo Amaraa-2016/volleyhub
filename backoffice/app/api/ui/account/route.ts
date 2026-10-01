@@ -7,8 +7,7 @@ export async function POST(req: NextRequest) { return handleProxy(req); }
 export async function PUT(req: NextRequest) { return handleProxy(req); }
 export async function DELETE(req: NextRequest) { return handleProxy(req); }
 
-// Proxy for workspace-independent endpoints (/api/vh/account/*). Sends the account-level token and
-// no tenantid header. Register and login are allowed through without a session, so the signup
+// Proxy for workspace-independent endpoints (/api/vh/account/*). Sends the coach's token. Register and login are allowed through without a session, so the signup
 // screen can use the same helper as the rest of the app.
 const ANONYMOUS_PATHS = [
     "/api/vh/account/register",

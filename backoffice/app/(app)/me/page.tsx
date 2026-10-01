@@ -34,7 +34,7 @@ export default function MePage() {
         const res = await API<Settings>("/api/vh/backoffice/settings", { method: "PUT", data: org });
         setBusy(false);
         if (res.error) return toast.fail(res.error);
-        await update({ selectedTenantName: org.tenantname });
+        await update({ trainingName: org.tenantname });
         toast.ok("Сургалтын мэдээлэл хадгалагдлаа");
     };
 

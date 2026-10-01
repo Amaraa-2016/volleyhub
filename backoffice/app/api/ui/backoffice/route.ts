@@ -7,9 +7,8 @@ export async function POST(req: NextRequest) { return handleProxy(req); }
 export async function PUT(req: NextRequest) { return handleProxy(req); }
 export async function DELETE(req: NextRequest) { return handleProxy(req); }
 
-// Proxy for the coach's workspace endpoints (/api/vh/backoffice/*). The workspace comes from the
-// session, not from anything the browser can set. The token and the tenantid header must agree, or
-// the backend membership check rejects the call - so both are read from the same session.
+// Proxy for the coach's workspace endpoints (/api/vh/backoffice/*). The token comes from the
+// session, never from the browser; the backend shows the coach only the rows they own.
 async function handleProxy(req: NextRequest) {
     const url = new URL(req.url);
     const path = url.searchParams.get("path");
@@ -27,9 +26,8 @@ async function handleProxy(req: NextRequest) {
         return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const tenantId = token.selectedTenantId ?? "";
-    if (!tenantId || !token.accessToken) {
-        return NextResponse.json({ error: "no_club_selected" }, { status: 409 });
+    if (!token.accountToken) {
+        return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
     const method = req.method;
@@ -41,8 +39,7 @@ async function handleProxy(req: NextRequest) {
             method,
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${token.accessToken}`,
-                tenantid: tenantId,
+                Authorization: `Bearer ${token.accountToken}`,
             },
             body,
         });
