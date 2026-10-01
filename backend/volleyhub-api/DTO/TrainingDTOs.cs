@@ -47,6 +47,8 @@ public class StudentBT
     public string? emergency_name { get; set; }
     public string? emergency_relation { get; set; }
     public string? emergency_phone { get; set; }
+    public string? emergency_email { get; set; }
+    public string? email { get; set; }
     public int? height_cm { get; set; }
     public string? photo { get; set; }
     // 1=Active, 3=Left. Left requires left_date.
@@ -77,6 +79,8 @@ public class StudentRT
     public string? emergency_name { get; set; }
     public string? emergency_relation { get; set; }
     public string? emergency_phone { get; set; }
+    public string? emergency_email { get; set; }
+    public string? email { get; set; }
     public int? height_cm { get; set; }
     public string? photo { get; set; }
     public short status { get; set; }
@@ -117,6 +121,8 @@ public class EnrollmentRT
     public string? emergency_name { get; set; }
     public string? emergency_relation { get; set; }
     public string? emergency_phone { get; set; }
+    public string? emergency_email { get; set; }
+    public string? email { get; set; }
     public DateTime? date_of_birth { get; set; }
     // The child's status (1=Active, 3=Left), not the enrollment's.
     public short status { get; set; }
@@ -506,6 +512,7 @@ public class SettingsBT
 public class SettingsRT : SettingsBT
 {
     public bool sms_enabled { get; set; }
+    public bool email_enabled { get; set; }
 }
 
 // ---- drill library and lesson plans -------------------------------------------
@@ -718,4 +725,28 @@ public class IncomeReportRT
     // method -> amount collected this year
     public Dictionary<short, decimal> methods { get; set; } = new();
     public List<ReportDebtorRT> debtors { get; set; } = new();
+}
+
+// ---- emailing a child's report ----------------------------------------------
+
+public class ReportEmailBT
+{
+    public List<string> to { get; set; } = new();
+    // First day included (YYYY-MM-DD); null = everything.
+    public DateTime? from { get; set; }
+    // attendance, progress, measure, fees, health, notes
+    public List<string> sections { get; set; } = new();
+    // A personal line from the coach, put above the report.
+    public string? message { get; set; }
+    // true: build it and return it, send nothing (used for the preview and the mail-app fallback).
+    public bool preview { get; set; }
+}
+
+public class ReportEmailRT
+{
+    public string subject { get; set; } = string.Empty;
+    public string text { get; set; } = string.Empty;
+    public string html { get; set; } = string.Empty;
+    public List<string> sent_to { get; set; } = new();
+    public bool sent { get; set; }
 }

@@ -29,6 +29,11 @@ public class Student
     public string? emergency_relation { get; set; }
     [MaxLength(100)]
     public string? emergency_phone { get; set; }
+    // Where reports go: the guardian's address first, the child's own as well when they have one.
+    [MaxLength(200)]
+    public string? emergency_email { get; set; }
+    [MaxLength(200)]
+    public string? email { get; set; }
     public int? height_cm { get; set; }
     public string? photo { get; set; }
     // 1=Active, 2=Paused, 3=Left. Left needs left_date - the backend refuses one without it.

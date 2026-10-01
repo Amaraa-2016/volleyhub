@@ -20,6 +20,17 @@ public class TrainingService
     private static string Norm(string? s) => (s ?? string.Empty).Trim();
     private static string? NullIfEmpty(string? s) => Norm(s) is { Length: > 0 } v ? v : null;
 
+    // Lower-cased and checked loosely: something@something.something. Anything stricter rejects
+    // real addresses; the mail server is the final judge.
+    private static string? Email(string? s)
+    {
+        var v = Norm(s).ToLowerInvariant();
+        if (v.Length == 0) return null;
+        if (v.Length > 200 || !System.Text.RegularExpressions.Regex.IsMatch(v, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            throw new ArgumentException("email_invalid");
+        return v;
+    }
+
     // ---- groups -----------------------------------------------------------
 
     public async Task<List<GroupRT>> Groups(bool includeInactive = false)
@@ -201,6 +212,8 @@ public class TrainingService
                 emergency_name = r.s.emergency_name,
                 emergency_relation = r.s.emergency_relation,
                 emergency_phone = r.s.emergency_phone,
+                emergency_email = r.s.emergency_email,
+                email = r.s.email,
                 date_of_birth = r.s.date_of_birth,
                 status = r.s.status,
                 fee_amount = r.e.fee_amount,
@@ -329,6 +342,8 @@ public class TrainingService
                 emergency_name = s.emergency_name,
                 emergency_relation = s.emergency_relation,
                 emergency_phone = s.emergency_phone,
+                emergency_email = s.emergency_email,
+                email = s.email,
                 height_cm = s.height_cm,
                 photo = s.photo,
                 status = s.status,
@@ -407,6 +422,8 @@ public class TrainingService
         student.emergency_name = NullIfEmpty(data.emergency_name);
         student.emergency_relation = NullIfEmpty(data.emergency_relation);
         student.emergency_phone = NullIfEmpty(data.emergency_phone);
+        student.emergency_email = Email(data.emergency_email);
+        student.email = Email(data.email);
         student.height_cm = data.height_cm;
         student.photo = data.photo;
         student.status = data.status;

@@ -15,12 +15,14 @@ public class InvoiceService
     private readonly VolleyDbContext _db;
     private readonly AccountDbContext _accounts;
     private readonly ISmsSender _sms;
+    private readonly volleyhub_api.Service.Mail.IEmailSender _mail;
 
-    public InvoiceService(VolleyDbContext db, AccountDbContext accounts, ISmsSender sms)
+    public InvoiceService(VolleyDbContext db, AccountDbContext accounts, ISmsSender sms, volleyhub_api.Service.Mail.IEmailSender mail)
     {
         _db = db;
         _accounts = accounts;
         _sms = sms;
+        _mail = mail;
     }
 
     private static string? NullIfEmpty(string? s) => (s ?? string.Empty).Trim() is { Length: > 0 } v ? v : null;
@@ -39,6 +41,7 @@ public class InvoiceService
             bank_account = t.bank_account,
             bank_holder = t.bank_holder,
             sms_enabled = _sms.Enabled,
+            email_enabled = _mail.Enabled,
         };
     }
 

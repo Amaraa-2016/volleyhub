@@ -23,6 +23,7 @@ public class BackofficeController : ApiControllerBase
     private readonly PlanningService _planning;
     private readonly HealthService _health;
     private readonly ReportService _reports;
+    private readonly ReportEmailService _reportEmail;
 
     protected override ILogger Logger => _logger;
 
@@ -30,7 +31,8 @@ public class BackofficeController : ApiControllerBase
 
     public BackofficeController(ILogger<BackofficeController> logger, TrainingService training,
         ScheduleService schedule, BillingService billing, ProgressService progress, InvoiceService invoices,
-        PlanningService planning, HealthService health, ReportService reports)
+        PlanningService planning, HealthService health, ReportService reports,
+        ReportEmailService reportEmail)
     {
         _logger = logger;
         _training = training;
@@ -41,6 +43,7 @@ public class BackofficeController : ApiControllerBase
         _planning = planning;
         _health = health;
         _reports = reports;
+        _reportEmail = reportEmail;
     }
 
     private void AssertStaff()
@@ -142,6 +145,11 @@ public class BackofficeController : ApiControllerBase
     [HttpPost("students/{id:long}/notes")]
     public Task<IActionResult> AddNote(long id, [FromBody] NoteBT data) =>
         Run(async () => { AssertStaff(); return await _training.AddNote(id, data, StaffId()); });
+
+    // The child's report as an email to the guardian / child. preview=true only builds it.
+    [HttpPost("students/{id:long}/report/email")]
+    public Task<IActionResult> EmailReport(long id, [FromBody] ReportEmailBT data) =>
+        Run(async () => { AssertStaff(); return await _reportEmail.Send(TenantId(), id, data ?? new ReportEmailBT(), StaffId()); });
 
     [HttpDelete("students/{id:long}/notes/{noteId:long}")]
     public Task<IActionResult> DeleteNote(long id, long noteId) =>
