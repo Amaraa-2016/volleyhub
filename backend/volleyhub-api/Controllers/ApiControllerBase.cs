@@ -12,11 +12,8 @@ public abstract class ApiControllerBase : ControllerBase
     protected int AccountId() =>
         int.TryParse(User.FindFirst("accountid")?.Value, out var id) ? id : 0;
 
-    protected int TenantId() =>
-        int.TryParse(User.FindFirst("tenantid")?.Value, out var id) ? id : 0;
-
-    protected int StaffId() =>
-        int.TryParse(User.FindFirst("staffid")?.Value, out var id) ? id : 0;
+    // Who did it, on rows that record an author (notes, attendance, payments): the coach's account.
+    protected int StaffId() => AccountId();
 
     protected string Role() => User.FindFirst("role")?.Value ?? "";
 

@@ -1,23 +1,25 @@
+using System.Linq.Expressions;
 using volleyhub_api.Model;
-using volleyhub_api.Tenancy;
+using volleyhub_api.Ownership;
 using Microsoft.EntityFrameworkCore;
 
 namespace volleyhub_api.Data;
 
-// Tenant context: every table of one coach's workspace, scoped to its schema (tenant_<id>).
-// Isolation is by schema, so the domain entities carry no tenantid column.
-public class VolleyDbContext : DbContext, ITenantDbContext
+// Every coach's data, in one shared schema (AppSchema.Name). Rows are kept apart by ownerid: a
+// query filter on every IOwned table limits reads to the signed-in coach, and SaveChanges stamps
+// new rows with them and refuses to move a row to another owner. Services therefore never filter
+// by owner themselves - and cannot forget to.
+public class VolleyDbContext : DbContext
 {
-    public string Schema { get; }
+    private readonly ICurrentOwner _owner;
 
-    public VolleyDbContext(DbContextOptions<VolleyDbContext> options, ITenantProvider tenantProvider) : base(options)
+    public VolleyDbContext(DbContextOptions<VolleyDbContext> options, ICurrentOwner owner) : base(options)
     {
-        Schema = tenantProvider.GetSchema();
+        _owner = owner;
     }
 
-    // Staff + roles. In practice one row: the coach who owns the workspace.
-    public DbSet<Role> role { get; set; }
-    public DbSet<Staff> staff { get; set; }
+    // Read by the query filters on every query (EF re-evaluates it per context instance).
+    public int OwnerId => _owner.OwnerId;
 
     // Groups and the children in them. The table is training_group, not group, because group is a
     // reserved word in SQL and a contextual keyword in C# LINQ - both avoidable for free.
@@ -58,7 +60,66 @@ public class VolleyDbContext : DbContext, ITenantDbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasDefaultSchema(Schema);
+        modelBuilder.HasDefaultSchema(AppSchema.Name);
+
+        foreach (var entity in modelBuilder.Model.GetEntityTypes().ToList())
+        {
+            if (!typeof(IOwned).IsAssignableFrom(entity.ClrType)) continue;
+
+            // e => e.ownerid == this.OwnerId
+            var e = Expression.Parameter(entity.ClrType, "e");
+            var filter = Expression.Lambda(
+                Expression.Equal(
+                    Expression.Property(e, nameof(IOwned.ownerid)),
+                    Expression.Property(Expression.Constant(this), nameof(OwnerId))),
+                e);
+            modelBuilder.Entity(entity.ClrType).HasQueryFilter(filter);
+            modelBuilder.Entity(entity.ClrType).HasIndex(nameof(IOwned.ownerid));
+        }
+
         base.OnModelCreating(modelBuilder);
     }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        StampOwner();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        StampOwner();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void StampOwner()
+    {
+        foreach (var entry in ChangeTracker.Entries<IOwned>())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted)) continue;
+            if (OwnerId <= 0) throw new UnauthorizedAccessException("unauthorized");
+
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.ownerid = OwnerId;
+            }
+            else if (entry.Property(nameof(IOwned.ownerid)).OriginalValue is not int original || original != OwnerId)
+            {
+                // Only rows read through the filter can be tracked, so this is a bug or an attach of
+                // a hand-built entity - never let it touch someone else's row.
+                throw new UnauthorizedAccessException("not_owner");
+            }
+            else
+            {
+                entry.Entity.ownerid = OwnerId;
+                entry.Property(nameof(IOwned.ownerid)).IsModified = false;
+            }
+        }
+    }
+}
+
+// The one schema all coaches share.
+public static class AppSchema
+{
+    public const string Name = "volleyhub";
 }

@@ -392,7 +392,7 @@ public class AbsentStreakRT
 
 public class SkillScoreBT
 {
-    public short skill { get; set; }
+    public int skill { get; set; }
     public short score { get; set; }
 }
 
@@ -407,7 +407,7 @@ public class RatingMonthRT
 {
     public string period { get; set; } = string.Empty;
     // skill -> score, only the skills that were rated.
-    public Dictionary<short, short> scores { get; set; } = new();
+    public Dictionary<int, short> scores { get; set; } = new();
     public string? note { get; set; }
 }
 
@@ -415,7 +415,7 @@ public class RatingMonthRT
 
 public class SkillBT
 {
-    public short skillid { get; set; }
+    public int skillid { get; set; }
     public string name { get; set; } = string.Empty;
     public string? hint { get; set; }
     public int sort_order { get; set; }
@@ -423,7 +423,7 @@ public class SkillBT
 
 public class SkillRT
 {
-    public short skillid { get; set; }
+    public int skillid { get; set; }
     public string name { get; set; } = string.Empty;
     public string? hint { get; set; }
     public int sort_order { get; set; }
@@ -431,7 +431,7 @@ public class SkillRT
 
 public class SkillOrderBT
 {
-    public List<short> skillids { get; set; } = new();
+    public List<int> skillids { get; set; } = new();
 }
 
 // ---- notes ----------------------------------------------------------------
@@ -525,7 +525,7 @@ public class DrillBT
     public int minutes { get; set; }
     public string? level { get; set; }
     public string? equipment { get; set; }
-    public List<short> skillids { get; set; } = new();
+    public List<int> skillids { get; set; } = new();
 }
 
 public class DrillRT
@@ -536,7 +536,7 @@ public class DrillRT
     public int minutes { get; set; }
     public string? level { get; set; }
     public string? equipment { get; set; }
-    public List<short> skillids { get; set; } = new();
+    public List<int> skillids { get; set; } = new();
     // How many plans use it, so deleting can warn.
     public int plan_count { get; set; }
 }
@@ -563,7 +563,7 @@ public class PlanItemRT
     public string title { get; set; } = string.Empty;
     public int minutes { get; set; }
     public string? description { get; set; }
-    public List<short> skillids { get; set; } = new();
+    public List<int> skillids { get; set; } = new();
 }
 
 public class PlanRT

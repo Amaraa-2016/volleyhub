@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace volleyhub_api.Controllers;
 
-// Global identity: register, login, profile. Registering also creates the coach's workspace, so
-// there is nothing to apply for or approve. Tenant-independent: no tenantid header needed.
+// The coach's identity: register, login, profile. Registering only creates the account - the
+// coach's data lives in the shared app schema under their accountid.
 [Authorize]
 [ApiController]
 [Route("api/vh/account")]
@@ -48,14 +48,4 @@ public class AccountController : ApiControllerBase
     [HttpPost("password")]
     public Task<IActionResult> ChangePassword([FromBody] ChangePasswordBT data) =>
         Run(async () => await _service.ChangePassword(AccountId(), data));
-
-    // ---- workspace ------------------------------------------------------------
-
-    [HttpGet("tenants")]
-    public Task<IActionResult> Tenants() =>
-        Run(async () => await _service.Tenants(AccountId()));
-
-    [HttpPost("switch")]
-    public Task<IActionResult> Switch([FromBody] SwitchTenantBT data) =>
-        Run(async () => await _service.Switch(AccountId(), data.tenantid));
 }

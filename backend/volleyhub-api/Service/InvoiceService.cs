@@ -29,14 +29,14 @@ public class InvoiceService
 
     // ---- settings -----------------------------------------------------------
 
-    public async Task<SettingsRT> Settings(int tenantId)
+    public async Task<SettingsRT> Settings(int accountId)
     {
-        var t = await _accounts.tenant.AsNoTracking().FirstOrDefaultAsync(x => x.tenantid == tenantId)
-            ?? throw new UnauthorizedAccessException("invalid_tenant");
+        var t = await _accounts.account.AsNoTracking().FirstOrDefaultAsync(x => x.accountid == accountId)
+            ?? throw new UnauthorizedAccessException("account_not_found");
         return new SettingsRT
         {
-            tenantname = t.tenantname,
-            contactphone = t.contactphone,
+            tenantname = AccountService.TrainingName(t),
+            contactphone = t.contactphone ?? t.phone,
             bank_name = t.bank_name,
             bank_account = t.bank_account,
             bank_holder = t.bank_holder,
@@ -45,20 +45,20 @@ public class InvoiceService
         };
     }
 
-    public async Task<SettingsRT> SaveSettings(int tenantId, SettingsBT data)
+    public async Task<SettingsRT> SaveSettings(int accountId, SettingsBT data)
     {
         var name = (data.tenantname ?? string.Empty).Trim();
         if (name.Length == 0) throw new ArgumentException("training_name_required");
 
-        var t = await _accounts.tenant.FirstOrDefaultAsync(x => x.tenantid == tenantId)
-            ?? throw new UnauthorizedAccessException("invalid_tenant");
-        t.tenantname = name;
+        var t = await _accounts.account.FirstOrDefaultAsync(x => x.accountid == accountId)
+            ?? throw new UnauthorizedAccessException("account_not_found");
+        t.training_name = name;
         t.contactphone = NullIfEmpty(data.contactphone);
         t.bank_name = NullIfEmpty(data.bank_name);
         t.bank_account = NullIfEmpty(data.bank_account);
         t.bank_holder = NullIfEmpty(data.bank_holder);
         await _accounts.SaveChangesAsync();
-        return await Settings(tenantId);
+        return await Settings(accountId);
     }
 
     // ---- invoices -------------------------------------------------------------
@@ -66,12 +66,12 @@ public class InvoiceService
     private static string Amount(decimal v) =>
         Math.Round(v).ToString("#,0", CultureInfo.InvariantCulture).Replace(",", "'");
 
-    private static string Message(Tenant t, Student s, StudentFee f)
+    private static string Message(Account t, Student s, StudentFee f)
     {
         var month = int.Parse(f.period[5..]);
         var parts = new List<string>
         {
-            $"{t.tenantname}: {s.first_name}-ийн {month}-р сарын сургалтын төлбөр {Amount(f.amount - f.paid_amount)}₮.",
+            $"{AccountService.TrainingName(t)}: {s.first_name}-ийн {month}-р сарын сургалтын төлбөр {Amount(f.amount - f.paid_amount)}₮.",
         };
         if (!string.IsNullOrWhiteSpace(t.bank_account))
         {
@@ -83,10 +83,10 @@ public class InvoiceService
         return string.Join(" ", parts);
     }
 
-    public async Task<NotifyRT> Notify(int tenantId, NotifyBT data, int staffId)
+    public async Task<NotifyRT> Notify(int accountId, NotifyBT data, int staffId)
     {
-        var tenant = await _accounts.tenant.AsNoTracking().FirstOrDefaultAsync(x => x.tenantid == tenantId)
-            ?? throw new UnauthorizedAccessException("invalid_tenant");
+        var coach = await _accounts.account.AsNoTracking().FirstOrDefaultAsync(x => x.accountid == accountId)
+            ?? throw new UnauthorizedAccessException("account_not_found");
 
         var period = (data.period ?? string.Empty).Trim();
         if (period.Length != 7 || period[4] != '-') throw new ArgumentException("period_must_be_yyyy_mm");
@@ -116,7 +116,7 @@ public class InvoiceService
                 studentid = s.studentid,
                 name = $"{s.last_name} {s.first_name}".Trim(),
                 phone = phone,
-                message = Message(tenant, s, f),
+                message = Message(coach, s, f),
             };
             result.items.Add(item);
 

@@ -12,10 +12,12 @@ namespace volleyhub_api.Service;
 public class ScheduleService
 {
     private readonly VolleyDbContext _db;
+    private readonly AccountDbContext _accounts;
 
-    public ScheduleService(VolleyDbContext db)
+    public ScheduleService(VolleyDbContext db, AccountDbContext accounts)
     {
         _db = db;
+        _accounts = accounts;
     }
 
     private static void ValidateSlot(short weekday, int startMinute, int endMinute)
@@ -210,7 +212,9 @@ public class ScheduleService
 
         var groups = await _db.training_group.AsNoTracking().ToDictionaryAsync(g => g.groupid, g => g.name);
         var venues = await _db.venue.AsNoTracking().ToDictionaryAsync(v => v.venueid, v => v.name);
-        var staff = await _db.staff.AsNoTracking().ToDictionaryAsync(s => s.staffid, s => s.staffname);
+        var coachIds = sessions.Where(s => s.coach_staffid != null).Select(s => s.coach_staffid!.Value).Distinct().ToList();
+        var staff = coachIds.Count == 0 ? new Dictionary<int, string?>() : await _accounts.account.AsNoTracking()
+            .Where(a => coachIds.Contains(a.accountid)).ToDictionaryAsync(a => a.accountid, a => a.name);
         var cancelledIds = sessions.Where(s => s.status == 3).Select(s => s.sessionid).ToList();
         var makeups = cancelledIds.Count == 0 ? new Dictionary<long, TrainingSession>() : (await _db.training_session.AsNoTracking()
                 .Where(m => m.makeup_for != null && cancelledIds.Contains(m.makeup_for.Value) && !m.is_deleted)

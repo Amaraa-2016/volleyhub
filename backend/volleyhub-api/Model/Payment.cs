@@ -6,10 +6,12 @@ namespace volleyhub_api.Model;
 // their own bank statement. The app never moves money; a payment row is the coach's note that it
 // arrived. Kept as its own row rather than a column on the fee so part-payments and their history
 // survive, and "undo" is just deleting the row.
-public class Payment
+public class Payment : IOwned
 {
     [Key]
     public long paymentid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     public long feeid { get; set; }
     public long studentid { get; set; }
     public decimal amount { get; set; }

@@ -5,16 +5,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace volleyhub_api.Service;
 
-// The core of one coach's workspace: groups, the children in them, halls and the staff row. The
-// schema is already resolved by the time VolleyDbContext is injected, so nothing here ever filters
-// by tenant.
+// The core of one coach's workspace: groups, the children in them and halls. VolleyDbContext
+// already limits every query to the signed-in coach, so nothing here ever filters by owner.
 public class TrainingService
 {
     private readonly VolleyDbContext _db;
+    private readonly AccountDbContext _accounts;
 
-    public TrainingService(VolleyDbContext db)
+    public TrainingService(VolleyDbContext db, AccountDbContext accounts)
     {
         _db = db;
+        _accounts = accounts;
+    }
+
+    // Author names for rows that store who wrote them (the accountid).
+    private Task<Dictionary<int, string?>> Authors(IEnumerable<int> ids)
+    {
+        var list = ids.Distinct().ToList();
+        return _accounts.account.AsNoTracking().Where(a => list.Contains(a.accountid))
+            .ToDictionaryAsync(a => a.accountid, a => a.name);
     }
 
     private static string Norm(string? s) => (s ?? string.Empty).Trim();
@@ -497,11 +506,11 @@ public class TrainingService
 
     public async Task<List<NoteRT>> Notes(long studentId)
     {
-        var staff = await _db.staff.AsNoTracking().ToDictionaryAsync(s => s.staffid, s => s.staffname);
         var rows = await _db.student_note.AsNoTracking()
             .Where(n => n.studentid == studentId && !n.is_deleted)
             .OrderByDescending(n => n.created)
             .ToListAsync();
+        var staff = await Authors(rows.Select(n => n.staffid));
         return rows.Select(n => new NoteRT
         {
             noteid = n.noteid,
@@ -600,9 +609,4 @@ public class TrainingService
         await _db.SaveChangesAsync();
         return new { ok = true };
     }
-
-    // ---- staff ------------------------------------------------------------
-
-    public Task<List<Staff>> StaffList() =>
-        _db.staff.AsNoTracking().Where(s => s.isactive).OrderBy(s => s.staffname).ToListAsync();
 }

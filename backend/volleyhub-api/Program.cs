@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using volleyhub_api.Data;
 using volleyhub_api.Service;
-using volleyhub_api.Tenancy;
+using volleyhub_api.Ownership;
 using Newtonsoft.Json.Serialization;
 using Swashbuckle.AspNetCore.Filters;
 using Microsoft.OpenApi.Models;
@@ -81,40 +80,27 @@ builder.Services.AddCors(options =>
 
 var connStr = builder.Configuration["ConnectionStrings:dbCon"];
 
-// Shared (public) schema - the workspace registry.
-builder.Services.AddDbContext<SharedDbContext>(option => option.UseNpgsql(connStr));
-
-// Shared (public) schema - identity and workspace membership. Tenant-independent, so login and
-// register work with no tenantid header.
+// public.account - the coaches. Needs no signed-in owner, so register and login work.
 builder.Services.AddDbContext<AccountDbContext>(option => option.UseNpgsql(connStr));
 
-// Tenant context - the schema is resolved per request via ITenantProvider.
-builder.Services.AddDbContext<VolleyDbContext>(option => option
-    .UseNpgsql(connStr)
-    .ReplaceService<IModelCacheKeyFactory, SchemaAwareModelCacheKeyFactory>());
+// Every coach's data in one schema, filtered to the signed-in coach (ownerid = accountid).
+builder.Services.AddDbContext<VolleyDbContext>(option => option.UseNpgsql(connStr));
 
-builder.Services.AddScoped<ITenantProvider, HttpTenantProvider>();
-builder.Services.AddScoped<TenantSchemaManager>();
+builder.Services.AddScoped<ICurrentOwner, HttpCurrentOwner>();
+builder.Services.AddScoped<AppSchemaManager>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
-// Bootstrap the public schema, then create or column-sync a schema per workspace. Idempotent, so it
-// runs on every start and a deploy that adds a column needs no migration step.
+// Bootstrap public.account and create or column-sync the shared app schema. Idempotent, so it runs
+// on every start and a deploy that adds a column needs no migration step.
 using (var scope = app.Services.CreateScope())
 {
-    var schemaManager = scope.ServiceProvider.GetRequiredService<TenantSchemaManager>();
-    await schemaManager.EnsureSharedSchema();
+    var schemaManager = scope.ServiceProvider.GetRequiredService<AppSchemaManager>();
     await schemaManager.EnsureAccountSchema();
-
-    var sharedDb = scope.ServiceProvider.GetRequiredService<SharedDbContext>();
-    var tenants = await sharedDb.tenant.AsNoTracking().ToListAsync();
-    foreach (var tenant in tenants)
-    {
-        await schemaManager.CreateSchemaForTenant("tenant_" + tenant.tenantid, tenant.tenantid);
-    }
+    await schemaManager.EnsureAppSchema();
 }
 
 app.UseCors("AllowAll");

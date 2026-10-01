@@ -5,10 +5,12 @@ namespace volleyhub_api.Model;
 // One dated class. Generated from a group's weekly timetable for a chosen date range, or added by
 // hand for a one-off. Attendance attaches here rather than to the timetable, so cancelling or
 // moving a single class leaves the recurring schedule untouched.
-public class TrainingSession
+public class TrainingSession : IOwned
 {
     [Key]
     public long sessionid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     public long groupid { get; set; }
     public long? venueid { get; set; }
     public int? coach_staffid { get; set; }

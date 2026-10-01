@@ -90,7 +90,7 @@ public class ProgressService
         return new { skill.skillid };
     }
 
-    public async Task<object> DeleteSkill(short skillId)
+    public async Task<object> DeleteSkill(int skillId)
     {
         var skill = await _db.skill.FirstOrDefaultAsync(k => k.skillid == skillId && !k.is_deleted)
             ?? throw new InvalidOperationException("skill_not_found");

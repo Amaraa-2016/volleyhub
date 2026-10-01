@@ -3,13 +3,15 @@ using System.ComponentModel.DataAnnotations;
 namespace volleyhub_api.Model;
 
 // A group the coach trains - the unit a child is enrolled in, takes attendance in and is billed for.
-// Per-tenant (tenant_<id> schema), so there is no tenantid column. `fee_amount` is the standard
+// Belongs to one coach (ownerid; see IOwned). `fee_amount` is the standard
 // monthly price; a child's own fee rows keep the amount agreed at enrollment, so repricing a group
 // never rewrites past months.
-public class Group
+public class Group : IOwned
 {
     [Key]
     public long groupid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     [MaxLength(200)]
     public string name { get; set; } = string.Empty;
     // Free text: "Анхан шат", "Дунд шат", "U16" - training centres organise these very differently.

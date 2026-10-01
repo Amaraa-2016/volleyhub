@@ -4,10 +4,12 @@ namespace volleyhub_api.Model;
 
 // A child the coach trains. Children and parents never log in; `accountid` is kept only so rows
 // created by the earlier mobile app still load (0 for everyone the coach adds).
-public class Student
+public class Student : IOwned
 {
     [Key]
     public long studentid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     public int accountid { get; set; }
     [MaxLength(100)]
     public string last_name { get; set; } = string.Empty;

@@ -5,10 +5,12 @@ namespace volleyhub_api.Model;
 // An injury the coach recorded: when, what, and whether the child is back to full training.
 // An open one (status 1) shows as a warning wherever the child's name does - the register, the
 // class list - so nobody is put through a drill they should sit out.
-public class Injury
+public class Injury : IOwned
 {
     [Key]
     public long injuryid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     public long studentid { get; set; }
     public DateTime occurred_on { get; set; }
     [MaxLength(100)]

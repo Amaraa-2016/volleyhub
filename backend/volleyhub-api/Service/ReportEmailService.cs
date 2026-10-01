@@ -67,10 +67,10 @@ public class ReportEmailService
         }
     }
 
-    public async Task<ReportEmailRT> Send(int tenantId, long studentId, ReportEmailBT data, int staffId)
+    public async Task<ReportEmailRT> Send(int accountId, long studentId, ReportEmailBT data, int staffId)
     {
-        var tenant = await _accounts.tenant.AsNoTracking().FirstOrDefaultAsync(t => t.tenantid == tenantId)
-            ?? throw new UnauthorizedAccessException("invalid_tenant");
+        var coach = await _accounts.account.AsNoTracking().FirstOrDefaultAsync(t => t.accountid == accountId)
+            ?? throw new UnauthorizedAccessException("account_not_found");
         var s = await _db.student.AsNoTracking().FirstOrDefaultAsync(x => x.studentid == studentId && !x.is_deleted)
             ?? throw new InvalidOperationException("student_not_found");
 
@@ -91,9 +91,9 @@ public class ReportEmailService
 
         var doc = new Doc();
         doc.Html.Append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#17233a;max-width:640px;margin:0 auto;font-size:14px;line-height:20px\">");
-        doc.Html.Append($"<div style=\"border-bottom:3px solid #c2410c;padding-bottom:10px\"><div style=\"color:#c2410c;font-weight:bold\">{H(tenant.tenantname)}</div>"
+        doc.Html.Append($"<div style=\"border-bottom:3px solid #c2410c;padding-bottom:10px\"><div style=\"color:#c2410c;font-weight:bold\">{H(AccountService.TrainingName(coach))}</div>"
             + $"<div style=\"font-size:22px;font-weight:bold;margin:4px 0\">{H(name)}</div><div style=\"color:#56627a\">Хүүхдийн хөгжлийн тайлан · {H(range)}</div></div>");
-        doc.Text.Append($"{tenant.tenantname}\n{name} — хүүхдийн хөгжлийн тайлан ({range})\n");
+        doc.Text.Append($"{AccountService.TrainingName(coach)}\n{name} — хүүхдийн хөгжлийн тайлан ({range})\n");
 
         if (!string.IsNullOrWhiteSpace(data.message))
         {
@@ -207,13 +207,13 @@ public class ReportEmailService
             }
         }
 
-        var foot = string.Join(" · ", new[] { tenant.tenantname, tenant.contactphone }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        var foot = string.Join(" · ", new[] { AccountService.TrainingName(coach), (coach.contactphone ?? coach.phone) }.Where(x => !string.IsNullOrWhiteSpace(x)));
         doc.Html.Append($"<p style=\"margin-top:28px;padding-top:10px;border-top:1px solid #e2dccf;color:#56627a;font-size:12px\">{H(foot)}</p></div>");
         doc.Text.Append($"\n—\n{foot}\n");
 
         var result = new ReportEmailRT
         {
-            subject = $"{s.first_name} — хөгжлийн тайлан ({tenant.tenantname})",
+            subject = $"{s.first_name} — хөгжлийн тайлан ({AccountService.TrainingName(coach)})",
             html = doc.Html.ToString(),
             text = doc.Text.ToString(),
         };

@@ -9,10 +9,12 @@ namespace volleyhub_api.Model;
 // The id is a smallint because skill_rating.skill already is one: the five skills the app used to
 // have built in were numbered 1..5, and seeding an empty table in that same order gives them the
 // same ids, so scores given before this table existed attach to the right names.
-public class Skill
+public class Skill : IOwned
 {
     [Key]
-    public short skillid { get; set; }
+    public int skillid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     [MaxLength(100)]
     public string name { get; set; } = string.Empty;
     // A short second line, e.g. the English term the coach learned it by.

@@ -4,10 +4,12 @@ namespace volleyhub_api.Model;
 
 // One invoice text sent (or attempted) to a parent for one fee. Kept so the fee list can show
 // "sent on the 3rd" and a coach never double-sends by accident.
-public class FeeNotice
+public class FeeNotice : IOwned
 {
     [Key]
     public long noticeid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     public long feeid { get; set; }
     public long studentid { get; set; }
     [MaxLength(100)]

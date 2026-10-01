@@ -3,10 +3,12 @@ using System.ComponentModel.DataAnnotations;
 namespace volleyhub_api.Model;
 
 // A hall the club plays or trains in.
-public class Venue
+public class Venue : IOwned
 {
     [Key]
     public long venueid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     [MaxLength(200)]
     public string name { get; set; } = string.Empty;
     [MaxLength(500)]

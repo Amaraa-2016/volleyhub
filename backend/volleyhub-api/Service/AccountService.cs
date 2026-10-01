@@ -4,51 +4,40 @@ using System.Text;
 using volleyhub_api.Data;
 using volleyhub_api.DTO;
 using volleyhub_api.Model;
-using volleyhub_api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace volleyhub_api.Service;
 
-// Tenant-independent service for the global identity layer (public schema): register, login, the
-// coach's own workspace. Deliberately does NOT depend on the per-request VolleyDbContext, so its
-// endpoints work with no tenantid header.
+// The coach's identity: register, login, profile. Registering creates the account row and nothing
+// else - no tenant, no schema. The coach's data lives in the shared app schema under their
+// accountid, so the account token is all the backoffice needs.
 public class AccountService
 {
     private readonly AccountDbContext _db;
     private readonly IConfiguration _config;
-    private readonly ILogger<AccountService> _logger;
-    private readonly TenantSchemaManager _schemaManager;
 
-    // Roles that may act on the backoffice. Only "owner" is created now; the others survive from the
-    // earlier multi-role platform so old memberships still resolve.
-    private static readonly string[] StaffRoles = ["owner", "admin", "coach"];
-
-    public AccountService(AccountDbContext db, IConfiguration config, ILogger<AccountService> logger,
-        TenantSchemaManager schemaManager)
+    public AccountService(AccountDbContext db, IConfiguration config)
     {
         _db = db;
         _config = config;
-        _logger = logger;
-        _schemaManager = schemaManager;
     }
 
     // ---- helpers ----------------------------------------------------------
 
     private static string Norm(string? s) => (s ?? string.Empty).Trim();
 
-    // owner/admin manage the club, coach runs a squad. Maps onto the roles seeded per tenant
-    // (1=Admin, 2=Manager, 3=Coach, 4=Staff).
-    private static int RoleToRoleId(string role) => role switch
+    // The token every backoffice call carries. accountid is the owner of everything the coach sees;
+    // role/staffid keep the claim names the controllers already read.
+    private Token GenerateToken(Account account)
     {
-        "owner" => 1,
-        "admin" => 1,
-        "coach" => 3,
-        _ => 4,
-    };
-
-    private Token WriteToken(List<Claim> claims)
-    {
+        var claims = new List<Claim>
+        {
+            new("accountid", account.accountid.ToString()),
+            new("phone", account.phone),
+            new("role", "owner"),
+            new("staffid", account.accountid.ToString()),
+        };
         var days = int.TryParse(_config["AppSettings:TokenLifetimeDays"], out var d) ? d : 7;
         var expirydate = DateTime.UtcNow.AddDays(days);
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["AppSettings:Token"] ?? ""));
@@ -61,106 +50,15 @@ public class AccountService
         };
     }
 
-    private Token GenerateAccountToken(Account account)
+    // An account from before trainings were named on the account falls back to the coach's name.
+    public static string TrainingName(Account a) =>
+        a.training_name is { Length: > 0 } t ? t
+            : NameHelper.JoinFullName(a.lastname, a.firstname) ?? a.name ?? a.phone;
+
+    private AccountLoginRT LoginResult(Account account)
     {
-        var claims = new List<Claim>
-        {
-            new("accountid", account.accountid.ToString()),
-            new("phone", account.phone),
-        };
-        return WriteToken(claims);
-    }
-
-    // Per-club token. The tenant provider cross-checks accountid against account_tenant, so a
-    // tampered tenantid header cannot reach another club.
-    private Token GenerateTenantToken(int accountId, int tenantId, string phone, string role, int staffId)
-    {
-        var claims = new List<Claim>
-        {
-            new("accountid", accountId.ToString()),
-            new("tenantid", tenantId.ToString()),
-            new("phone", phone),
-            new("role", role),
-            new("staffid", staffId.ToString()),
-        };
-        return WriteToken(claims);
-    }
-
-    private async Task<List<TenantMembershipRT>> Memberships(int accountId)
-    {
-        return await (from m in _db.account_tenant.AsNoTracking()
-                      join t in _db.tenant.AsNoTracking() on m.tenantid equals t.tenantid
-                      where m.accountid == accountId && t.isactive
-                      orderby t.tenantname
-                      select new TenantMembershipRT
-                      {
-                          tenantid = t.tenantid,
-                          tenantname = t.tenantname,
-                          role = m.role,
-                          status = m.status,
-                          staffid = m.staffid,
-                          logo = t.logo,
-                      }).ToListAsync();
-    }
-
-    // Every coach has exactly one workspace of their own, named after their training. Registration
-    // creates it; an account that
-    // somehow has none (one registered under the old platform without running a centre) gets it
-    // here on its next login, so nobody is ever left at a "pick a club" screen with nothing in it.
-    private async Task EnsureWorkspace(Account account, string? workspaceName = null)
-    {
-        // Only a membership that can actually run the app counts: an old "player" or "fan"
-        // membership in someone else's club is not a workspace.
-        var hasOne = await _db.account_tenant.AnyAsync(m => m.accountid == account.accountid
-            && m.status == "active" && StaffRoles.Contains(m.role));
-        if (hasOne) return;
-
-        var tenant = new Tenant
-        {
-            tenantname = workspaceName ?? WorkspaceName(account),
-            contactphone = account.phone,
-            locale = "mn",
-            currency = "MNT",
-            isactive = true,
-            createdby = account.accountid,
-            created = DateTime.UtcNow,
-        };
-        _db.tenant.Add(tenant);
-        await _db.SaveChangesAsync();
-
-        var schema = "tenant_" + tenant.tenantid;
-        await _schemaManager.CreateSchemaForTenant(schema, tenant.tenantid, seedDemoData: false);
-
-        var staffId = await _schemaManager.ProvisionStaff(
-            schema, tenant.tenantid, account.phone, account.name,
-            account.passwordhash, RoleToRoleId("owner"),
-            account.lastname, account.firstname, account.accountid);
-
-        _db.account_tenant.Add(new AccountTenant
-        {
-            accountid = account.accountid,
-            tenantid = tenant.tenantid,
-            role = "owner",
-            status = "active",
-            staffid = staffId,
-            joined = DateTime.UtcNow,
-        });
-        await _db.SaveChangesAsync();
-
-        _logger.LogInformation("Workspace {Tenant} created for account {Account}", tenant.tenantid, account.accountid);
-    }
-
-    private static string WorkspaceName(Account account) =>
-        NameHelper.JoinFullName(account.lastname, account.firstname) ?? account.name ?? account.phone;
-
-    private async Task<AccountLoginRT> BuildLoginResult(Account account, string? workspaceName = null)
-    {
-        await EnsureWorkspace(account, workspaceName);
-
-        var token = GenerateAccountToken(account);
-        var tenants = await Memberships(account.accountid);
-
-        var result = new AccountLoginRT
+        var token = GenerateToken(account);
+        return new AccountLoginRT
         {
             accountid = account.accountid,
             phone = account.phone,
@@ -168,19 +66,10 @@ public class AccountService
             lastname = account.lastname,
             firstname = account.firstname,
             photo = account.photo,
+            training_name = TrainingName(account),
             token = token.token,
             expirydate = token.expirydate,
-            tenants = tenants,
         };
-
-        // Select the workspace up front. A coach has one; an account left with several from the
-        // old platform opens the one it owns, else the first.
-        var active = tenants.Where(t => t.status == "active" && StaffRoles.Contains(t.role)).ToList();
-        var pick = active.FirstOrDefault(t => t.role == "owner") ?? active.FirstOrDefault();
-        if (pick != null)
-            result.selected = await Switch(account.accountid, pick.tenantid);
-
-        return result;
     }
 
     // ---- auth -------------------------------------------------------------
@@ -202,17 +91,20 @@ public class AccountService
         {
             phone = phone,
             passwordhash = PasswordHasher.Hash(data.password),
-            lastname = Norm(data.lastname) is { Length: > 0 } ln ? ln : null,
-            firstname = Norm(data.firstname) is { Length: > 0 } fn ? fn : null,
+            lastname = Norm(data.lastname),
+            firstname = Norm(data.firstname),
+            training_name = trainingName,
+            contactphone = phone,
             isactive = true,
             created = DateTime.UtcNow,
         };
         account.name = NameHelper.JoinFullName(account.lastname, account.firstname);
 
+        // One insert: the account is the whole workspace, so there is nothing to half-create.
         _db.account.Add(account);
         await _db.SaveChangesAsync();
 
-        return await BuildLoginResult(account, trainingName);
+        return LoginResult(account);
     }
 
     public async Task<AccountLoginRT> Login(AccountLoginBT data)
@@ -224,14 +116,14 @@ public class AccountService
         if (!PasswordHasher.Verify(data.password ?? "", account.passwordhash))
             throw new UnauthorizedAccessException("invalid_credentials");
 
-        return await BuildLoginResult(account);
+        return LoginResult(account);
     }
 
     public async Task<AccountLoginRT> Me(int accountId)
     {
         var account = await _db.account.FirstOrDefaultAsync(a => a.accountid == accountId && a.isactive)
             ?? throw new UnauthorizedAccessException("account_not_found");
-        return await BuildLoginResult(account);
+        return LoginResult(account);
     }
 
     public async Task<object> UpdateProfile(int accountId, AccountProfileBT data)
@@ -261,48 +153,5 @@ public class AccountService
         account.passwordhash = PasswordHasher.Hash(data.newpassword);
         await _db.SaveChangesAsync();
         return new { ok = true };
-    }
-
-    // ---- clubs ------------------------------------------------------------
-
-    public Task<List<TenantMembershipRT>> Tenants(int accountId) => Memberships(accountId);
-
-    // Issue a token for one club the caller is an active member of.
-    public async Task<SwitchTenantRT> Switch(int accountId, int tenantId)
-    {
-        var membership = await _db.account_tenant
-            .FirstOrDefaultAsync(m => m.accountid == accountId && m.tenantid == tenantId)
-            ?? throw new UnauthorizedAccessException("not_a_member");
-
-        if (membership.status != "active")
-            throw new UnauthorizedAccessException("membership_" + membership.status);
-
-        var tenant = await _db.tenant.AsNoTracking()
-            .FirstOrDefaultAsync(t => t.tenantid == tenantId && t.isactive)
-            ?? throw new UnauthorizedAccessException("invalid_tenant");
-
-        var account = await _db.account.AsNoTracking().FirstAsync(a => a.accountid == accountId);
-
-        // Staff-role members need a row inside the club schema; materialise it lazily so a role
-        // promoted after the fact still resolves.
-        if (membership.staffid == 0 && StaffRoles.Contains(membership.role))
-        {
-            membership.staffid = await _schemaManager.ProvisionStaff(
-                "tenant_" + tenantId, tenantId, account.phone, account.name,
-                account.passwordhash, RoleToRoleId(membership.role),
-                account.lastname, account.firstname, accountId);
-            await _db.SaveChangesAsync();
-        }
-
-        var token = GenerateTenantToken(accountId, tenantId, account.phone, membership.role, membership.staffid);
-        return new SwitchTenantRT
-        {
-            tenantid = tenantId,
-            tenantname = tenant.tenantname,
-            role = membership.role,
-            staffid = membership.staffid,
-            token = token.token,
-            expirydate = token.expirydate,
-        };
     }
 }

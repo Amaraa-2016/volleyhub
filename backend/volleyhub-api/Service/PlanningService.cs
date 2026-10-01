@@ -18,9 +18,9 @@ public partial class PlanningService
     private static string Norm(string? s) => (s ?? string.Empty).Trim();
     private static string? NullIfEmpty(string? s) => Norm(s) is { Length: > 0 } v ? v : null;
 
-    private static List<short> ParseSkills(string? csv) =>
+    private static List<int> ParseSkills(string? csv) =>
         (csv ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
-            .Select(x => short.TryParse(x, out var v) ? v : (short)0)
+            .Select(x => int.TryParse(x, out var v) ? v : 0)
             .Where(v => v > 0)
             .Distinct()
             .ToList();

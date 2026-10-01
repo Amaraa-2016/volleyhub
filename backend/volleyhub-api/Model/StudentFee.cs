@@ -5,10 +5,12 @@ namespace volleyhub_api.Model;
 // What one student owes for one month of one group. `paid_amount` is recomputed from the payments
 // attached to it, never written directly, so a deleted or corrected payment cannot leave a fee
 // claiming to be settled.
-public class StudentFee
+public class StudentFee : IOwned
 {
     [Key]
     public long feeid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     public long studentid { get; set; }
     public long groupid { get; set; }
     // The billed month as YYYY-MM. A string rather than a date because it is a label, not an

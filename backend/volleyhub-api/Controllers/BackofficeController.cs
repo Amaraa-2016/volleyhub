@@ -5,10 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace volleyhub_api.Controllers;
 
-// The coach's workspace. Every endpoint is per-workspace: the tenantid header selects the schema
-// and the tenant provider checks the caller is a member of it, so nothing here filters by tenant
-// itself. The role gate is the second half of that: only staff roles get in. Children and parents
-// have no login at all.
+// The coach's workspace. Every coach's rows share one schema; VolleyDbContext limits every query to
+// the signed-in coach (accountid in the token), so nothing here filters by owner itself. Children
+// and parents have no login at all.
 [Authorize]
 [ApiController]
 [Route("api/vh/backoffice")]
@@ -26,8 +25,6 @@ public class BackofficeController : ApiControllerBase
     private readonly ReportEmailService _reportEmail;
 
     protected override ILogger Logger => _logger;
-
-    private static readonly string[] StaffRoles = ["owner", "admin", "coach"];
 
     public BackofficeController(ILogger<BackofficeController> logger, TrainingService training,
         ScheduleService schedule, BillingService billing, ProgressService progress, InvoiceService invoices,
@@ -48,7 +45,7 @@ public class BackofficeController : ApiControllerBase
 
     private void AssertStaff()
     {
-        if (!StaffRoles.Contains(Role())) throw new UnauthorizedAccessException("staff_only");
+        if (AccountId() <= 0) throw new UnauthorizedAccessException("unauthorized");
     }
 
     // ---- home -------------------------------------------------------------
@@ -149,7 +146,7 @@ public class BackofficeController : ApiControllerBase
     // The child's report as an email to the guardian / child. preview=true only builds it.
     [HttpPost("students/{id:long}/report/email")]
     public Task<IActionResult> EmailReport(long id, [FromBody] ReportEmailBT data) =>
-        Run(async () => { AssertStaff(); return await _reportEmail.Send(TenantId(), id, data ?? new ReportEmailBT(), StaffId()); });
+        Run(async () => { AssertStaff(); return await _reportEmail.Send(AccountId(), id, data ?? new ReportEmailBT(), StaffId()); });
 
     [HttpDelete("students/{id:long}/notes/{noteId:long}")]
     public Task<IActionResult> DeleteNote(long id, long noteId) =>
@@ -170,7 +167,7 @@ public class BackofficeController : ApiControllerBase
 
     [HttpDelete("skills/{id:int}")]
     public Task<IActionResult> DeleteSkill(int id) =>
-        Run(async () => { AssertStaff(); return await _progress.DeleteSkill((short)id); });
+        Run(async () => { AssertStaff(); return await _progress.DeleteSkill(id); });
 
     [HttpGet("students/{id:long}/ratings")]
     public Task<IActionResult> Ratings(long id) =>
@@ -264,7 +261,7 @@ public class BackofficeController : ApiControllerBase
     // returns the texts without sending.
     [HttpPost("fees/notify")]
     public Task<IActionResult> Notify([FromBody] NotifyBT data) =>
-        Run(async () => { AssertStaff(); return await _invoices.Notify(TenantId(), data, StaffId()); });
+        Run(async () => { AssertStaff(); return await _invoices.Notify(AccountId(), data, StaffId()); });
 
     [HttpPost("fees/{id:long}/notified")]
     public Task<IActionResult> RecordManualNotice(long id, [FromBody] ManualNoticeBT data) =>
@@ -299,11 +296,11 @@ public class BackofficeController : ApiControllerBase
 
     [HttpGet("settings")]
     public Task<IActionResult> Settings() =>
-        Run(async () => { AssertStaff(); return await _invoices.Settings(TenantId()); });
+        Run(async () => { AssertStaff(); return await _invoices.Settings(AccountId()); });
 
     [HttpPut("settings")]
     public Task<IActionResult> SaveSettings([FromBody] SettingsBT data) =>
-        Run(async () => { AssertStaff(); return await _invoices.SaveSettings(TenantId(), data); });
+        Run(async () => { AssertStaff(); return await _invoices.SaveSettings(AccountId(), data); });
 
     // ---- drill library and lesson plans --------------------------------------
 

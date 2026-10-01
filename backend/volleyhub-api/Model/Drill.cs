@@ -4,10 +4,12 @@ namespace volleyhub_api.Model;
 
 // One exercise in the coach's library: "Хосоор дамжуулалт", 15 minutes, works on setting.
 // `skills` is a comma list of skill ids so the library can be filtered by what a child needs.
-public class Drill
+public class Drill : IOwned
 {
     [Key]
     public long drillid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     [MaxLength(200)]
     public string name { get; set; } = string.Empty;
     public string? description { get; set; }

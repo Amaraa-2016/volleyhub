@@ -5,10 +5,12 @@ namespace volleyhub_api.Model;
 // The recurring weekly timetable of a group: "Mondays 18:00-19:30 in hall 2". Actual dated
 // classes are TrainingSession rows generated from these, which is what attendance hangs off -
 // so cancelling one class never has to touch the timetable.
-public class ScheduleEntry
+public class ScheduleEntry : IOwned
 {
     [Key]
     public long scheduleid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     public long groupid { get; set; }
     public long? venueid { get; set; }
     // 0=Sunday .. 6=Saturday, matching DayOfWeek so no conversion is needed anywhere.

@@ -6,16 +6,18 @@ namespace volleyhub_api.Model;
 // (student, period, skill); re-rating a month overwrites it. Kept per month rather than per
 // session because progress in children shows over weeks, and a monthly check is what a coach will
 // actually keep up with.
-public class SkillRating
+public class SkillRating : IOwned
 {
     [Key]
     public long ratingid { get; set; }
+    // The coach (account) this row belongs to.
+    public int ownerid { get; set; }
     public long studentid { get; set; }
     // YYYY-MM, like a fee period.
     [MaxLength(7)]
     public string period { get; set; } = string.Empty;
     // skill.skillid - the coach's own list of criteria.
-    public short skill { get; set; }
+    public int skill { get; set; }
     // 1..5
     public short score { get; set; }
     [MaxLength(500)]
