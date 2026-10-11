@@ -80,7 +80,7 @@ builder.Services.AddCors(options =>
 
 var connStr = builder.Configuration["ConnectionStrings:dbCon"];
 
-// public.account - the coaches. Needs no signed-in owner, so register and login work.
+// volleyhub.account - the coaches. Needs no signed-in owner, so register and login work.
 builder.Services.AddDbContext<AccountDbContext>(option => option.UseNpgsql(connStr));
 
 // Every coach's data in one schema, filtered to the signed-in coach (ownerid = accountid).
@@ -94,8 +94,9 @@ builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
-// Bootstrap public.account and create or column-sync the shared app schema. Idempotent, so it runs
-// on every start and a deploy that adds a column needs no migration step.
+// Bootstrap volleyhub.account (moving an old public.account in) and create or column-sync the rest
+// of the volleyhub schema. Idempotent, so it runs on every start and a deploy that adds a column
+// needs no migration step.
 using (var scope = app.Services.CreateScope())
 {
     var schemaManager = scope.ServiceProvider.GetRequiredService<AppSchemaManager>();

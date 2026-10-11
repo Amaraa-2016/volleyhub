@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace volleyhub_api.Data;
 
-// public.account: the coaches themselves. Needs no signed-in owner, so register and login use it.
+// volleyhub.account: the coaches themselves. Needs no signed-in owner, so register and login use it.
 // The table is bootstrapped in AppSchemaManager.EnsureAccountSchema(), so there are no migrations.
 public class AccountDbContext : DbContext
 {
@@ -13,7 +13,7 @@ public class AccountDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasDefaultSchema("public");
+        modelBuilder.HasDefaultSchema(AppSchema.Name);
         base.OnModelCreating(modelBuilder);
     }
 }
