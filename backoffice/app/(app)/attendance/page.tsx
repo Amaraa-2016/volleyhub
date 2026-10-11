@@ -4,21 +4,24 @@ import Link from "next/link";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarPlus, CalendarX } from "lucide-react";
 import CancelRange from "@/app/components/CancelRange";
-import { TopBar, useData, Loading, ErrorBox, Empty, Sheet, useToast } from "@/app/components/ui";
+import { TopBar, useData, Loading, ErrorBox, Empty, Sheet, useToast, useToday } from "@/app/components/ui";
 import type { Group, Session } from "@/app/types/api";
 import { API } from "@/app/utils/API";
-import { addDays, dayLabel, hhmm, today, WEEKDAYS_SHORT, parseDay } from "@/app/utils/format";
+import { addDays, dayLabel, hhmm, WEEKDAYS_SHORT, parseDay } from "@/app/utils/format";
 
 export default function AttendancePage() {
     const toast = useToast();
-    const [day, setDay] = useState(today());
+    const now = useToday();
+    const [picked, setDay] = useState<string | null>(null);
+    // "" on the prerendered page: the week strip and the classes wait for the browser's date.
+    const day = picked ?? now;
     const [busy, setBusy] = useState(false);
     const [cancelling, setCancelling] = useState(false);
 
     // The week around the chosen day, so the strip of days can show which ones have classes.
-    const start = addDays(day, -((parseDay(day).getDay() + 6) % 7));
-    const end = addDays(start, 6);
-    const { data, error, loading, reload } = useData<Session[]>(`/api/vh/backoffice/sessions?from=${start}&to=${end}`);
+    const start = day ? addDays(day, -((parseDay(day).getDay() + 6) % 7)) : "";
+    const end = day ? addDays(start, 6) : "";
+    const { data, error, loading, reload } = useData<Session[]>(day ? `/api/vh/backoffice/sessions?from=${start}&to=${end}` : null);
     const groups = useData<Group[]>("/api/vh/backoffice/groups");
 
     const onDay = (data ?? []).filter((s) => s.session_date.slice(0, 10) === day);
@@ -37,11 +40,11 @@ export default function AttendancePage() {
         reload();
     };
 
-    const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+    const days = day ? Array.from({ length: 7 }, (_, i) => addDays(start, i)) : [];
 
     return (
         <>
-            <TopBar title="Ирц" sub={dayLabel(day)} right={
+            <TopBar title="Ирц" sub={day ? dayLabel(day) : ""} right={
                 <>
                     <button className="icon-btn" aria-label="Хичээл цуцлах (амралт)" onClick={() => setCancelling(true)}><CalendarX size={22} /></button>
                     {hasTimetable && (
@@ -64,7 +67,7 @@ export default function AttendancePage() {
                                     onClick={() => setDay(d)}
                                     style={{
                                         border: 0, cursor: "pointer", borderRadius: 12, padding: "6px 0",
-                                        background: on ? "var(--ink)" : d === today() ? "var(--brand-soft)" : "transparent",
+                                        background: on ? "var(--ink)" : d === now ? "var(--brand-soft)" : "transparent",
                                         color: on ? "var(--surface-100)" : "var(--ink)",
                                     }}
                                 >

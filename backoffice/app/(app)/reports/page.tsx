@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
-import { TopBar, useData, Loading, ErrorBox, Empty } from "@/app/components/ui";
+import { TopBar, useData, Loading, ErrorBox, Empty, useToday } from "@/app/components/ui";
 import { IncomeColumns } from "@/app/components/Charts";
 import type { IncomeReport } from "@/app/types/api";
 import { METHODS, money } from "@/app/utils/format";
@@ -11,8 +11,11 @@ import { METHODS, money } from "@/app/utils/format";
 // The year's income: what was billed and paid by the month it was for, what actually arrived in
 // each calendar month, where it came from, and who still owes.
 export default function ReportsPage() {
-    const [year, setYear] = useState(new Date().getFullYear());
-    const { data: r, error, loading, reload } = useData<IncomeReport>(`/api/vh/backoffice/reports/income?year=${year}`);
+    const now = useToday();
+    const [picked, setYear] = useState<number | null>(null);
+    // 0 on the prerendered page, so the year title waits for the browser's date.
+    const year = picked ?? (now ? Number(now.slice(0, 4)) : 0);
+    const { data: r, error, loading, reload } = useData<IncomeReport>(year ? `/api/vh/backoffice/reports/income?year=${year}` : null);
     const [view, setView] = useState<"chart" | "table">("chart");
 
     const exportCsv = () => {
@@ -41,7 +44,7 @@ export default function ReportsPage() {
             <main className="page">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <button className="icon-btn" aria-label="Өмнөх он" onClick={() => setYear(year - 1)}><ChevronLeft size={22} /></button>
-                    <strong style={{ fontSize: 17 }}>{year} он</strong>
+                    <strong style={{ fontSize: 17 }}>{year ? `${year} он` : ""}</strong>
                     <button className="icon-btn" aria-label="Дараагийн он" onClick={() => setYear(year + 1)}><ChevronRight size={22} /></button>
                 </div>
 

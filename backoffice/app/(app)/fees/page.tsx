@@ -3,12 +3,12 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Check, Search, Download, Receipt, Send, ChartColumn } from "lucide-react";
-import { TopBar, useData, Loading, ErrorBox, Empty, useToast } from "@/app/components/ui";
+import { TopBar, useData, Loading, ErrorBox, Empty, useToast, useToday } from "@/app/components/ui";
 import FeeSheet from "@/app/components/FeeSheet";
 import InvoiceSheet from "@/app/components/InvoiceSheet";
 import type { Fee, Group, Month } from "@/app/types/api";
 import { API } from "@/app/utils/API";
-import { currentPeriod, FEE_STATUS, initials, money, periodLabel, shiftPeriod, shortDate, shortName } from "@/app/utils/format";
+import { FEE_STATUS, initials, money, periodLabel, shiftPeriod, shortDate, shortName } from "@/app/utils/format";
 
 type Filter = "unpaid" | "paid" | "all";
 
@@ -16,7 +16,10 @@ type Filter = "unpaid" | "paid" | "all";
 // app, tick each child whose transfer is there. Nothing here moves money - a tick is a note.
 export default function FeesPage() {
     const toast = useToast();
-    const [period, setPeriod] = useState(currentPeriod());
+    const now = useToday();
+    const [picked, setPeriod] = useState<string | null>(null);
+    // "" on the prerendered page, so the month title waits for the browser's date.
+    const period = picked ?? now.slice(0, 7);
     const [filter, setFilter] = useState<Filter>("unpaid");
     const [groupId, setGroupId] = useState<number | null>(null);
     const [q, setQ] = useState("");
@@ -24,7 +27,7 @@ export default function FeesPage() {
     const [busy, setBusy] = useState(false);
     const [invoice, setInvoice] = useState(false);
 
-    const month = useData<Month>(`/api/vh/backoffice/month?period=${period}`);
+    const month = useData<Month>(period ? `/api/vh/backoffice/month?period=${period}` : null);
     const groups = useData<Group[]>("/api/vh/backoffice/groups");
 
     const fees = useMemo(() => {
@@ -100,7 +103,7 @@ export default function FeesPage() {
             <main className="page">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <button className="icon-btn" aria-label="Өмнөх сар" onClick={() => setPeriod(shiftPeriod(period, -1))}><ChevronLeft size={22} /></button>
-                    <strong style={{ fontSize: 17 }}>{periodLabel(period)}</strong>
+                    <strong style={{ fontSize: 17 }}>{period ? periodLabel(period) : ""}</strong>
                     <button className="icon-btn" aria-label="Дараагийн сар" onClick={() => setPeriod(shiftPeriod(period, 1))}><ChevronRight size={22} /></button>
                 </div>
 

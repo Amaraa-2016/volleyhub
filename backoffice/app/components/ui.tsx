@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { today } from "@/app/utils/format";
 import { ChevronLeft } from "lucide-react";
 import { API, errorText, type APIResult } from "@/app/utils/API";
 
@@ -83,6 +84,12 @@ export function useData<T>(path: string | null) {
 
     return { data, error, loading, reload: load, setData };
 }
+
+// The coach's today (YYYY-MM-DD), or "" until the page has hydrated. Pages are prerendered at
+// build time on a UTC server, so a date computed during render would be the build's date and
+// React would reject the mismatch (error #418). Anything shown from it must wait for "" to pass.
+const noSubscribe = () => () => {};
+export const useToday = () => useSyncExternalStore(noSubscribe, today, () => "");
 
 // ---- chrome -------------------------------------------------------------
 
